@@ -46,10 +46,16 @@ export interface NewStudentInput {
   password: string;
 }
 
-export type RegistrationBatch = Batch & { filled: number };
+// The public sign-up page only gets what it needs to show
+export type RegistrationBatch = Pick<
+  Batch,
+  'id' | 'code' | 'name' | 'courseId' | 'courseName' | 'startTime' | 'endTime' | 'maxCapacity' | 'status'
+> & { filled: number };
+
+export type RegistrationCourse = Pick<Course, 'id' | 'code' | 'name'>;
 
 export interface RegistrationOptions {
-  courses: Course[];
+  courses: RegistrationCourse[];
   batches: RegistrationBatch[];
   nextRollNo: string;
 }

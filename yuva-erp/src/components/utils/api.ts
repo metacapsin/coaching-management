@@ -248,8 +248,10 @@ export const subscribeSync = (fn: (payload: SyncPayload) => void) => {
 
 // Sends changed institute data. Our own change does not need to be fetched back.
 export const pushInstitute = async (changes: InstituteChanges) => {
-  const res = await request<{ version: number }>('PUT', '/institute', { changes });
-  if (res.version === version + 1) version = res.version;
+  const res = await request<{ version: number; renumbered?: number }>('PUT', '/institute', { changes });
+  // If the server changed a roll / receipt number it must be fetched, otherwise it is our own change only
+  if (res.renumbered) version = -1;
+  else if (res.version === version + 1) version = res.version;
   return res;
 };
 

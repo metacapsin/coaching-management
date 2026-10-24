@@ -128,6 +128,15 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+server.on('error', err => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use. Another server is probably running. Close it, or start this one on another port (DB_PORT=3002).`);
+  } else {
+    console.error(err);
+  }
+  process.exit(1);
+});
+
 server.listen(PORT, HOST, () => {
   console.log(`AcademiaOS server running on http://${HOST}:${PORT}`);
   console.log(`Data file: ${store.dbFile}`);

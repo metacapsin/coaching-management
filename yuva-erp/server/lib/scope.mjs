@@ -247,7 +247,7 @@ const teacherMerge = (name, current, change, user) => {
 
 // Applies a set of changes to `institute` (it is changed in place only if every part is allowed).
 // changes: { profile?: object, [collection]: { upsert?: object[], remove?: string[] } }
-// Returns a short description for the activity log.
+// Returns { summary: short description for the activity log, renumbered: how many numbers were changed }.
 export const applyChanges = (user, institute, changes) => {
   if (!changes || typeof changes !== 'object' || Array.isArray(changes)) {
     throw new HttpError(400, 'Invalid changes.');
@@ -261,6 +261,7 @@ export const applyChanges = (user, institute, changes) => {
 
   const next = {};
   const summary = [];
+  let renumberedTotal = 0;
 
   for (const name of names) {
     if (name === 'profile') {
@@ -276,6 +277,7 @@ export const applyChanges = (user, institute, changes) => {
     const current = list(institute[name]);
     const result = user.role === 'teacher' ? teacherMerge(name, current, change, user) : mergeById(name, current, change);
     const renumbered = makeUnique(name, result.items, result.addedIds);
+    renumberedTotal += renumbered;
     next[name] = result.items;
     if (result.added || result.updated || result.removed) {
       summary.push(`${name} +${result.added} ~${result.updated} -${result.removed}${renumbered ? ` (${renumbered} renumbered)` : ''}`);
@@ -283,5 +285,5 @@ export const applyChanges = (user, institute, changes) => {
   }
 
   Object.assign(institute, next);
-  return summary;
+  return { summary, renumbered: renumberedTotal };
 };

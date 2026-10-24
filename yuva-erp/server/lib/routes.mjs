@@ -237,9 +237,21 @@ export const createRoutes = store => {
     const all = students();
     const batches = (Array.isArray(data.batches) ? data.batches : [])
       .filter(b => b.status !== 'completed')
-      .map(b => ({ ...b, filled: all.filter(s => s.batchId === b.id).length }));
+      .map(b => ({
+        id: b.id,
+        code: b.code,
+        name: b.name,
+        courseId: b.courseId,
+        courseName: b.courseName,
+        startTime: b.startTime,
+        endTime: b.endTime,
+        maxCapacity: b.maxCapacity,
+        status: b.status,
+        filled: all.filter(s => s.batchId === b.id).length
+      }));
+    const courses = (Array.isArray(data.courses) ? data.courses : []).map(c => ({ id: c.id, code: c.code, name: c.name }));
     return {
-      courses: Array.isArray(data.courses) ? data.courses : [],
+      courses,
       batches,
       nextRollNo: nextRollNumber(all)
     };
@@ -365,12 +377,12 @@ export const createRoutes = store => {
   // The browser sends what changed: { students: { upsert: [...], remove: [ids] }, profile: {...} }
   route('PUT', '/api/institute', 'user', ctx => {
     state.institute = state.institute || {};
-    const summary = applyChanges(ctx.user, state.institute, ctx.body.changes);
+    const { summary, renumbered } = applyChanges(ctx.user, state.institute, ctx.body.changes);
     if (summary.length > 0) {
       store.bump();
       store.audit(ctx.user, 'data', summary.join(', '));
     }
-    return { version: state.version };
+    return { version: state.version, renumbered };
   });
 
   // ---------- accounts (principal only) ----------

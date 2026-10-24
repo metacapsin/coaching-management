@@ -49,4 +49,16 @@ export const bearerToken = req => {
   return match ? match[1].trim() : '';
 };
 
-export const clientIp = req => req.socket?.remoteAddress || 'unknown';
+const stripV6Prefix = address => address.replace(/^::ffff:/, '');
+const isLoopback = address => address === '127.0.0.1' || address === '::1';
+
+// Address of the caller. Behind a proxy on this same computer the proxy's own address would be the same
+// for everybody, so the address it forwards is used (only trusted when the proxy is local).
+export const clientIp = req => {
+  const peer = stripV6Prefix(req.socket?.remoteAddress || 'unknown');
+  if (isLoopback(peer)) {
+    const forwarded = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+    if (forwarded) return stripV6Prefix(forwarded).slice(0, 64);
+  }
+  return peer;
+};

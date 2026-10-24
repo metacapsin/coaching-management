@@ -456,7 +456,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         date,
         batchId,
         records,
-        markedBy: "Faculty / Academic Desk",
+        markedBy: user?.name || 'Faculty / Academic Desk',
         updatedAt: new Date().toISOString()
       };
 

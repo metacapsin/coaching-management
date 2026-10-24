@@ -143,6 +143,13 @@ test('server', async t => {
     }
     const locked = await call('POST', '/api/auth/login', { body: { email: 'nobody@x.com', password: 'Wrong1234', portal: 'admin' } });
     assert.equal(locked.status, 429);
+    // behind a proxy on this computer every caller has its own address: another address is not locked
+    const otherCaller = await fetch(`${server.base}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': '203.0.113.9' },
+      body: JSON.stringify({ email: 'nobody@x.com', password: 'Wrong1234', portal: 'admin' })
+    });
+    assert.equal(otherCaller.status, 401);
     // the real password is also refused for that email while it is locked
     const stillLocked = await call('POST', '/api/auth/login', { body: { email: 'nobody@x.com', password: PASSWORD, portal: 'admin' } });
     assert.equal(stillLocked.status, 429);
@@ -172,6 +179,7 @@ test('server', async t => {
     const clash = { ...mkStudent('s-clash', '03', 'Clash', 'b2', '+91 98000 00099') };
     const put = await call('PUT', '/api/institute', { token: adminToken, body: { changes: { students: { upsert: [clash] } } } });
     assert.equal(put.status, 200);
+    assert.equal(put.data.renumbered, 1); // the browser is told, so it fetches the new number
     const list = (await call('GET', '/api/sync', { token: adminToken })).data.institute.students;
     const rolls = list.map(s => s.rollNo);
     assert.equal(new Set(rolls).size, rolls.length);
@@ -263,6 +271,8 @@ test('server', async t => {
   await t.test('public registration: options and a new student', async () => {
     const options = await call('GET', '/api/public/registration-options');
     assert.equal(options.data.courses.length, 1);
+    assert.equal(options.data.batches[0].facultyName, undefined); // faculty and room are not public
+    assert.equal(options.data.courses[0].standardFee, undefined);
     const b1 = options.data.batches.find(b => b.id === 'b1');
     assert.equal(b1.filled, 2);
     assert.equal(options.data.nextRollNo, '04');
