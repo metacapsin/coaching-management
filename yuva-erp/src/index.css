@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    background-color: #f8fafc;
+    color: #0f172a;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+@media print {
+  body {
+    background-color: white !important;
+  }
+
+  /* Ensure colors and borders are preserved when printing */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Print only the receipt / report card, not the page behind the dialog */
+  body:has(#printable-receipt) #root > *,
+  body:has(#printable-report-card) #root > * {
+    visibility: hidden;
+  }
+
+  #printable-receipt,
+  #printable-receipt *,
+  #printable-report-card,
+  #printable-report-card * {
+    visibility: visible;
+  }
+
+  #printable-receipt,
+  #printable-report-card {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    background: white;
+  }
+}
