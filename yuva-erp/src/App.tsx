@@ -200,7 +200,7 @@ function MainApp() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row text-slate-900 font-sans antialiased">
       {/* Mobile Top Header (hidden on print) */}
-      <div className="md:hidden bg-slate-900 text-white px-4 py-3 flex items-center justify-between border-b border-slate-800 print:hidden">
+      <div className="theme-keep md:hidden bg-slate-900 text-white px-4 py-3 flex items-center justify-between border-b border-slate-800 print:hidden">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-blue-600 text-white font-bold flex items-center justify-center text-xs">
             {profile.name.slice(0, 1)}
@@ -221,7 +221,7 @@ function MainApp() {
 
       {/* Sidebar Navigation (hidden on print) */}
       <aside
-        className={`fixed md:sticky top-0 h-screen z-40 w-64 bg-slate-900 text-slate-200 border-r border-slate-800 flex flex-col justify-between shrink-0 transition-transform duration-200 print:hidden ${
+        className={`theme-keep fixed md:sticky top-0 h-screen z-40 w-64 bg-slate-900 text-slate-200 border-r border-slate-800 flex flex-col justify-between shrink-0 transition-transform duration-200 print:hidden ${
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >

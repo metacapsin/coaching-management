@@ -8,6 +8,7 @@ import functools
 import hmac
 import json
 import re
+from datetime import datetime, timezone
 
 from flask import Blueprint, Response, current_app, g, request
 from pymongo.errors import DuplicateKeyError
@@ -153,6 +154,22 @@ def ok():
 @route('/api/health', ['GET'])
 def health():
     return {'ok': True, 'version': store().version()}
+
+
+@route('/api/auth/forgot-password', ['POST'])
+def forgot_password():
+    """Marks that somebody forgot the password, so the principal sees it in Team & Access and sets a new one.
+    The answer is always the same, so nobody can find out which emails have an account."""
+    limit_registrations()
+    s = store()
+    email = text(body().get('email')).lower()
+    target = s.user_by_email(email) if email else None
+    if target and (target.get('status') or 'active') == 'active':
+        target['resetRequestedAt'] = datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z')
+        s.save_user(target)
+        s.bump()
+        s.audit(None, 'password-reset-requested', email)
+    return ok()
 
 
 @route('/api/auth/status', ['GET'])
@@ -638,6 +655,7 @@ def reset_user_password(user_id):
     if not target:
         raise HttpError(404, 'User not found.')
     auth.set_password(target, new)
+    target.pop('resetRequestedAt', None)
     s.save_user(target)
     if target['id'] == g.user['id']:
         auth.destroy_sessions_of(s, target['id'], g.token)

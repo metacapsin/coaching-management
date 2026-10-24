@@ -36,6 +36,7 @@ export interface AuthUser {
   subject?: string;
   studentId?: string; // students: linked admission record
   batchIds?: string[]; // teachers: batches they handle
+  resetRequestedAt?: string; // set when the person asked for a new password
 }
 
 export interface InstituteData {
@@ -318,3 +319,7 @@ export const restoreBackupFile = (backup: unknown) =>
 // Own phone number / name / subject
 export const updateOwnDetails = (details: { name?: string; phone?: string; subject?: string }) =>
   request<{ user: AuthUser }>('PUT', '/auth/profile', details);
+
+// Tells the principal that somebody forgot the password (the answer is always the same)
+export const requestPasswordReset = (email: string) =>
+  request<{ ok: true }>('POST', '/auth/forgot-password', { email }, { auth: false });

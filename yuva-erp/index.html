@@ -10,6 +10,15 @@
     <meta property="og:description" content="Comprehensive coaching institute management system for admissions, student attendance, fee invoicing, exams, batch timetables, and automated parent notifications." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      // set the saved look before the page is drawn (no white flash in dark mode)
+      try {
+        var t = localStorage.getItem('academia_os_theme_v1');
+        if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

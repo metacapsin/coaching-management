@@ -13,6 +13,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { useAuth, roleLabel } from '../../Context/AuthContext';
+import { ThemeToggle } from '../ui/ThemeToggle';
 import { downloadFromServer } from '../utils/api';
 import { canManageInstitute } from '../../Context/Access';
 import type { TabId } from '../../Context/Access';
@@ -317,6 +318,8 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Right side actions */}
         <div className="ml-auto flex items-center gap-2 sm:gap-3 shrink-0">
+          <ThemeToggle />
+
           {/* Save status */}
           <span
             className={`hidden sm:inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-md ${

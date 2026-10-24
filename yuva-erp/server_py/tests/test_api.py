@@ -305,11 +305,17 @@ class Flow(unittest.TestCase):
         self.assertEqual(self.call('POST', '/api/auth/login', {'email': 'alice@x.com', 'password': PASSWORD, 'portal': 'student'})[0], 401)
         self.assertEqual(self.call('POST', '/api/auth/login', {'email': 'alice@x.com', 'password': 'Another123', 'portal': 'student'})[0], 200)
 
+        # forgot password: same answer for known and unknown emails, the principal sees the request
+        self.assertEqual(self.call('POST', '/api/auth/forgot-password', {'email': 'nobody@x.com'}), (200, {'ok': True}))
+        self.assertEqual(self.call('POST', '/api/auth/forgot-password', {'email': 'ALICE@x.com'}), (200, {'ok': True}))
         users = self.call('GET', '/api/sync', token=admin)[1]['users']
         alice = next(u for u in users if u['email'] == 'alice@x.com')
+        self.assertTrue(alice.get('resetRequestedAt'))
         self.assertEqual(self.call('POST', f'/api/users/{alice["id"]}/reset-password', {'newPassword': 'weak'}, admin)[0], 400)
         self.assertEqual(self.call('POST', f'/api/users/{alice["id"]}/reset-password', {'newPassword': 'Reset12345'}, admin)[0], 200)
         self.assertEqual(self.call('GET', '/api/auth/me', token=student_token)[0], 401)  # reset signs the account out
+        users = self.call('GET', '/api/sync', token=admin)[1]['users']
+        self.assertFalse(next(u for u in users if u['email'] == 'alice@x.com').get('resetRequestedAt'))
 
     def test_11_principal_rules(self):
         admin, teacher = self.tokens['admin'], self.tokens['teacher']

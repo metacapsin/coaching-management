@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../Context/AuthContext';
 import type { Portal } from '../../Context/AuthContext';
+import { requestPasswordReset } from '../utils/api';
+import { ThemeToggle } from '../ui/ThemeToggle';
 import { StudentSignupForm } from '../auth/StudentsignupForm';
 import {
   GraduationCap,
@@ -21,6 +23,63 @@ import {
 import type { LucideIcon } from 'lucide-react';
 
 type Mode = 'signin' | 'signup';
+
+// "Forgot your password?": tells the principal, who then sets a new password in Team & Access
+const ForgotPassword: React.FC<{ initialEmail: string }> = ({ initialEmail }) => {
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState(initialEmail);
+  const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+
+  const send = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setState('sending');
+    try {
+      await requestPasswordReset(email.trim());
+      setState('sent');
+    } catch {
+      setState('error');
+    }
+  };
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className="mt-4 w-full text-xs font-medium text-blue-600 hover:underline">
+        Forgot your password?
+      </button>
+    );
+  }
+
+  return (
+    <form onSubmit={send} className="mt-4 p-3 rounded-lg border border-slate-200 bg-slate-50 space-y-2">
+      {state === 'sent' ? (
+        <p className="text-xs text-emerald-700">
+          Request sent. If this email has an account, the principal will see it and give you a new password.
+        </p>
+      ) : (
+        <>
+          <p className="text-xs text-slate-600">Enter your email. The principal gets a request and sets a new password for you.</p>
+          <input
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          {state === 'error' && <p className="text-xs text-rose-600">Could not send the request. Please try again.</p>}
+          <div className="flex gap-2 justify-end">
+            <button type="button" onClick={() => setOpen(false)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">
+              Cancel
+            </button>
+            <button type="submit" disabled={state === 'sending'} className="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-lg">
+              {state === 'sending' ? 'Sending...' : 'Send request'}
+            </button>
+          </div>
+        </>
+      )}
+    </form>
+  );
+};
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -201,7 +260,7 @@ export const AuthPage: React.FC = () => {
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-slate-50 text-slate-900 font-sans antialiased">
       {/* Left: brand panel */}
-      <div className="hidden lg:flex flex-col justify-between bg-slate-900 text-white p-12">
+      <div className="theme-keep hidden lg:flex flex-col justify-between bg-slate-900 text-white p-12">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-sm">
             <GraduationCap className="w-6 h-6" />
@@ -231,6 +290,8 @@ export const AuthPage: React.FC = () => {
 
         <div className="text-[11px] text-slate-500">© {new Date().getFullYear()} AcademiaOS · v2.4</div>
       </div>
+
+      <ThemeToggle className="fixed top-3 right-3 z-30 bg-white/80 border border-slate-200" />
 
       {/* Right: form */}
       <div className="flex items-center justify-center p-6 sm:p-10">
@@ -562,9 +623,10 @@ export const AuthPage: React.FC = () => {
                 </p>
               )}
 
+              {isSignin && <ForgotPassword initialEmail={email} />}
+
               <p className="mt-6 text-[11px] text-slate-400 text-center leading-relaxed">
-                Your account and data are stored on the institute's server. Forgot your password? Ask the principal
-                to reset it from Team &amp; Access.
+                Your account and data are stored on the institute's server.
               </p>
             </>
           )}

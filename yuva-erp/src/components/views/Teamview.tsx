@@ -515,6 +515,35 @@ export const TeamView: React.FC = () => {
 
       <MyDetails onDone={(type, text) => setNotice({ type, text })} />
 
+      {/* Password requests (admin only) */}
+      {isAdmin && members.some(u => u.resetRequestedAt) && (
+        <div className="bg-white rounded-xl border border-blue-200 overflow-hidden shadow-xs">
+          <div className="p-4 border-b border-blue-200 bg-blue-50 text-sm font-semibold text-blue-900">
+            Forgot-password requests ({members.filter(u => u.resetRequestedAt).length})
+          </div>
+          <ul className="divide-y divide-slate-100">
+            {members
+              .filter(u => u.resetRequestedAt)
+              .map(u => (
+                <li key={u.id} className="p-4 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold text-slate-900 truncate">{u.name}</div>
+                    <div className="text-[11px] text-slate-500 truncate">
+                      {u.email} · {roleLabel(u.role)} · asked on {new Date(u.resetRequestedAt!).toLocaleString('en-IN')}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => openReset(u)}
+                    className="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shrink-0"
+                  >
+                    Set new password
+                  </button>
+                </li>
+              ))}
+          </ul>
+        </div>
+      )}
+
       {/* Pending requests (admin only) */}
       {isAdmin && pending.length > 0 && (
         <div className="bg-white rounded-xl border border-amber-200 overflow-hidden shadow-xs">
