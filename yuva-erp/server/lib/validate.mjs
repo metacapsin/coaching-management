@@ -16,7 +16,7 @@ export const text = (value, max = 200) => (typeof value === 'string' ? value.tri
 
 export const last10 = value => String(value || '').replace(/\D/g, '').slice(-10);
 
-// "APEX-25-0101", "apex 25 0101" and "APEX-25-101" all become the same key
+// "05", "5" and "005" all become the same key (older numbers like "APEX-25-0105" too)
 export const normRoll = value =>
   String(value || '')
     .toUpperCase()
@@ -38,17 +38,6 @@ export const normalizePhone = value => {
 export const todayLocal = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
-
-// Roll numbers: highest number in the list + 1 (same rule as the app had in the browser)
-export const ROLL_PREFIX = 'APEX-25-';
-export const nextRollNumber = students => {
-  const used = students.map(s => {
-    const match = String(s.rollNo || '').match(/(\d+)$/);
-    return match ? parseInt(match[1], 10) : 0;
-  });
-  const next = Math.max(100, ...used) + 1;
-  return `${ROLL_PREFIX}${String(next).padStart(4, '0')}`;
 };
 
 export const newId = prefix => `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;

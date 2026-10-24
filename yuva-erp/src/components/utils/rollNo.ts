@@ -1,15 +1,10 @@
-// Roll numbers are always assigned automatically: highest number in the list + 1.
-// Example: the list has ... APEX-25-0110, APEX-25-0111  ->  next is APEX-25-0112.
-// Gaps left in the middle by deleted students are not filled. If the very last student is deleted,
-// its number becomes free again because the list no longer contains it.
+// Roll numbers are plain running numbers like in a school register: 01, 02, 03 ... 99, 100.
+// A new student gets the highest number in the list + 1. The server uses the same rule.
+// Gaps left by deleted students are not filled. If the last student is deleted, its number is free again.
 
-export const ROLL_PREFIX = 'APEX-25-';
+const isPlain = (value?: string) => /^\d+$/.test((value ?? '').trim());
 
 export const nextRollNumber = (students: { rollNo?: string }[]): string => {
-  const used = students.map(s => {
-    const match = (s.rollNo || '').match(/(\d+)$/);
-    return match ? parseInt(match[1], 10) : 0;
-  });
-  const next = Math.max(100, ...used) + 1;
-  return `${ROLL_PREFIX}${String(next).padStart(4, '0')}`;
+  const highest = students.reduce((max, s) => (isPlain(s.rollNo) ? Math.max(max, parseInt(s.rollNo as string, 10)) : max), 0);
+  return String(highest + 1).padStart(2, '0');
 };

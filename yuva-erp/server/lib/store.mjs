@@ -3,6 +3,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { renumberLegacyRolls } from './rollno.mjs';
 
 const BACKUP_EVERY_MS = 10 * 60 * 1000;
 const SAVE_DELAY_MS = 250;
@@ -72,6 +73,21 @@ export const createStore = dir => {
   const state = migrate(raw);
   if (migrating) state.version += 1;
 
+  // Older data used roll numbers like APEX-25-0101: they become plain running numbers (01, 02, ...)
+  const hadFile = fs.existsSync(dbFile);
+  const rollsChanged = renumberLegacyRolls(state);
+  if (rollsChanged > 0) {
+    state.version += 1;
+    if (hadFile && !migrating) {
+      try {
+        fs.copyFileSync(dbFile, path.join(dir, `db.before-rollno-${Date.now()}.json`));
+      } catch (err) {
+        console.error('Could not copy the data file:', err.message);
+      }
+    }
+    console.log(`Roll numbers of ${rollsChanged} student${rollsChanged === 1 ? '' : 's'} changed to plain numbers (01, 02, ...).`);
+  }
+
   let timer = null;
   let writing = false;
   let again = false;
@@ -122,7 +138,7 @@ export const createStore = dir => {
     }, SAVE_DELAY_MS);
   };
 
-  if (migrating) touch();
+  if (migrating || rollsChanged > 0) touch();
 
   return {
     state,

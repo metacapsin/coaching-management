@@ -73,9 +73,9 @@ const mkStudent = (id, rollNo, name, batchId, phone) => ({
   targetExam: 'JEE', dateOfAdmission: '2026-01-01', status: 'active', photoUrl: '', address: '', totalFees: 1000, discount: 0, feePaid: 500
 });
 const studentsList = [
-  mkStudent('s1', 'APEX-25-0101', 'Alice', 'b1', '+91 98000 00001'),
-  mkStudent('s2', 'APEX-25-0102', 'Bob', 'b1', '+91 98000 00002'),
-  mkStudent('s3', 'APEX-25-0103', 'Carol', 'b2', '+91 98000 00003')
+  mkStudent('s1', '01', 'Alice', 'b1', '+91 98000 00001'),
+  mkStudent('s2', '02', 'Bob', 'b1', '+91 98000 00002'),
+  mkStudent('s3', '03', 'Carol', 'b2', '+91 98000 00003')
 ];
 const exam = {
   id: 'e1', code: 'T1', title: 'Test 1', batchId: 'b1', batchName: 'Batch A', subject: 'Maths', date: '2026-02-01', maxMarks: 100, passMarks: 35,
@@ -87,7 +87,7 @@ const seed = {
   batches: { upsert: batches },
   students: { upsert: studentsList },
   attendance: { upsert: [{ id: 'att1', date: '2026-02-01', batchId: 'b1', records: { s1: 'present', s2: 'absent' }, markedBy: 'x', updatedAt: '' }] },
-  transactions: { upsert: [{ id: 'tx1', receiptNo: 'REC-2026-0001', studentId: 's1', studentName: 'Alice', studentRollNo: 'APEX-25-0101', batchName: 'Batch A', amount: 500, paymentMethod: 'Cash', date: '2026-01-02', installmentNo: 1 }] },
+  transactions: { upsert: [{ id: 'tx1', receiptNo: 'REC-2026-0001', studentId: 's1', studentName: 'Alice', studentRollNo: '01', batchName: 'Batch A', amount: 500, paymentMethod: 'Cash', date: '2026-01-02', installmentNo: 1 }] },
   exams: { upsert: [exam] },
   timetable: { upsert: [] },
   templates: { upsert: [] },
@@ -169,17 +169,17 @@ test('server', async t => {
   });
 
   await t.test('same roll / receipt number from two computers: the later one is renumbered', async () => {
-    const clash = { ...mkStudent('s-clash', 'APEX-25-0103', 'Clash', 'b2', '+91 98000 00099') };
+    const clash = { ...mkStudent('s-clash', '03', 'Clash', 'b2', '+91 98000 00099') };
     const put = await call('PUT', '/api/institute', { token: adminToken, body: { changes: { students: { upsert: [clash] } } } });
     assert.equal(put.status, 200);
     const list = (await call('GET', '/api/sync', { token: adminToken })).data.institute.students;
     const rolls = list.map(s => s.rollNo);
     assert.equal(new Set(rolls).size, rolls.length);
-    assert.equal(list.find(s => s.id === 's3').rollNo, 'APEX-25-0103'); // the first one keeps its number
-    assert.equal(list.find(s => s.id === 's-clash').rollNo, 'APEX-25-0104');
+    assert.equal(list.find(s => s.id === 's3').rollNo, '03'); // the first one keeps its number
+    assert.equal(list.find(s => s.id === 's-clash').rollNo, '04');
     await call('PUT', '/api/institute', { token: adminToken, body: { changes: { students: { remove: ['s-clash'] } } } });
 
-    const tx = { id: 'tx-clash', receiptNo: 'REC-2026-0001', studentId: 's2', studentName: 'Bob', studentRollNo: 'APEX-25-0102', batchName: 'Batch A', amount: 100, paymentMethod: 'Cash', date: '2026-01-03', installmentNo: 1 };
+    const tx = { id: 'tx-clash', receiptNo: 'REC-2026-0001', studentId: 's2', studentName: 'Bob', studentRollNo: '02', batchName: 'Batch A', amount: 100, paymentMethod: 'Cash', date: '2026-01-03', installmentNo: 1 };
     await call('PUT', '/api/institute', { token: adminToken, body: { changes: { transactions: { upsert: [tx] } } } });
     const txs = (await call('GET', '/api/sync', { token: adminToken })).data.institute.transactions;
     assert.equal(txs.find(t => t.id === 'tx-clash').receiptNo, 'REC-2026-0002');
@@ -265,7 +265,7 @@ test('server', async t => {
     assert.equal(options.data.courses.length, 1);
     const b1 = options.data.batches.find(b => b.id === 'b1');
     assert.equal(b1.filled, 2);
-    assert.equal(options.data.nextRollNo, 'APEX-25-0104');
+    assert.equal(options.data.nextRollNo, '04');
 
     const form = { name: 'New Kid', phone: '9811111111', parentName: 'Parent', parentPhone: '9822222222', grade: 'Class 12', courseId: 'c1', batchId: 'b2', email: 'kid@x.com', password: PASSWORD };
     const full = await call('POST', '/api/auth/register-new-student', { body: { ...form, batchId: 'b1' } });
@@ -274,15 +274,15 @@ test('server', async t => {
     assert.equal(res.status, 200);
     assert.equal(res.data.user.role, 'student');
     const mine = (await call('GET', '/api/sync', { token: res.data.token })).data.institute.students[0];
-    assert.equal(mine.rollNo, 'APEX-25-0104');
+    assert.equal(mine.rollNo, '04');
     assert.equal(mine.status, 'trial');
     assert.equal(mine.phone, '+91 98111 11111'); // stored in one format
     assert.equal((await call('POST', '/api/auth/register-new-student', { body: { ...form, email: 'kid2@x.com' } })).status, 409); // same name + phone
 
     // existing admission: needs the roll number and a registered phone
-    const bad = await call('POST', '/api/auth/register-student', { body: { rollNo: 'APEX-25-0102', phone: '9999999999', email: 'bob@x.com', password: PASSWORD } });
+    const bad = await call('POST', '/api/auth/register-student', { body: { rollNo: '02', phone: '9999999999', email: 'bob@x.com', password: PASSWORD } });
     assert.equal(bad.status, 400);
-    const good = await call('POST', '/api/auth/register-student', { body: { rollNo: 'apex 25 102', phone: '98000 00002', email: 'bob@x.com', password: PASSWORD } });
+    const good = await call('POST', '/api/auth/register-student', { body: { rollNo: ' 2 ', phone: '98000 00002', email: 'bob@x.com', password: PASSWORD } });
     assert.equal(good.status, 200);
     assert.equal(good.data.user.name, 'Bob');
   });
@@ -349,7 +349,10 @@ test('upgrade from the old data file keeps accounts and data', async t => {
     id: 'u-1', name: 'Old Principal', email: 'old@x.com', role: 'admin', status: 'active', createdAt: '2026-01-01T00:00:00.000Z',
     salt, alg: 'sha256', passwordHash: crypto.createHash('sha256').update(`${salt}:${PASSWORD}`).digest('hex')
   };
-  const institute = { profile: { name: 'Old Institute' }, students: studentsList, batches, courses: [], attendance: [], transactions: [], exams: [], timetable: [], templates: [], notificationLogs: [] };
+  // the old data used roll numbers like APEX-25-0101
+  const oldStudents = studentsList.map((st, i) => ({ ...st, rollNo: `APEX-25-010${i + 1}` }));
+  const oldReceipt = { id: 'tx-old', receiptNo: 'REC-2025-0001', studentId: 's2', studentName: 'Bob', studentRollNo: 'APEX-25-0102', batchName: 'Batch A', amount: 100, paymentMethod: 'Cash', date: '2025-01-01', installmentNo: 1 };
+  const institute = { profile: { name: 'Old Institute' }, students: oldStudents, batches, courses: [], attendance: [], transactions: [oldReceipt], exams: [], timetable: [], templates: [], notificationLogs: [] };
   fs.writeFileSync(
     path.join(dir, 'db.json'),
     JSON.stringify({ version: 3, data: { academia_os_users_v1: JSON.stringify([legacyUser]), academia_os_institute_data_v1: JSON.stringify(institute) } })
@@ -366,6 +369,9 @@ test('upgrade from the old data file keeps accounts and data', async t => {
     const data = (await call('GET', '/api/sync', { token: login.data.token })).data;
     assert.equal(data.institute.profile.name, 'Old Institute');
     assert.equal(data.institute.students.length, 3);
+    // roll numbers became plain running numbers, receipts follow their student
+    assert.deepEqual(data.institute.students.map(st => st.rollNo), ['01', '02', '03']);
+    assert.equal(data.institute.transactions[0].studentRollNo, '02');
   });
 
   await t.test('the old file is kept and the password hash is upgraded', async () => {

@@ -407,7 +407,7 @@ export const AuthPage: React.FC = () => {
                     value={rollNo}
                     onChange={setRollNo}
                     error={errors.rollNo}
-                    placeholder="e.g. APEX-25-0101"
+                    placeholder="e.g. 05"
                   />
                 )}
 

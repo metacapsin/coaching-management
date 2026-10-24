@@ -18,11 +18,11 @@ import {
   verifyPassword
 } from './auth.mjs';
 import { applyChanges, scopeInstitute } from './scope.mjs';
+import { nextRollNumber } from './rollno.mjs';
 import {
   EMAIL_REGEX,
   last10,
   newId,
-  nextRollNumber,
   normRoll,
   normalizePhone,
   passwordProblem,
@@ -210,7 +210,7 @@ export const createRoutes = store => {
       throw new HttpError(
         400,
         `We could not verify these details. Check your roll number (it looks like ${
-          records[0]?.rollNo || 'APEX-25-0101'
+          records[0]?.rollNo || '05'
         }) and the mobile number registered at admission.`
       );
     }

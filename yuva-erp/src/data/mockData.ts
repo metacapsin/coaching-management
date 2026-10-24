@@ -133,7 +133,7 @@ export const initialBatches: Batch[] = [
 export const initialStudents: Student[] = [
   {
     id: "s1",
-    rollNo: "APEX-25-0101",
+    rollNo: "01",
     name: "Aarav Sharma",
     email: "aarav.sharma@gmail.com",
     phone: "+91 98231 11223",
@@ -155,7 +155,7 @@ export const initialStudents: Student[] = [
   },
   {
     id: "s2",
-    rollNo: "APEX-25-0102",
+    rollNo: "02",
     name: "Ananya Deshmukh",
     email: "ananya.d@gmail.com",
     phone: "+91 97112 34567",
@@ -177,7 +177,7 @@ export const initialStudents: Student[] = [
   },
   {
     id: "s3",
-    rollNo: "APEX-25-0103",
+    rollNo: "03",
     name: "Rohan Kulkarni",
     email: "rohan.k@gmail.com",
     phone: "+91 99001 22334",
@@ -199,7 +199,7 @@ export const initialStudents: Student[] = [
   },
   {
     id: "s4",
-    rollNo: "APEX-25-0104",
+    rollNo: "04",
     name: "Diya Narayanan",
     email: "diya.n@gmail.com",
     phone: "+91 98450 55667",
@@ -221,7 +221,7 @@ export const initialStudents: Student[] = [
   },
   {
     id: "s5",
-    rollNo: "APEX-25-0105",
+    rollNo: "05",
     name: "Kabir Sengupta",
     email: "kabir.sen@gmail.com",
     phone: "+91 98860 33445",
@@ -242,7 +242,7 @@ export const initialStudents: Student[] = [
   },
   {
     id: "s6",
-    rollNo: "APEX-25-0106",
+    rollNo: "06",
     name: "Meera Patel",
     email: "meera.patel@gmail.com",
     phone: "+91 97401 44556",
@@ -264,7 +264,7 @@ export const initialStudents: Student[] = [
   },
   {
     id: "s7",
-    rollNo: "APEX-25-0107",
+    rollNo: "07",
     name: "Ishaan Reddy",
     email: "ishaan.reddy@gmail.com",
     phone: "+91 99800 66778",
@@ -285,7 +285,7 @@ export const initialStudents: Student[] = [
   },
   {
     id: "s8",
-    rollNo: "APEX-25-0108",
+    rollNo: "08",
     name: "Tanya Verma",
     email: "tanya.v@gmail.com",
     phone: "+91 98199 77889",
@@ -307,7 +307,7 @@ export const initialStudents: Student[] = [
   },
   {
     id: "s9",
-    rollNo: "APEX-25-0109",
+    rollNo: "09",
     name: "Devendra Singhal",
     email: "dev.singhal@gmail.com",
     phone: "+91 98200 88990",
@@ -328,7 +328,7 @@ export const initialStudents: Student[] = [
   },
   {
     id: "s10",
-    rollNo: "APEX-25-0110",
+    rollNo: "10",
     name: "Sanya Kapoor",
     email: "sanya.k@gmail.com",
     phone: "+91 98330 44556",
@@ -397,7 +397,7 @@ export const initialFeeTransactions: FeeTransaction[] = [
     receiptNo: "REC-2025-0842",
     studentId: "s1",
     studentName: "Aarav Sharma",
-    studentRollNo: "APEX-25-0101",
+    studentRollNo: "01",
     batchName: "JEE Advanced Pinnacle Batch A1",
     amount: 65000,
     paymentMethod: "UPI",
@@ -411,7 +411,7 @@ export const initialFeeTransactions: FeeTransaction[] = [
     receiptNo: "REC-2025-0843",
     studentId: "s1",
     studentName: "Aarav Sharma",
-    studentRollNo: "APEX-25-0101",
+    studentRollNo: "01",
     batchName: "JEE Advanced Pinnacle Batch A1",
     amount: 65000,
     paymentMethod: "Bank Transfer",
@@ -425,7 +425,7 @@ export const initialFeeTransactions: FeeTransaction[] = [
     receiptNo: "REC-2025-0844",
     studentId: "s2",
     studentName: "Ananya Deshmukh",
-    studentRollNo: "APEX-25-0102",
+    studentRollNo: "02",
     batchName: "NEET Super-30 Medical Elite",
     amount: 80000,
     paymentMethod: "Cheque",
@@ -439,7 +439,7 @@ export const initialFeeTransactions: FeeTransaction[] = [
     receiptNo: "REC-2025-0845",
     studentId: "s4",
     studentName: "Diya Narayanan",
-    studentRollNo: "APEX-25-0104",
+    studentRollNo: "04",
     batchName: "NEET Super-30 Medical Elite",
     amount: 125000,
     paymentMethod: "UPI",
@@ -453,7 +453,7 @@ export const initialFeeTransactions: FeeTransaction[] = [
     receiptNo: "REC-2025-0846",
     studentId: "s3",
     studentName: "Rohan Kulkarni",
-    studentRollNo: "APEX-25-0103",
+    studentRollNo: "03",
     batchName: "JEE Advanced Pinnacle Batch A1",
     amount: 72500,
     paymentMethod: "Bank Transfer",
@@ -467,7 +467,7 @@ export const initialFeeTransactions: FeeTransaction[] = [
     receiptNo: "REC-2025-0847",
     studentId: "s5",
     studentName: "Kabir Sengupta",
-    studentRollNo: "APEX-25-0105",
+    studentRollNo: "05",
     batchName: "Class 10 Board Champions Batch",
     amount: 35000,
     paymentMethod: "Cash",
@@ -709,7 +709,7 @@ export const initialNotificationLogs: NotificationLog[] = [
     recipientName: "Sunil Kulkarni",
     recipientPhone: "+91 99001 77889",
     studentName: "Rohan Kulkarni",
-    content: "Dear Sunil Kulkarni, this is to inform you that your ward Rohan Kulkarni (Roll No: APEX-25-0103) was absent from the JEE Advanced Pinnacle Batch A1 lecture on 2026-10-12...",
+    content: "Dear Sunil Kulkarni, this is to inform you that your ward Rohan Kulkarni (Roll No: 03) was absent from the JEE Advanced Pinnacle Batch A1 lecture on 2026-10-12...",
     status: "delivered"
   },
   {
@@ -720,7 +720,7 @@ export const initialNotificationLogs: NotificationLog[] = [
     recipientName: "Kishore Reddy",
     recipientPhone: "+91 99800 33445",
     studentName: "Ishaan Reddy",
-    content: "Dear Kishore Reddy, this is to inform you that your ward Ishaan Reddy (Roll No: APEX-25-0107) was absent from the NEET Super-30 Medical Elite lecture on 2026-10-12...",
+    content: "Dear Kishore Reddy, this is to inform you that your ward Ishaan Reddy (Roll No: 07) was absent from the NEET Super-30 Medical Elite lecture on 2026-10-12...",
     status: "delivered"
   },
   {
