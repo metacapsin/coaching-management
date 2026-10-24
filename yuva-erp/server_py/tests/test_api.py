@@ -341,6 +341,36 @@ class Flow(unittest.TestCase):
         self.assertGreaterEqual(len(data['users']), 3)
 
 
+class Robustness(unittest.TestCase):
+    def setUp(self):
+        self.db = new_db()
+        self.addCleanup(drop_db, self.db)
+        self.app = create_app(db=self.db, dist_dir='no-dist')
+        self.api = Api(self.app)
+        _, data = self.api.call('POST', '/api/auth/setup', {'name': 'P', 'email': 'p@x.com', 'password': PASSWORD})
+        self.admin = data['token']
+
+    def test_ids_must_be_text(self):
+        """An object where an id is expected (for example {"$ne": null}) is refused, not used in a query."""
+        body = {'name': 'S', 'email': 's@x.com', 'password': PASSWORD, 'role': 'student', 'studentId': {'$ne': None}}
+        self.assertEqual(self.api.call('POST', '/api/users', body, self.admin)[0], 400)
+
+    def test_database_problem_is_a_clear_503(self):
+        from pymongo.errors import ServerSelectionTimeoutError
+
+        store = self.app.extensions['store']
+        store.version = lambda: (_ for _ in ()).throw(ServerSelectionTimeoutError('no servers'))
+        status, data = self.api.call('GET', '/api/health')
+        self.assertEqual(status, 503)
+        self.assertIn('database', data['error'])
+
+    def test_broken_requests_get_json_answers(self):
+        res = self.api.client.post('/api/auth/login', data='not json', content_type='application/json')
+        self.assertEqual(res.status_code, 401)  # treated as an empty form, not a crash
+        self.assertEqual(self.api.call('DELETE', '/api/health')[0], 405)
+        self.assertEqual(self.api.call('GET', '/api/does-not-exist')[0], 404)
+
+
 class PasswordHashes(unittest.TestCase):
     """The hashes are the same as the ones the Node server makes, so accounts work on both servers."""
 

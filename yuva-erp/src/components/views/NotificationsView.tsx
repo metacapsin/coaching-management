@@ -34,7 +34,6 @@ export const NotificationsView: React.FC = () => {
 
   const currentTemplate = templates.find(t => t.id === selectedTemplateId) || templates[0];
   const sampleStudent = activeStudents.find(s => s.id === selectedStudentId) || activeStudents[0];
-  const sampleBatch = batches.find(b => b.id === sampleStudent?.batchId) || batches[0];
 
   // Values for the {{tags}} of one student. Exam / schedule tags are only filled in the preview
   // with sample values; in a bulk send they are left as typed so they are easy to notice.

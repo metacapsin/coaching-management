@@ -1,22 +1,7 @@
 import React, { useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import { Student } from '../../types';
-import { 
-  X, 
-  Phone, 
-  MessageSquare, 
-  Mail, 
-  Calendar, 
-  Award, 
-  CreditCard, 
-  CheckCircle2, 
-  AlertTriangle, 
-  Clock, 
-  BookOpen, 
-  Printer,
-  ChevronRight,
-  ExternalLink
-} from 'lucide-react';
+import { X, MessageSquare, CreditCard, Printer } from 'lucide-react';
 
 interface StudentDetailModalProps {
   student: Student | null;

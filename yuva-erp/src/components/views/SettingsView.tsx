@@ -1,17 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
-import { 
-  Settings, 
-  Building2, 
-  Save, 
-  Download, 
-  Upload, 
-  RefreshCw, 
-  Check, 
-  ShieldCheck, 
-  Database,
-  FileJson
-} from 'lucide-react';
+import { Settings, Building2, Save, Download, Upload, RefreshCw, Check, Database } from 'lucide-react';
 
 export const SettingsView: React.FC = () => {
   const { 

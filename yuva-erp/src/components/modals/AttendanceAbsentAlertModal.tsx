@@ -19,7 +19,7 @@ export const AttendanceAbsentAlertModal: React.FC<AttendanceAbsentAlertModalProp
   batchId,
   absentStudents
 }) => {
-  const { batches, templates, sendNotification, profile } = useInstitute();
+  const { batches, templates, sendNotification } = useInstitute();
   const [broadcastSent, setBroadcastSent] = useState(false);
   const [sentCount, setSentCount] = useState(0);
 

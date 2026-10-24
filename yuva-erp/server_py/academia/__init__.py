@@ -3,6 +3,8 @@
 from pathlib import Path
 
 from flask import Flask, jsonify, request, send_from_directory
+from pymongo.errors import PyMongoError
+from werkzeug.exceptions import HTTPException
 
 from .config import settings
 from .errors import HttpError
@@ -56,8 +58,15 @@ def create_app(db=None, dist_dir=None):
     def on_too_large(_err):
         return jsonify({'error': 'Request is too large.'}), 413
 
+    @app.errorhandler(PyMongoError)
+    def on_database_error(err):
+        app.logger.error('MongoDB problem: %s', err)
+        return jsonify({'error': 'The database is not reachable right now. Please try again in a moment.'}), 503
+
     @app.errorhandler(Exception)
     def on_error(err):
+        if isinstance(err, HTTPException):  # for example 400 for a broken request
+            return jsonify({'error': err.description}), err.code
         app.logger.exception(err)
         return jsonify({'error': 'Server error.'}), 500
 

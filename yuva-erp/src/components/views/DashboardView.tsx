@@ -184,8 +184,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const dayName = now.toLocaleDateString('en-US', { weekday: 'short' });
 
   // ----- Students -----
-  const activeStudents = students.filter(s => s.status === 'active');
-  const totalEnrolled = students.length;
+  // Archived students are not counted as enrolled
+  const currentStudents = students.filter(s => s.status !== 'inactive');
+  const activeStudents = currentStudents.filter(s => s.status === 'active');
+  const totalEnrolled = currentStudents.length;
   const activePercent = totalEnrolled > 0 ? Math.round((activeStudents.length / totalEnrolled) * 100) : 0;
 
   // ----- Fee metrics -----
@@ -285,7 +287,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       : null;
 
   // ----- Low attendance students -----
-  const lowAttendanceList = students
+  const lowAttendanceList = currentStudents
     .map(s => ({ student: s, stats: getStudentAttendanceStats(s.id) }))
     .filter(item => item.stats.total >= MIN_CLASSES_FOR_ALERT && item.stats.percentage < LOW_ATTENDANCE_THRESHOLD)
     .sort((a, b) => a.stats.percentage - b.stats.percentage)

@@ -68,7 +68,6 @@ export const AttendanceView: React.FC = () => {
   const presentCount = Object.values(localRecords).filter(s => s === 'present' || s === 'late').length;
   const absentCount = Object.values(localRecords).filter(s => s === 'absent').length;
   const lateCount = Object.values(localRecords).filter(s => s === 'late').length;
-  const excusedCount = Object.values(localRecords).filter(s => s === 'excused').length;
   const totalCount = batchStudents.length;
   const attendanceRate = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
 

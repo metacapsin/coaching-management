@@ -532,7 +532,7 @@ def add_user():
 
     if role == 'student':
         student_id = b.get('studentId')
-        if not student_id:
+        if not student_id or not isinstance(student_id, str):
             raise HttpError(400, 'Please choose the student record for this account.')
         if s.user_by_student(student_id):
             raise HttpError(409, 'This student already has an account.')

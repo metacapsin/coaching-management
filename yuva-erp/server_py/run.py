@@ -1,13 +1,29 @@
 """python run.py   starts the Flask server on http://localhost:3001 (same address as the Node server)."""
 
+import socket
 import sys
 
 from academia import create_app
 from academia.config import settings
 
 
+def port_is_free(host, port):
+    """Windows says 'access permissions' (not 'in use') when another program already has the port, so check first."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        try:
+            probe.bind((host if host != '0.0.0.0' else '', port))
+            return True
+        except OSError:
+            return False
+
+
 def main():
     cfg = settings()
+    if not port_is_free(cfg['host'], cfg['port']):
+        print(f'Cannot start: port {cfg["port"]} is already in use by another program.')
+        print('  Probably the Node server (npm run server / dev:all) or an older copy of this server is still running.')
+        print('  Close it (Ctrl+C in its terminal), or start this one on another port (DB_PORT=3002).')
+        sys.exit(1)
     try:
         app = create_app()
     except Exception as err:  # connection problems get a short, clear message

@@ -50,7 +50,7 @@ if (process.argv.includes('--py-test')) {
       : run('server', process.execPath, ['server/db-server.mjs'])
   ];
   if (!serverOnly) {
-    children.push(run('app', process.execPath, ['node_modules/vite/bin/vite.js', '--port=3000', '--host=0.0.0.0']));
+    children.push(run('app', process.execPath, ['node_modules/vite/bin/vite.js', '--port=3000', '--strictPort', '--host=0.0.0.0']));
   }
   process.on('SIGINT', stopAll);
   process.on('SIGTERM', stopAll);

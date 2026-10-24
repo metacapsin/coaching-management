@@ -162,7 +162,7 @@ interface InstituteContextType {
   addCourse: (course: Omit<Course, 'id'>) => Course;
 
   // Attendance actions
-  markAttendance: (date: string, batchId: string, records: Record<string, AttendanceStatus>, notes?: string) => void;
+  markAttendance: (date: string, batchId: string, records: Record<string, AttendanceStatus>) => void;
   getAttendanceForBatchAndDate: (date: string, batchId: string) => AttendanceRecord | undefined;
   getStudentAttendanceStats: (studentId: string) => { total: number; present: number; absent: number; late: number; excused: number; percentage: number };
 
@@ -276,8 +276,8 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       dirty.current = pushTimer.current !== null || computeChanges(valuesRef.current, synced.current, roleRef.current) !== null;
       if (!dirty.current) takeSkippedData();
     } catch (err) {
-      if (err instanceof ApiError && err.status === 0) {
-        // no connection: keep the changes and try again
+      if (err instanceof ApiError && (err.status === 0 || err.status >= 500)) {
+        // no connection, or the server / database has a problem for now: keep the changes and try again
         dirty.current = true;
         pushTimer.current = setTimeout(flush, 3000);
         return;
@@ -448,7 +448,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return newCourse;
   };
 
-  const markAttendance = (date: string, batchId: string, records: Record<string, AttendanceStatus>, notes?: string) => {
+  const markAttendance = (date: string, batchId: string, records: Record<string, AttendanceStatus>) => {
     setAttendance(prev => {
       const existingIndex = prev.findIndex(a => a.date === date && a.batchId === batchId);
       const newRecord: AttendanceRecord = {

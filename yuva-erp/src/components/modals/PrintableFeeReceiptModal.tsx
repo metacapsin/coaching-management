@@ -10,12 +10,11 @@ interface PrintableFeeReceiptModalProps {
 }
 
 export const PrintableFeeReceiptModal: React.FC<PrintableFeeReceiptModalProps> = ({ transaction, onClose }) => {
-  const { profile, students, batches, sendNotification } = useInstitute();
+  const { profile, students, sendNotification } = useInstitute();
 
   if (!transaction) return null;
 
   const student = students.find(s => s.id === transaction.studentId);
-  const batch = batches.find(b => b.name === transaction.batchName) || batches.find(b => b.id === student?.batchId);
 
   const totalCourseFees = student ? student.totalFees : 0;
   const discount = student ? student.discount : 0;

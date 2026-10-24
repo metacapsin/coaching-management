@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { InstituteProvider, useInstitute } from './Context/InstituteContext';
 import { AuthProvider, useAuth, roleLabel } from './Context/AuthContext';
 import { canAccessTab, canManageInstitute } from './Context/Access';

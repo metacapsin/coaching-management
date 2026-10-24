@@ -147,6 +147,7 @@ export const request = async <T>(
   }
 
   const data = await res.json().catch(() => ({}));
+  if (res.status >= 500) setStatus('offline'); // the server or its database is not working right now
   if (!res.ok) {
     if (res.status === 401 && auth && token) {
       clearToken();
