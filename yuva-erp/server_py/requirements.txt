@@ -1,0 +1,4 @@
+flask>=3.0
+pymongo>=4.6
+dnspython>=2.4        # needed for mongodb+srv:// addresses (MongoDB Atlas)
+mongomock>=4.1        # only for the tests (in-memory database)

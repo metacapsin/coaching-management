@@ -35,7 +35,47 @@ npm test
 Starts the real server with a temporary data folder and checks sign in, roles, throttling, sync and
 the upgrade from the older data file.
 
-## Where the data is
+## Flask + MongoDB server (Python)
+
+`server_py/` is the same server written in Python (Flask) that keeps everything in MongoDB. It has the
+same API, so the app works with either one. Use **one of them** at a time (both use port 3001).
+
+One-time setup (needs Python 3.10+ and a MongoDB database, for example a free
+[MongoDB Atlas](https://www.mongodb.com/atlas) cluster):
+
+```bash
+cd server_py
+python -m venv .venv
+.venv\Scripts\pip install -r requirements.txt      # Windows (on Mac/Linux: .venv/bin/pip)
+copy .env.example .env                              # Mac/Linux: cp .env.example .env
+```
+
+Open `server_py/.env` and put your own MongoDB address in `MONGODB_URI`. This file is not part of git,
+so never share it. For Atlas also allow your computer under **Network Access** (IP allow list).
+
+Then, from the project folder:
+
+```bash
+npm run dev:all:py        # Flask + MongoDB server and the app together (app on http://localhost:3000)
+npm run server:py         # only the server
+npm run test:py           # the server tests (in memory, no MongoDB needed)
+```
+
+To move the accounts and data of the older Node server (`server/data/db.json`) into MongoDB (once):
+
+```bash
+cd server_py
+.venv\Scripts\python migrate_from_json.py
+```
+
+The old file is only read. Passwords stay the same, and old roll numbers like `APEX-25-0101` become
+plain numbers (01, 02, ...) on the way. Both servers store passwords the same way, so an account works on either.
+
+MongoDB layout: the database named in `MONGODB_DB` (default `academiaos`) has one collection per list
+(`students`, `batches`, ... one document per record), plus `users`, `sessions` (expire by themselves),
+`audit` and `meta`.
+
+## Where the data is (Node server)
 
 `server/data/db.json` holds the accounts, the institute data, the sessions and the activity log.
 A backup (`db.backup.json`) is kept every 10 minutes. Copy the `server/data` folder to back everything up.
