@@ -5,6 +5,7 @@ import sys
 
 from academia import create_app
 from academia.config import settings
+from academia.scheduler import start_daily_snapshots
 
 
 def port_is_free(host, port):
@@ -42,8 +43,18 @@ def main():
         print('Found an older data file (server/data/db.json). To move its accounts and data into MongoDB run:')
         print('  python migrate_from_json.py')
 
+    start_daily_snapshots(store)  # one backup a day, kept inside MongoDB (Settings shows them)
+
     try:
-        app.run(host=cfg['host'], port=cfg['port'], threaded=True, use_reloader=False)
+        from waitress import serve
+    except ImportError:  # without waitress Flask's own (development) server is used
+        serve = None
+
+    try:
+        if serve:
+            serve(app, host=cfg['host'], port=cfg['port'], threads=8, max_request_body_size=100 * 1024 * 1024)
+        else:
+            app.run(host=cfg['host'], port=cfg['port'], threaded=True, use_reloader=False)
     except OSError:
         print(f'Port {cfg["port"]} is already in use. Another server is probably running. '
               'Close it, or start this one on another port (DB_PORT=3002).')

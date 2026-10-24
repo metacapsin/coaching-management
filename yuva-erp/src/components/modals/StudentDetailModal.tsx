@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import { Student } from '../../types';
-import { X, MessageSquare, CreditCard, Printer } from 'lucide-react';
+import { X, MessageSquare, CreditCard, Printer, IdCard } from 'lucide-react';
+import { PrintableIdCardModal } from './PrintableIdCardModal';
 
 interface StudentDetailModalProps {
   student: Student | null;
@@ -27,6 +28,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   } = useInstitute();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'fees' | 'attendance' | 'exams'>('overview');
+  const [showIdCard, setShowIdCard] = useState(false);
 
   if (!student) return null;
 
@@ -104,6 +106,13 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             >
               <MessageSquare className="w-3.5 h-3.5" />
               WhatsApp Parent
+            </button>
+            <button
+              onClick={() => setShowIdCard(true)}
+              className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+              title="Print ID Card"
+            >
+              <IdCard className="w-4 h-4" />
             </button>
             <button
               onClick={handlePrintDossier}
@@ -296,10 +305,13 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 ) : (
                   <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden bg-white text-xs">
                     {studentTxs.map(tx => (
-                      <div key={tx.id} className="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                      <div key={tx.id} className={`p-3 flex items-center justify-between hover:bg-slate-50 transition-colors ${tx.status === 'cancelled' ? 'opacity-60' : ''}`}>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-mono font-semibold text-slate-900">{tx.receiptNo}</span>
+                            <span className={`font-mono font-semibold text-slate-900 ${tx.status === 'cancelled' ? 'line-through' : ''}`}>{tx.receiptNo}</span>
+                            {tx.status === 'cancelled' && (
+                              <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-rose-100 text-rose-700" title={tx.cancelReason}>Cancelled</span>
+                            )}
                             <span className="text-slate-400">·</span>
                             <span className="text-slate-600 font-medium">{tx.paymentMethod}</span>
                             {tx.referenceNo && (
@@ -312,7 +324,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                         </div>
 
                         <div className="flex items-center gap-3">
-                          <span className="font-mono font-bold text-slate-900">
+                          <span className={`font-mono font-bold text-slate-900 ${tx.status === 'cancelled' ? 'line-through' : ''}`}>
                             {profile.currencySymbol}{tx.amount.toLocaleString()}
                           </span>
                           <button
@@ -400,6 +412,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
           )}
         </div>
       </div>
+      {showIdCard && <PrintableIdCardModal student={student} onClose={() => setShowIdCard(false)} />}
     </div>
   );
 };

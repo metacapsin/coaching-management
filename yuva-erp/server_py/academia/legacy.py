@@ -58,7 +58,7 @@ def import_legacy(store, raw):
             ]
         report['renumbered'] = len(new_roll)
 
-    for name in LISTS:
+    for name in LISTS:  # (lists the old file does not have are left alone)
         items = institute.get(name)
         if isinstance(items, list):
             items = [i for i in items if isinstance(i, dict) and isinstance(i.get('id'), str)]

@@ -5,9 +5,11 @@
 """
 
 import functools
+import hmac
+import json
 import re
 
-from flask import Blueprint, current_app, g, request
+from flask import Blueprint, Response, current_app, g, request
 from pymongo.errors import DuplicateKeyError
 
 from . import auth
@@ -29,7 +31,7 @@ from .validate import (
 
 bp = Blueprint('api', __name__)
 
-DEFAULT_PHOTO = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+DEFAULT_PHOTO = '/avatar.svg'  # a local picture (the app has it in public/)
 MINUTE = 60
 
 SMALL_BODY = 256 * 1024
@@ -501,11 +503,12 @@ def put_institute():
     """The browser sends what changed: { students: { upsert: [...], remove: [ids] }, profile: {...} }"""
     s = store()
     b = body(INSTITUTE_BODY)
-    summary, renumbered = apply_changes(g.user, s, b.get('changes'))
+    summary, adjusted = apply_changes(g.user, s, b.get('changes'))
     if summary:
         s.bump()
         s.audit(g.user, 'data', ', '.join(summary))
-    return {'version': s.version(), 'renumbered': renumbered}
+    # adjusted: how many things the server changed itself (renumbered, photo moved): the browser must fetch them
+    return {'version': s.version(), 'adjusted': adjusted}
 
 
 # ---------- accounts (principal only) ----------
@@ -665,3 +668,126 @@ def remove_user(user_id):
 def audit_log():
     limit = min(1000, max(1, request.args.get('limit', default=200, type=int) or 200))
     return {'entries': store().audit_recent(limit)}
+
+
+@route('/api/auth/profile', ['PUT'], 'user')
+def update_profile():
+    """Everybody can change their own phone number; everybody except students also their name
+    (a student's name belongs to the admission record)."""
+    s = store()
+    b = body()
+    user = g.user
+    if g.user['role'] != 'student' and 'name' in b:
+        name = text(b.get('name'))
+        if not name:
+            raise HttpError(400, 'Please enter your name.')
+        user['name'] = name
+    if 'phone' in b:
+        phone = text(b.get('phone'), 30)
+        if phone and len(last10(phone)) < 10:
+            raise HttpError(400, 'Please enter a valid 10-digit mobile number.')
+        if phone:
+            user['phone'] = phone
+        else:
+            user.pop('phone', None)
+    if 'subject' in b and user['role'] == 'teacher':
+        subject = text(b.get('subject'))
+        if subject:
+            user['subject'] = subject
+        else:
+            user.pop('subject', None)
+    s.save_user(user)
+    s.bump()
+    s.audit(g.user, 'profile', 'Own details changed')
+    return {'user': auth.public_user(user)}
+
+
+# ---------- student photos ----------
+
+
+@route('/api/photos/<student_id>/<token>', ['GET'])
+def student_photo(student_id, token):
+    """The address contains a random token, so only people who were sent the record can open a photo
+    (a browser <img> cannot send the sign-in token)."""
+    doc = store().get_photo(student_id)
+    if not doc or not hmac.compare_digest(str(doc.get('token', '')).encode(), token.encode()):
+        raise HttpError(404, 'Not found')
+    response = Response(doc['data'], mimetype=doc.get('contentType', 'image/jpeg'))
+    response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'  # a new photo gets a new address
+    return response
+
+
+# ---------- backups (principal only) ----------
+
+
+def _download(data, filename):
+    response = Response(json.dumps(data, separators=(',', ':')), mimetype='application/json')
+    response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+def _require_confirm(b):
+    if b.get('confirm') != 'RESTORE':
+        raise HttpError(400, 'Restoring replaces the current data. Confirm it by sending confirm: "RESTORE".')
+
+
+def _restore(payload, accounts):
+    """Puts a backup back. A snapshot of the current data is taken first, so a restore can be undone."""
+    s = store()
+    before = s.snapshot('before restore')
+    try:
+        report = s.restore_data(payload, accounts=accounts)
+    except ValueError as err:
+        raise HttpError(400, str(err))
+    s.audit(g.user, 'restore', f'{sum(report["lists"].values())} records, {report["accounts_added"]} accounts added')
+    report['safety_snapshot'] = before
+    return report
+
+
+@route('/api/backup', ['GET'], 'admin')
+def download_backup():
+    """Everything in one file: data, accounts (with password hashes), photos. Keep it safe."""
+    s = store()
+    data = s.export_data(accounts=True, photos=True)
+    s.audit(g.user, 'backup-download')
+    return _download(data, f'academiaos-backup-{data["exportedAt"][:10]}.json')
+
+
+@route('/api/backup/restore', ['POST'], 'admin')
+def restore_backup():
+    b = body(INSTITUTE_BODY)
+    _require_confirm(b)
+    return _restore(b.get('backup'), accounts=b.get('accounts') is not False)
+
+
+@route('/api/backups', ['GET'], 'admin')
+def list_backups():
+    return {'backups': store().list_backups()}
+
+
+@route('/api/backups', ['POST'], 'admin')
+def create_backup():
+    s = store()
+    snapshot_id = s.snapshot(text(body().get('label')) or 'manual')
+    if not snapshot_id:
+        raise HttpError(413, 'The data is too big for a stored backup. Use "Download backup" instead.')
+    s.audit(g.user, 'backup-create', snapshot_id)
+    return {'id': snapshot_id}
+
+
+@route('/api/backups/<backup_id>', ['GET'], 'admin')
+def download_stored_backup(backup_id):
+    data = store().get_backup(backup_id)
+    if data is None:
+        raise HttpError(404, 'Backup not found.')
+    return _download(data, f'academiaos-backup-{backup_id}.json')
+
+
+@route('/api/backups/<backup_id>/restore', ['POST'], 'admin')
+def restore_stored_backup(backup_id):
+    b = body()
+    _require_confirm(b)
+    data = store().get_backup(backup_id)
+    if data is None:
+        raise HttpError(404, 'Backup not found.')
+    return _restore(data, accounts=b.get('accounts') is not False)

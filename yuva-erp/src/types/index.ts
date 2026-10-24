@@ -4,6 +4,9 @@ export type PaymentMethod = 'Cash' | 'UPI' | 'Bank Transfer' | 'Cheque' | 'Card'
 export type ExamStatus = 'scheduled' | 'grading' | 'published';
 export type NotificationChannel = 'whatsapp' | 'sms' | 'email';
 export type NotificationType = 'attendance_absent' | 'fee_due' | 'exam_result' | 'general_announcement' | 'schedule_change';
+export type EnquiryStatus = 'new' | 'contacted' | 'demo' | 'follow-up' | 'enrolled' | 'lost';
+export type EnquirySource = 'walk-in' | 'phone' | 'website' | 'referral' | 'social' | 'other';
+export type MaterialType = 'link' | 'note' | 'homework';
 
 export interface Student {
   id: string;
@@ -25,6 +28,7 @@ export interface Student {
   totalFees: number;
   discount: number;
   feePaid: number;
+  nextDueDate?: string; // YYYY-MM-DD, when the next installment is due
   notes?: string;
 }
 
@@ -78,6 +82,11 @@ export interface FeeTransaction {
   installmentNo: number;
   notes?: string;
   balanceAfter?: number; // fee balance right after this payment (for the receipt)
+  // A cancelled receipt stays in the ledger (for the accounts) but is not counted as money received
+  status?: 'active' | 'cancelled';
+  cancelReason?: string;
+  cancelledAt?: string;
+  cancelledBy?: string;
 }
 
 export interface Exam {
@@ -141,4 +150,52 @@ export interface InstituteProfile {
   currencySymbol: string;
   academicYear: string;
   signatoryTitle: string;
+}
+
+// A person who asked about admission but is not a student yet
+export interface Enquiry {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  parentName?: string;
+  grade?: string;
+  interestedCourseId?: string;
+  source: EnquirySource;
+  status: EnquiryStatus;
+  followUpDate?: string; // YYYY-MM-DD
+  notes: string;
+  createdAt: string; // ISO date and time
+  createdBy?: string;
+  convertedStudentId?: string; // set when the enquiry became an admission
+}
+
+// A notice for everybody, or for one batch
+export interface Announcement {
+  id: string;
+  title: string;
+  body: string;
+  audience: 'all' | 'batch';
+  batchId?: string;
+  batchName?: string;
+  pinned?: boolean;
+  createdAt: string;
+  authorId: string;
+  authorName: string;
+}
+
+// Study material, a note or homework for one batch
+export interface StudyMaterial {
+  id: string;
+  title: string;
+  description: string;
+  type: MaterialType;
+  url?: string;
+  batchId: string;
+  batchName: string;
+  subject: string;
+  dueDate?: string; // homework: YYYY-MM-DD
+  createdAt: string;
+  authorId: string;
+  authorName: string;
 }

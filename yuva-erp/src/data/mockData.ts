@@ -1,3 +1,10 @@
+import { toLocalISODate } from '../components/utils/helpers';
+import type { Enquiry, Announcement, StudyMaterial } from '../types';
+
+// Dates in the sample data are relative to today, so the sample always looks current
+const inDays = (n: number) => toLocalISODate(new Date(Date.now() + n * 86400000));
+const hoursAgo = (n: number) => new Date(Date.now() - n * 3600000).toISOString();
+
 import { 
   Student, 
   Batch, 
@@ -146,7 +153,7 @@ export const initialStudents: Student[] = [
     targetExam: "JEE Advanced 2026",
     dateOfAdmission: "2025-04-10",
     status: "active",
-    photoUrl: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80",
+    photoUrl: "/avatar.svg",
     address: "B-402, Green Glen Layout, Bellandur, Bangalore",
     totalFees: 145000,
     discount: 15000, // Merit scholarship
@@ -168,11 +175,12 @@ export const initialStudents: Student[] = [
     targetExam: "NEET UG 2026",
     dateOfAdmission: "2025-04-12",
     status: "active",
-    photoUrl: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80",
+    photoUrl: "/avatar.svg",
     address: "Flat 12A, Orchid Towers, Indiranagar, Bangalore",
     totalFees: 130000,
     discount: 10000,
     feePaid: 80000, // 40,000 balance
+    nextDueDate: inDays(6),
     notes: "Excellent grasp of Botany. Needs extra practice in Electrostatics numericals."
   },
   {
@@ -190,11 +198,12 @@ export const initialStudents: Student[] = [
     targetExam: "JEE Advanced 2026",
     dateOfAdmission: "2025-04-15",
     status: "active",
-    photoUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+    photoUrl: "/avatar.svg",
     address: "Villa 34, Prestige Palms, Whitefield, Bangalore",
     totalFees: 145000,
     discount: 0,
     feePaid: 72500, // 50% paid
+    nextDueDate: inDays(-2),
     notes: "Strong in Calculus. Absent on 2 consecutive tests due to sports event."
   },
   {
@@ -212,7 +221,7 @@ export const initialStudents: Student[] = [
     targetExam: "NEET UG 2026",
     dateOfAdmission: "2025-05-02",
     status: "active",
-    photoUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
+    photoUrl: "/avatar.svg",
     address: "7th Main, 4th Block, Jayanagar, Bangalore",
     totalFees: 130000,
     discount: 5000,
@@ -233,7 +242,7 @@ export const initialStudents: Student[] = [
     targetExam: "CBSE Boards 2026",
     dateOfAdmission: "2025-05-10",
     status: "active",
-    photoUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
+    photoUrl: "/avatar.svg",
     address: "22/1, Koramangala 5th Block, Bangalore",
     totalFees: 65000,
     discount: 5000,
@@ -255,7 +264,7 @@ export const initialStudents: Student[] = [
     targetExam: "JEE Mains & BITSAT 2026",
     dateOfAdmission: "2025-05-18",
     status: "active",
-    photoUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+    photoUrl: "/avatar.svg",
     address: "Flat 503, Alpine Eco, Marathahalli, Bangalore",
     totalFees: 145000,
     discount: 10000,
@@ -276,11 +285,12 @@ export const initialStudents: Student[] = [
     targetExam: "NEET UG 2026",
     dateOfAdmission: "2025-06-01",
     status: "active",
-    photoUrl: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80",
+    photoUrl: "/avatar.svg",
     address: "HSR Layout, Sector 2, Bangalore",
     totalFees: 130000,
     discount: 0,
     feePaid: 50000, // Due 80,000
+    nextDueDate: inDays(-5),
     notes: "Fee reminder sent on 1st of month. Parent promised payment by 15th."
   },
   {
@@ -298,7 +308,7 @@ export const initialStudents: Student[] = [
     targetExam: "PRMO & NSEJS Olympiad",
     dateOfAdmission: "2025-06-15",
     status: "active",
-    photoUrl: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80",
+    photoUrl: "/avatar.svg",
     address: "Sobha Silicon Oasis, Hosa Road, Bangalore",
     totalFees: 55000,
     discount: 5000,
@@ -319,7 +329,7 @@ export const initialStudents: Student[] = [
     targetExam: "CBSE Boards 2026",
     dateOfAdmission: "2025-06-20",
     status: "active",
-    photoUrl: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80",
+    photoUrl: "/avatar.svg",
     address: "Purva Riviera, Marathahalli, Bangalore",
     totalFees: 65000,
     discount: 0,
@@ -341,11 +351,12 @@ export const initialStudents: Student[] = [
     targetExam: "JEE Advanced 2026",
     dateOfAdmission: "2025-07-01",
     status: "active",
-    photoUrl: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150&auto=format&fit=crop&q=80",
+    photoUrl: "/avatar.svg",
     address: "Brigade Gateway, Malleshwaram, Bangalore",
     totalFees: 145000,
     discount: 10000,
     feePaid: 95000, // Due 40,000
+    nextDueDate: inDays(10),
     notes: "Remarkable accuracy in rotational dynamics kinematics."
   }
 ];
@@ -680,7 +691,7 @@ export const initialNotificationTemplates: NotificationTemplate[] = [
     type: "fee_due",
     channel: "whatsapp",
     templateBody: "Dear {{parent_name}}, this is a friendly reminder that a pending installment of {{currency}}{{due_amount}} for {{student_name}}'s coaching program ({{batch_name}}) is due. Kindly clear the dues to ensure uninterrupted study material dispatch and portal access. Receipt will be generated instantly upon payment. - Apex Pinnacle Academy Accounts Desk",
-    availableTags: ["parent_name", "student_name", "currency", "due_amount", "batch_name"]
+    availableTags: ["parent_name", "student_name", "currency", "due_amount", "due_date", "batch_name"]
   },
   {
     id: "tpl-4",
@@ -744,5 +755,149 @@ export const initialNotificationLogs: NotificationLog[] = [
     studentName: "Aarav Sharma",
     content: "Dear Sanjay Sharma, the results for 'Major All-India Mock Test 04' have been announced. Aarav Sharma scored 164 / 180 (Rank: #1 in batch). Batch Topper!",
     status: "delivered"
+  }
+];
+
+export const initialEnquiries: Enquiry[] = [
+  {
+    id: "enq-1",
+    name: "Riya Malhotra",
+    phone: "+91 98100 12345",
+    parentName: "Sunil Malhotra",
+    grade: "Class 11",
+    interestedCourseId: "c2",
+    source: "walk-in",
+    status: "follow-up",
+    followUpDate: inDays(0),
+    notes: "Wants NEET coaching from next month. Parents will visit again with the marksheet.",
+    createdAt: hoursAgo(72),
+    createdBy: "Front Desk"
+  },
+  {
+    id: "enq-2",
+    name: "Karan Bhatia",
+    phone: "+91 99110 45678",
+    parentName: "Rajesh Bhatia",
+    grade: "Class 12",
+    interestedCourseId: "c1",
+    source: "referral",
+    status: "demo",
+    followUpDate: inDays(2),
+    notes: "Referred by Aarav Sharma. Demo class booked for Saturday.",
+    createdAt: hoursAgo(48),
+    createdBy: "Front Desk"
+  },
+  {
+    id: "enq-3",
+    name: "Neha Joshi",
+    phone: "+91 97000 77889",
+    grade: "Class 9",
+    interestedCourseId: "c4",
+    source: "website",
+    status: "new",
+    followUpDate: inDays(-1),
+    notes: "Filled the enquiry form on the website.",
+    createdAt: hoursAgo(20)
+  },
+  {
+    id: "enq-4",
+    name: "Aditya Rao",
+    phone: "+91 98860 11223",
+    grade: "Class 10",
+    interestedCourseId: "c3",
+    source: "phone",
+    status: "lost",
+    notes: "Joined another institute near his home.",
+    createdAt: hoursAgo(240),
+    createdBy: "Front Desk"
+  }
+];
+
+export const initialAnnouncements: Announcement[] = [
+  {
+    id: "ann-1",
+    title: "Diwali holiday",
+    body: "The institute will remain closed from Thursday to Saturday for Diwali. Regular classes resume on Monday. Self-study assignments are shared in the Study Material section.",
+    audience: "all",
+    pinned: true,
+    createdAt: hoursAgo(5),
+    authorId: "seed",
+    authorName: "Principal"
+  },
+  {
+    id: "ann-2",
+    title: "Mock test schedule changed",
+    body: "The All-India Mock Test for the JEE batch is moved to next Sunday, 9:00 AM, Examination Hall 1. Bring your admit card.",
+    audience: "batch",
+    batchId: "b1",
+    batchName: "JEE Advanced Pinnacle Batch A1",
+    createdAt: hoursAgo(30),
+    authorId: "seed",
+    authorName: "Dr. Arvind Mehta"
+  },
+  {
+    id: "ann-3",
+    title: "NEET doubt-clearing session",
+    body: "Extra doubt-clearing session for Biology on Friday at 4:00 PM in Lab Hall B-204. Bring your NCERT notes.",
+    audience: "batch",
+    batchId: "b2",
+    batchName: "NEET Super-30 Medical Elite",
+    createdAt: hoursAgo(50),
+    authorId: "seed",
+    authorName: "Dr. Shalini Sharma"
+  }
+];
+
+export const initialMaterials: StudyMaterial[] = [
+  {
+    id: "mat-1",
+    title: "Rotational Motion: formula sheet",
+    description: "One-page summary of all formulas with 10 solved examples. Revise before the mock test.",
+    type: "note",
+    batchId: "b1",
+    batchName: "JEE Advanced Pinnacle Batch A1",
+    subject: "Physics",
+    createdAt: hoursAgo(60),
+    authorId: "seed",
+    authorName: "Dr. Arvind Mehta"
+  },
+  {
+    id: "mat-2",
+    title: "Calculus practice set 4",
+    description: "Solve questions 1 to 25. Submit the solutions in the next class.",
+    type: "homework",
+    batchId: "b1",
+    batchName: "JEE Advanced Pinnacle Batch A1",
+    subject: "Mathematics",
+    dueDate: inDays(3),
+    createdAt: hoursAgo(26),
+    authorId: "seed",
+    authorName: "Prof. Raman Iyer"
+  },
+  {
+    id: "mat-3",
+    title: "NCERT Biology (all chapters)",
+    description: "The official NCERT textbooks, free to read online.",
+    type: "link",
+    url: "https://ncert.nic.in/textbook.php",
+    batchId: "b2",
+    batchName: "NEET Super-30 Medical Elite",
+    subject: "Biology",
+    createdAt: hoursAgo(100),
+    authorId: "seed",
+    authorName: "Dr. Shalini Sharma"
+  },
+  {
+    id: "mat-4",
+    title: "Quadratic equations worksheet",
+    description: "Worksheet with board-pattern questions.",
+    type: "homework",
+    batchId: "b3",
+    batchName: "Class 10 Board Champions Batch",
+    subject: "Mathematics",
+    dueDate: inDays(5),
+    createdAt: hoursAgo(12),
+    authorId: "seed",
+    authorName: "Prof. Rajesh Kulkarni"
   }
 ];

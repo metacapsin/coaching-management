@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { useInstitute } from '../../Context/InstituteContext';
+import { useInstitute, DEFAULT_PHOTO } from '../../Context/InstituteContext';
 import type { Student } from '../../types';
 import { resizeImageToDataUrl } from '../utils/Imageutils';
 import { X, Pencil, Check, ImagePlus, Trash2 } from 'lucide-react';
@@ -11,9 +11,6 @@ interface EditStudentModalProps {
   // Opened from "Confirm" on a new registration: status becomes Active and the fee must be set
   confirmMode?: boolean;
 }
-
-const DEFAULT_PHOTO =
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80';
 
 const inputClass = (hasError: boolean) =>
   `w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
@@ -44,6 +41,7 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({ student, onC
         ? courses.find(c => c.id === student.courseId)?.standardFee || 0
         : 0,
     discount: student.discount,
+    nextDueDate: student.nextDueDate || '',
     notes: student.notes || '',
     photoUrl: student.photoUrl
   });
@@ -121,6 +119,7 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({ student, onC
       dateOfAdmission: form.dateOfAdmission,
       totalFees: Number(form.totalFees),
       discount: Number(form.discount) || 0,
+      nextDueDate: form.nextDueDate || undefined,
       notes: form.notes,
       photoUrl: form.photoUrl || DEFAULT_PHOTO
     });
@@ -415,6 +414,15 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({ student, onC
               </div>
             </div>
             {errors.discount && <p className="text-xs text-rose-600 mt-2">{errors.discount}</p>}
+            <div className="mt-4 max-w-xs">
+              <label className="block text-xs font-medium text-slate-700 mb-1">Next installment due date</label>
+              <input
+                type="date"
+                value={form.nextDueDate}
+                onChange={e => setForm({ ...form, nextDueDate: e.target.value })}
+                className={inputClass(false)}
+              />
+            </div>
             <p className="text-[11px] text-slate-400 mt-2">
               Payments are recorded from Fees & Invoicing, so &quot;Already Paid&quot; is not edited here.
             </p>

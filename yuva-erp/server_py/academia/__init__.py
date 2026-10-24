@@ -1,4 +1,4 @@
-"""AcademiaOS server (Flask + MongoDB). Same API as the Node server in ../server."""
+"""AcademiaOS server (Flask + MongoDB)."""
 
 from pathlib import Path
 
@@ -35,6 +35,7 @@ def create_app(db=None, dist_dir=None):
     app.config['MAX_CONTENT_LENGTH'] = MAX_BODY
     app.json.sort_keys = False
     app.extensions['store'] = Store(db)
+    app.extensions['store'].move_inline_photos()  # older data keeps photos inside the records
 
     from .routes import bp, make_limiters
 
@@ -74,7 +75,7 @@ def create_app(db=None, dist_dir=None):
     def headers(response):
         response.headers['X-Content-Type-Options'] = 'nosniff'
         if request.path.startswith('/api'):
-            response.headers['Cache-Control'] = 'no-store'
+            response.headers.setdefault('Cache-Control', 'no-store')
         return response
 
     # The built app (after npm run build): the server shows it too

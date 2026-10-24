@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { Student } from '../../types';
-import { fillTemplate, openWhatsApp, toLocalISODate } from '../utils/helpers';
+import { fillTemplate, openWhatsApp, toLocalISODate, formatDate } from '../utils/helpers';
+import { Pager } from '../ui/Pager';
+import { usePaged } from '../utils/usePaged';
 import { Bell, MessageSquare, Send, CheckCircle2, Edit3 } from 'lucide-react';
 
 export const NotificationsView: React.FC = () => {
@@ -12,10 +14,12 @@ export const NotificationsView: React.FC = () => {
     batches,
     notificationLogs,
     sendNotification,
+    updateNotificationStatus,
     profile
   } = useInstitute();
 
   const [activeTab, setActiveTab] = useState<'composer' | 'templates' | 'logs'>('composer');
+  const [logFilter, setLogFilter] = useState<'all' | 'pending'>('all');
 
   // Archived students do not get messages
   const activeStudents = students.filter(s => s.status !== 'inactive');
@@ -48,6 +52,7 @@ export const NotificationsView: React.FC = () => {
       batch_name: b?.name || 'Class',
       date: toLocalISODate(),
       due_amount: bal.toLocaleString('en-IN'),
+      due_date: st.nextDueDate ? formatDate(st.nextDueDate) : 'at the earliest',
       currency: profile.currencySymbol
     };
     if (withSamples) {
@@ -88,7 +93,8 @@ export const NotificationsView: React.FC = () => {
       recipientPhone: sampleStudent.parentPhone,
       studentName: sampleStudent.name,
       studentId: sampleStudent.id,
-      content: previewMessage
+      content: previewMessage,
+      status: 'sent'
     });
 
     openWhatsApp(sampleStudent.parentPhone, previewMessage);
@@ -116,16 +122,28 @@ export const NotificationsView: React.FC = () => {
         recipientPhone: st.parentPhone,
         studentName: st.name,
         studentId: st.id,
-        content: fillTemplate(messageBody, tagValues(st, false))
+        content: fillTemplate(messageBody, tagValues(st, false)),
+        status: 'pending'
       });
     });
 
     setDispatchSuccessMsg(
       targets.length === 0
         ? 'No students match this audience.'
-        : `Recorded ${targets.length} message${targets.length === 1 ? '' : 's'} in the audit log. Use "Launch WhatsApp" to actually send a message.`
+        : `${targets.length} message${targets.length === 1 ? '' : 's'} added to the queue. Open "Message History" and press "Send now" on each one to send it from WhatsApp.`
     );
     setTimeout(() => setDispatchSuccessMsg(''), 5000);
+  };
+
+  const pendingLogs = notificationLogs.filter(l => l.status === 'pending');
+  const shownLogs = logFilter === 'pending' ? pendingLogs : notificationLogs;
+  const pagedLogs = usePaged(shownLogs, 20, logFilter);
+
+  const sendNow = (id: string) => {
+    const log = notificationLogs.find(l => l.id === id);
+    if (!log) return;
+    openWhatsApp(log.recipientPhone, log.content);
+    updateNotificationStatus(id, 'sent');
   };
 
   const startEditing = (id: string, body: string) => {
@@ -315,7 +333,7 @@ export const NotificationsView: React.FC = () => {
             <div className="text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
               <span className="font-semibold text-slate-700 block mb-1">Available Tags:</span>
               <div className="flex flex-wrap gap-1 font-mono text-[10px]">
-                {['{{parent_name}}', '{{student_name}}', '{{roll_no}}', '{{batch_name}}', '{{due_amount}}', '{{date}}'].map(tag => (
+                {['{{parent_name}}', '{{student_name}}', '{{roll_no}}', '{{batch_name}}', '{{due_amount}}', '{{due_date}}', '{{date}}'].map(tag => (
                   <button
                     key={tag}
                     type="button"
@@ -467,7 +485,16 @@ export const NotificationsView: React.FC = () => {
             <h3 className="text-sm font-semibold text-slate-900">
               Notification Gateway Dispatch History ({notificationLogs.length})
             </h3>
-            <span className="text-xs text-slate-500">Live delivery status</span>
+            <div className="flex items-center gap-2">
+              <select
+                value={logFilter}
+                onChange={e => setLogFilter(e.target.value as 'all' | 'pending')}
+                className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+              >
+                <option value="all">All messages</option>
+                <option value="pending">Waiting to be sent ({pendingLogs.length})</option>
+              </select>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -483,7 +510,7 @@ export const NotificationsView: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {notificationLogs.map(log => (
+                {pagedLogs.items.map(log => (
                   <tr key={log.id} className="hover:bg-slate-50/60 transition-colors">
                     <td className="p-3.5 font-mono text-slate-400 whitespace-nowrap">
                       {log.timestamp}
@@ -512,15 +539,27 @@ export const NotificationsView: React.FC = () => {
                     </td>
 
                     <td className="p-3.5 text-right">
-                      <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded capitalize">
-                        {log.status}
-                      </span>
+                      {log.status === 'pending' ? (
+                        <button
+                          onClick={() => sendNow(log.id)}
+                          className="px-2.5 py-1 text-[11px] font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-md inline-flex items-center gap-1"
+                        >
+                          <Send className="w-3 h-3" />
+                          Send now
+                        </button>
+                      ) : (
+                        <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded capitalize">
+                          {log.status === 'sent' ? 'Sent' : log.status}
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          {shownLogs.length === 0 && <p className="p-8 text-center text-xs text-slate-400">No messages here.</p>}
+          <Pager {...pagedLogs} onPage={pagedLogs.setPage} />
         </div>
       )}
     </div>

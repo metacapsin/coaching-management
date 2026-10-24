@@ -56,7 +56,7 @@ export const PrintableFeeReceiptModal: React.FC<PrintableFeeReceiptModalProps> =
           <div className="flex items-center gap-2">
             <span className="text-emerald-600 font-semibold text-sm flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4" />
-              Receipt Ready
+              {transaction.status === 'cancelled' ? 'Receipt Cancelled' : 'Receipt Ready'}
             </span>
             <span className="text-slate-300">·</span>
             <span className="text-xs text-slate-500 font-mono">{transaction.receiptNo}</span>
@@ -87,7 +87,14 @@ export const PrintableFeeReceiptModal: React.FC<PrintableFeeReceiptModalProps> =
         </div>
 
         {/* Printable Voucher Sheet */}
-        <div className="p-8 print:p-6" id="printable-receipt">
+        <div className="relative p-8 print:p-6" id="printable-receipt">
+          {transaction.status === 'cancelled' && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+              <span className="text-7xl font-black tracking-widest text-rose-600/25 -rotate-24 border-8 border-rose-600/25 px-6 py-2 rounded-xl">
+                CANCELLED
+              </span>
+            </div>
+          )}
           {/* Institute Header */}
           <div className="border-b-2 border-slate-900 pb-5 mb-5 flex justify-between items-start">
             <div>

@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
 import type {
+  Announcement,
   AttendanceRecord,
   Batch,
   Course,
+  Enquiry,
   Exam,
   FeeTransaction,
   InstituteProfile,
   NotificationLog,
   NotificationTemplate,
   Student,
+  StudyMaterial,
   TimetableSlot
 } from '../../types';
 import type { UserRole } from '../../Context/Access';
@@ -46,6 +49,9 @@ export interface InstituteData {
   timetable?: TimetableSlot[];
   templates?: NotificationTemplate[];
   notificationLogs?: NotificationLog[];
+  enquiries?: Enquiry[];
+  announcements?: Announcement[];
+  materials?: StudyMaterial[];
 }
 
 export interface ListChange<T> {
@@ -249,9 +255,10 @@ export const subscribeSync = (fn: (payload: SyncPayload) => void) => {
 
 // Sends changed institute data. Our own change does not need to be fetched back.
 export const pushInstitute = async (changes: InstituteChanges) => {
-  const res = await request<{ version: number; renumbered?: number }>('PUT', '/institute', { changes });
-  // If the server changed a roll / receipt number it must be fetched, otherwise it is our own change only
-  if (res.renumbered) version = -1;
+  const res = await request<{ version: number; adjusted?: number }>('PUT', '/institute', { changes });
+  // If the server changed something itself (a roll / receipt number, a photo moved) it must be fetched,
+  // otherwise it is our own change only
+  if (res.adjusted) version = -1;
   else if (res.version === version + 1) version = res.version;
   return res;
 };
@@ -267,3 +274,47 @@ export const registerFlusher = (fn: () => Promise<void>) => {
 export const flushPending = async () => {
   await Promise.all([...flushers].map(fn => fn().catch(() => undefined)));
 };
+
+// ---------- backups (principal only) ----------
+
+export interface StoredBackup {
+  id: string;
+  createdAt: string;
+  label: string;
+  size: number;
+}
+
+// Downloads a file from the server (needs the session token, so a plain link would not work)
+export const downloadFromServer = async (path: string, fallbackName: string) => {
+  let res: Response;
+  try {
+    res = await fetch(`/api${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  } catch {
+    throw new ApiError(0, 'Cannot reach the server.');
+  }
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, (data && data.error) || `Download failed (${res.status}).`);
+  }
+  const blob = await res.blob();
+  const name = /filename="?([^";]+)"?/.exec(res.headers.get('Content-Disposition') || '')?.[1] || fallbackName;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+
+export const listBackups = () => request<{ backups: StoredBackup[] }>('GET', '/backups').then(r => r.backups);
+export const createBackup = (label = 'manual') => request<{ id: string }>('POST', '/backups', { label });
+export const restoreStoredBackup = (id: string) =>
+  request<unknown>('POST', `/backups/${id}/restore`, { confirm: 'RESTORE' });
+export const restoreBackupFile = (backup: unknown) =>
+  request<unknown>('POST', '/backup/restore', { confirm: 'RESTORE', backup });
+
+// Own phone number / name / subject
+export const updateOwnDetails = (details: { name?: string; phone?: string; subject?: string }) =>
+  request<{ user: AuthUser }>('PUT', '/auth/profile', details);

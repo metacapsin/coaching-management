@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import { useAuth } from '../../Context/AuthContext';
+import { Pager } from '../ui/Pager';
+import { usePaged } from '../utils/usePaged';
 import { EditStudentModal } from '../modals/EditstudentModal';
 import type { Student } from '../../types';
 import { csvCell, downloadTextFile, openWhatsApp, toLocalISODate } from '../utils/helpers';
@@ -61,6 +63,7 @@ export const AdmissionsView: React.FC<AdmissionsViewProps> = ({
     setTimeout(() => setNotice(null), 4000);
   };
 
+  // (pages are made below, after the list is filtered)
   const filteredStudents = useMemo(() => {
     return students.filter(st => {
       const q = searchQuery.toLowerCase().trim();
@@ -91,6 +94,7 @@ export const AdmissionsView: React.FC<AdmissionsViewProps> = ({
       return matchesSearch && matchesBatch && matchesFee && matchesStatus;
     });
   }, [students, searchQuery, selectedBatch, feeFilter, statusFilter]);
+  const paged = usePaged(filteredStudents, 20, `${searchQuery}|${selectedBatch}|${feeFilter}|${statusFilter}`);
 
   const archivedCount = students.filter(s => s.status === 'inactive').length;
   // New registrations that wait for the principal to confirm the admission and set the fee
@@ -342,7 +346,7 @@ export const AdmissionsView: React.FC<AdmissionsViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredStudents.map(student => {
+                {paged.items.map(student => {
                   const batch = batches.find(b => b.id === student.batchId);
                   const net = Math.max(0, student.totalFees - student.discount);
                   const balance = Math.max(0, net - student.feePaid);
@@ -486,6 +490,7 @@ export const AdmissionsView: React.FC<AdmissionsViewProps> = ({
             </table>
           </div>
         )}
+        <Pager {...paged} onPage={paged.setPage} />
       </div>
 
       {/* Edit modal */}

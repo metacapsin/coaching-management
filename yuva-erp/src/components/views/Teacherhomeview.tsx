@@ -1,4 +1,5 @@
 import React from 'react';
+import { NoticesCard, MaterialCard } from '../ui/HomeCards';
 import { useInstitute } from '../../Context/InstituteContext';
 import { useAuth } from '../../Context/AuthContext';
 import { CalendarCheck, Clock, Award, Users, Layers, AlertTriangle, CheckCircle2 } from 'lucide-react';
@@ -273,6 +274,11 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({ onNavigate }) 
             </div>
           )}
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <NoticesCard onNavigate={onNavigate} />
+        <MaterialCard onNavigate={onNavigate} />
       </div>
     </div>
   );

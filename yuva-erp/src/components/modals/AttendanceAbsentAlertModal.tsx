@@ -51,7 +51,8 @@ export const AttendanceAbsentAlertModal: React.FC<AttendanceAbsentAlertModalProp
         recipientPhone: st.parentPhone,
         studentName: st.name,
         studentId: st.id,
-        content
+        content,
+        status: 'pending'
       });
     });
     setSentCount(absentStudents.length);
@@ -67,7 +68,8 @@ export const AttendanceAbsentAlertModal: React.FC<AttendanceAbsentAlertModalProp
       recipientPhone: student.parentPhone,
       studentName: student.name,
       studentId: student.id,
-      content
+      content,
+      status: 'sent'
     });
     openWhatsApp(student.parentPhone, content);
   };
@@ -107,7 +109,7 @@ export const AttendanceAbsentAlertModal: React.FC<AttendanceAbsentAlertModalProp
                 Alerts Dispatched Successfully!
               </h3>
               <p className="text-xs text-emerald-700 max-w-md mx-auto">
-                {sentCount} alerts have been recorded in the audit log. Use the WhatsApp button next to a student to send the message.
+                {sentCount} alerts were added to the message queue. Open Parent Broadcasts, then Message History, and press Send now on each one (or use the WhatsApp button next to a student to send it right away).
               </p>
               <button
                 onClick={onClose}

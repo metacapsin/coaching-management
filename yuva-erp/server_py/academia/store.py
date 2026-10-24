@@ -5,11 +5,18 @@ Collections (in the database named by MONGODB_DB):
   sessions     one document per signed-in session (_id = hash of the token); old ones are removed automatically
   meta         "version" (counts every change), "profile" (institute profile), "present" (which lists exist)
   audit        the activity log
-  courses, batches, students, attendance, transactions, exams, timetable, templates, notificationLogs
+  courses, batches, students, attendance, transactions, exams, timetable, templates, notificationLogs,
+  enquiries, announcements, materials
                one document per record (_id = record id); "_pos" keeps the order of the list
+  photos       student photos (_id = student id), kept apart so the data stays small
+  backups      automatic and manual snapshots of the data (compressed)
 """
 
+import base64
+import json
 import random
+import secrets
+import zlib
 from datetime import datetime, timedelta, timezone
 
 from pymongo import ASCENDING, DeleteMany, ReplaceOne, ReturnDocument
@@ -26,12 +33,25 @@ LISTS = [
     'timetable',
     'templates',
     'notificationLogs',
+    'enquiries',
+    'announcements',
+    'materials',
 ]
 
 # The app shows the newest first for these lists
-NEWEST_FIRST = {'students', 'attendance', 'transactions', 'exams', 'notificationLogs'}
+NEWEST_FIRST = {
+    'students',
+    'attendance',
+    'transactions',
+    'exams',
+    'notificationLogs',
+    'enquiries',
+    'announcements',
+    'materials',
+}
 
 MAX_AUDIT = 3000
+MAX_BACKUP_BYTES = 15 * 1024 * 1024  # one MongoDB document can hold 16 MB
 
 
 def _now_naive_utc():
@@ -52,6 +72,8 @@ class Store:
         self.sessions = db['sessions']
         self.meta = db['meta']
         self.audit_col = db['audit']
+        self.photos = db['photos']
+        self.backups = db['backups']
         self.lists = {name: db[name] for name in LISTS}
         self._ensure_indexes()
 
@@ -253,3 +275,162 @@ class Store:
 
     def inc_field(self, name, item_id, field, amount):
         self.lists[name].update_one({'_id': item_id}, {'$inc': {field: amount}})
+
+    # ---------- photos ----------
+
+    def save_photo(self, student_id, content_type, data):
+        """Stores a student photo. Returns the token that makes the photo address (a new photo = a new address)."""
+        token = secrets.token_urlsafe(12)
+        self.photos.replace_one(
+            {'_id': student_id},
+            {'_id': student_id, 'contentType': content_type, 'data': bytes(data), 'token': token},
+            upsert=True,
+        )
+        return token
+
+    def get_photo(self, student_id):
+        return self.photos.find_one({'_id': student_id})
+
+    def delete_photos(self, student_ids):
+        ids = list(student_ids)
+        if ids:
+            self.photos.delete_many({'_id': {'$in': ids}})
+
+    # ---------- backups ----------
+
+    def export_data(self, accounts=True, photos=True):
+        """Everything as one JSON-ready dict (used by the backup download and the automatic snapshots)."""
+        institute = {}
+        profile = self.profile()
+        if profile is not None:
+            institute['profile'] = profile
+        present = self.present()
+        for name in LISTS:
+            if name in present:
+                institute[name] = self.find(name)
+        out = {
+            'format': 'academiaos-backup',
+            'version': 1,
+            'exportedAt': datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z'),
+            'institute': institute,
+        }
+        if accounts:
+            out['users'] = self.users_all()  # with the password hashes, so accounts can be restored
+        if photos:
+            out['photos'] = [
+                {
+                    'id': d['_id'],
+                    'contentType': d.get('contentType', 'image/jpeg'),
+                    'token': d.get('token'),
+                    'data': base64.b64encode(d['data']).decode('ascii'),
+                }
+                for d in self.photos.find({})
+            ]
+        return out
+
+    def restore_data(self, payload, accounts=True):
+        """Puts a backup back. The lists in the backup replace the current ones; accounts of the backup that do
+        not exist yet are added (nobody is removed, so the principal cannot be locked out).
+        Returns a short report."""
+        institute = payload.get('institute') if isinstance(payload, dict) else None
+        if not isinstance(institute, dict):
+            raise ValueError('This is not an AcademiaOS backup file.')
+
+        report = {'lists': {}, 'accounts_added': 0, 'photos': 0}
+        if isinstance(institute.get('profile'), dict):
+            self.set_profile(institute['profile'])
+        for name in LISTS:
+            items = institute.get(name)
+            if isinstance(items, list):
+                items = [i for i in items if isinstance(i, dict) and isinstance(i.get('id'), str) and i['id']]
+                self.replace_list(name, items)
+                report['lists'][name] = len(items)
+
+        if isinstance(payload.get('photos'), list):
+            self.photos.delete_many({})
+            for p in payload['photos']:
+                try:
+                    data = base64.b64decode(p['data'], validate=True)
+                except (KeyError, ValueError, TypeError):
+                    continue
+                self.photos.replace_one(
+                    {'_id': p['id']},
+                    {'_id': p['id'], 'contentType': p.get('contentType', 'image/jpeg'), 'data': data, 'token': p.get('token') or secrets.token_urlsafe(12)},
+                    upsert=True,
+                )
+                report['photos'] += 1
+
+        if accounts and isinstance(payload.get('users'), list):
+            for user in payload['users']:
+                if not isinstance(user, dict) or not user.get('id') or not user.get('email'):
+                    continue
+                user = {k: v for k, v in user.items() if k != '_id'}
+                if self.user_by_email(user['email']) or self.user_by_id(user['id']):
+                    continue
+                user.setdefault('status', 'active')
+                self.add_user(user)
+                report['accounts_added'] += 1
+        self.bump()
+        return report
+
+    def snapshot(self, label='automatic'):
+        """Saves a compressed copy of the data (without photos, which stay where they are).
+        Returns the snapshot's id, or None when it is too big for one document."""
+        raw = json.dumps(self.export_data(accounts=True, photos=False), separators=(',', ':')).encode('utf-8')
+        packed = zlib.compress(raw, 6)
+        if len(packed) > MAX_BACKUP_BYTES:
+            return None
+        now = datetime.now(timezone.utc)
+        snapshot_id = now.strftime('%Y%m%d-%H%M%S') + '-' + secrets.token_hex(2)  # two in one second must not clash
+        self.backups.insert_one(
+            {
+                '_id': snapshot_id,
+                'createdAt': now.replace(tzinfo=None),
+                'label': label,
+                'size': len(raw),
+                'payload': packed,
+            }
+        )
+        self.prune_backups()
+        return snapshot_id
+
+    def prune_backups(self, keep=14):
+        old = [d['_id'] for d in self.backups.find({}, {'_id': 1}).sort('createdAt', -1).skip(keep)]
+        if old:
+            self.backups.delete_many({'_id': {'$in': old}})
+
+    def list_backups(self):
+        docs = self.backups.find({}, {'payload': 0}).sort('createdAt', -1)
+        return [
+            {'id': d['_id'], 'createdAt': d['createdAt'].isoformat(timespec='seconds') + 'Z', 'label': d.get('label', ''), 'size': d.get('size', 0)}
+            for d in docs
+        ]
+
+    def get_backup(self, backup_id):
+        doc = self.backups.find_one({'_id': backup_id})
+        if not doc:
+            return None
+        return json.loads(zlib.decompress(doc['payload']).decode('utf-8'))
+
+    def latest_backup_time(self, label='automatic'):
+        doc = self.backups.find_one({'label': label}, sort=[('createdAt', -1)])
+        return doc['createdAt'] if doc else None
+
+    def move_inline_photos(self):
+        """Older data keeps photos inside the student records (data URLs). Moves them to the photos collection.
+        Returns how many were moved."""
+        from .scope import parse_photo_data_url
+
+        col = self.lists['students']
+        moved = 0
+        for doc in list(col.find({'photoUrl': {'$regex': '^data:'}})):
+            try:
+                content_type, data = parse_photo_data_url(doc['photoUrl'])
+            except Exception:  # a photo that cannot be read stays as it is
+                continue
+            token = self.save_photo(doc['_id'], content_type, data)
+            col.update_one({'_id': doc['_id']}, {'$set': {'photoUrl': f"/api/photos/{doc['_id']}/{token}"}})
+            moved += 1
+        if moved:
+            self.bump()
+        return moved

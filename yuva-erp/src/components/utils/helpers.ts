@@ -48,6 +48,7 @@ export const fillTemplate = (body: string, vars: Record<string, string | number>
 
 // Quotes a CSV cell and blocks spreadsheet formula injection.
 export const csvCell = (value: string | number): string => {
+  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : '""'; // real numbers stay numbers
   let text = String(value ?? '');
   if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
   return `"${text.replace(/"/g, '""')}"`;
@@ -88,4 +89,37 @@ export const downloadTextFile =(filename: string, content: string, mime = 'text/
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+};
+
+// ---------- dates for display ----------
+
+// "2026-10-24" -> "24 Oct 2026"
+export const formatDate = (iso?: string): string => {
+  if (!iso) return '';
+  const d = new Date(iso.length <= 10 ? `${iso}T00:00:00` : iso);
+  return isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+// "2026-10-24T10:30:00Z" -> "24 Oct, 04:00 pm" (in the local time zone)
+export const formatDateTime = (iso?: string): string => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return isNaN(d.getTime())
+    ? iso
+    : d.toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+};
+
+// Whole days from one YYYY-MM-DD date to another (negative when `toIso` is earlier)
+export const daysBetween = (fromIso: string, toIso: string): number => {
+  const a = new Date(`${fromIso}T00:00:00`).getTime();
+  const b = new Date(`${toIso}T00:00:00`).getTime();
+  return Math.round((b - a) / 86400000);
+};
+
+// ---------- CSV files (they open in Excel) ----------
+
+export const downloadCsv = (filename: string, headers: string[], rows: (string | number)[][]) => {
+  const lines = [headers.map(csvCell).join(','), ...rows.map(row => row.map(csvCell).join(','))];
+  // The BOM makes Excel read names in Hindi or with accents correctly
+  downloadTextFile(filename, '\uFEFF' + lines.join('\n'));
 };

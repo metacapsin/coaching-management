@@ -13,6 +13,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { useAuth, roleLabel } from '../../Context/AuthContext';
+import { downloadFromServer } from '../utils/api';
 import { canManageInstitute } from '../../Context/Access';
 import type { TabId } from '../../Context/Access';
 
@@ -34,7 +35,11 @@ const TAB_META: Record<TabId, { title: string; subtitle: string }> = {
   batches: { title: 'Batches & Timetable', subtitle: 'Batches, faculty and weekly schedule' },
   notifications: { title: 'Parent Broadcasts', subtitle: 'WhatsApp / SMS alerts and logs' },
   team: { title: 'Team & Access', subtitle: 'Staff accounts, roles and your password' },
-  settings: { title: 'Institute Profile', subtitle: 'Profile, backup and data tools' }
+  settings: { title: 'Institute Profile', subtitle: 'Profile, backup and data tools' },
+  enquiries: { title: 'Enquiries', subtitle: 'Admission leads and follow-ups' },
+  notices: { title: 'Notice Board', subtitle: 'Announcements for students and batches' },
+  material: { title: 'Study Material', subtitle: 'Notes, links and homework by batch' },
+  reports: { title: 'Reports', subtitle: 'Fees, attendance, results and admissions' }
 };
 
 const SEEN_KEY = 'academia_os_notif_seen_v1';
@@ -60,7 +65,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAdmission,
   onSelectStudent
 }) => {
-  const { profile, students, batches, notificationLogs, exportDatabaseJson } = useInstitute();
+  const { profile, students, batches, notificationLogs, saveState } = useInstitute();
   const { user, signOut, isAdmin } = useAuth();
   const canManage = canManageInstitute(user?.role);
 
@@ -312,6 +317,21 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Right side actions */}
         <div className="ml-auto flex items-center gap-2 sm:gap-3 shrink-0">
+          {/* Save status */}
+          <span
+            className={`hidden sm:inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-md ${
+              saveState === 'saved'
+                ? 'bg-emerald-50 text-emerald-700'
+                : saveState === 'saving'
+                ? 'bg-amber-50 text-amber-700'
+                : 'bg-rose-50 text-rose-700'
+            }`}
+            title={saveState === 'offline' ? 'Server not reachable. Changes are kept and sent when it is back.' : undefined}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${saveState === 'saved' ? 'bg-emerald-500' : saveState === 'saving' ? 'bg-amber-500 animate-pulse' : 'bg-rose-500'}`} />
+            {saveState === 'saved' ? 'All saved' : saveState === 'saving' ? 'Saving...' : 'Offline'}
+          </span>
+
           {/* Date & time */}
           <div className="hidden xl:block text-right leading-tight pr-1">
             <div className="text-xs font-semibold text-slate-800">
@@ -471,13 +491,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <button
                       type="button"
                       onClick={() => {
-                        exportDatabaseJson();
+                        void downloadFromServer('/backup', 'academiaos-backup.json').catch(() => undefined);
                         setProfileOpen(false);
                       }}
                       className="w-full px-4 py-2.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
                     >
                       <Download className="w-4 h-4 text-slate-400" />
-                      Download Data Backup (JSON)
+                      Download Data Backup
                     </button>
                   )}
                 </div>

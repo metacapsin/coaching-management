@@ -1,37 +1,51 @@
 import React, { useState, useRef } from 'react';
-import { useInstitute } from '../../Context/InstituteContext';
-import type { PaymentMethod } from '../../types';
+import { useInstitute, DEFAULT_PHOTO } from '../../Context/InstituteContext';
+import type { PaymentMethod, Student } from '../../types';
 import { resizeImageToDataUrl } from '../utils/Imageutils';
 import { normalizePhone, toLocalISODate } from '../utils/helpers';
 import { nextRollNumber } from '../utils/rollNo';
 import { X, UserPlus, Check, ImagePlus, Trash2 } from 'lucide-react';
 
+// Details that are already known (for example from an enquiry)
+export interface AdmissionPrefill {
+  name?: string;
+  phone?: string;
+  email?: string;
+  parentName?: string;
+  grade?: string;
+  courseId?: string;
+}
+
 interface AdmissionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess?: (studentName: string) => void;
+  onSuccess?: (studentName: string, student: Student) => void;
+  prefill?: AdmissionPrefill;
 }
 
-export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose, onSuccess }) => {
+export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose, onSuccess, prefill }) => {
   const { batches, courses, students, addStudent, profile } = useInstitute();
 
+  const startCourse = courses.find(c => c.id === prefill?.courseId) || courses[0];
+
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    parentName: '',
-    parentPhone: '',
+    name: prefill?.name ?? '',
+    email: prefill?.email ?? '',
+    phone: prefill?.phone ?? '',
+    parentName: prefill?.parentName ?? '',
+    parentPhone: prefill?.phone ?? '',
     parentEmail: '',
-    grade: 'Class 12',
-    courseId: courses[0]?.id || '',
-    batchId: batches.find(b => b.courseId === courses[0]?.id)?.id || '',
-    targetExam: courses[0]?.name || '',
+    grade: prefill?.grade ?? 'Class 12',
+    courseId: startCourse?.id || '',
+    batchId: batches.find(b => b.courseId === startCourse?.id)?.id || '',
+    targetExam: startCourse?.name || '',
     dateOfAdmission: toLocalISODate(),
     status: 'active' as const,
     photoUrl: '',
     address: '',
-    totalFees: courses[0]?.standardFee || 0,
+    totalFees: startCourse?.standardFee || 0,
     discount: 0,
+    nextDueDate: '',
     notes: '',
     // Initial payment
     collectInitialPayment: false,
@@ -139,14 +153,15 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
       targetExam: formData.targetExam,
       dateOfAdmission: formData.dateOfAdmission,
       status: formData.status,
-      photoUrl: formData.photoUrl || `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`,
-      address: formData.address.trim() || 'Knowledge City Campus Residence',
+      photoUrl: formData.photoUrl || DEFAULT_PHOTO,
+      address: formData.address.trim(),
       totalFees: Number(formData.totalFees),
       discount: Number(formData.discount) || 0,
+      nextDueDate: formData.nextDueDate || undefined,
       notes: formData.notes
     }, initialPayment);
 
-    if (onSuccess) onSuccess(newStudent.name);
+    if (onSuccess) onSuccess(newStudent.name, newStudent);
     onClose();
   };
 
@@ -445,6 +460,17 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
                   {profile.currencySymbol}{netPayable.toLocaleString()}
                 </div>
               </div>
+            </div>
+
+            <div className="mb-4 max-w-xs">
+              <label className="block text-xs font-medium text-slate-700 mb-1">Next installment due date</label>
+              <input
+                type="date"
+                value={formData.nextDueDate}
+                onChange={e => setFormData({ ...formData, nextDueDate: e.target.value })}
+                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-[11px] text-slate-400 mt-1">Optional. Used to show overdue fees and in reminders.</p>
             </div>
 
             {/* Initial Payment Toggle */}

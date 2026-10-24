@@ -5,17 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
+    "dev:all": "node scripts/dev.mjs",
+    "server": "node scripts/dev.mjs --server-only",
     "build": "vite build",
-    "preview": "vite preview",
-    "server": "node server/db-server.mjs",
-    "dev:all": "node server/dev-all.mjs",
-    "dev:all:py": "node server/dev-all.mjs --py",
-    "server:py": "node server/dev-all.mjs --py --server-only",
-    "test:py": "node server/dev-all.mjs --py-test",
-    "start": "vite build && node server/db-server.mjs",
-    "test": "node --test server/test/server.test.mjs",
-    "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "start": "vite build && node scripts/dev.mjs --server-only",
+    "test": "node scripts/dev.mjs --test",
+    "lint": "tsc --noEmit",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

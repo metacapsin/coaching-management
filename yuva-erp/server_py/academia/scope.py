@@ -2,13 +2,15 @@
 
   admin    everything
   staff    everything except the institute profile (settings)
-  teacher  only their own batches: attendance and test marks (can add tests and messages)
-  student  only their own record, attendance, fees, results and timetable (read only)
+  teacher  only their own batches: attendance and test marks, study material and notices for those batches
+  student  only their own record, attendance, fees, results, timetable, notices and study material (read only)
 
 Reading and writing are checked here on the server, so the browser never receives data
 it is not allowed to see.
 """
 
+import base64
+import binascii
 import math
 import re
 
@@ -60,6 +62,9 @@ def scope_institute(user, store):
             'timetable': store.find('timetable', {'batchId': {'$in': ids}}),
             'transactions': [],
             'notificationLogs': [],
+            'enquiries': [],
+            'announcements': store.find('announcements', {'$or': [{'audience': 'all'}, {'batchId': {'$in': ids}}]}),
+            'materials': store.find('materials', {'batchId': {'$in': ids}}),
         }
 
     # student
@@ -74,6 +79,9 @@ def scope_institute(user, store):
         'timetable': [],
         'transactions': [],
         'notificationLogs': [],
+        'enquiries': [],
+        'announcements': [],
+        'materials': [],
     }
     me = store.get_item('students', user.get('studentId')) if user.get('studentId') else None
     if not me:
@@ -123,6 +131,8 @@ def scope_institute(user, store):
         'timetable': store.find('timetable', {'batchId': me.get('batchId')}),
         'transactions': store.find('transactions', {'studentId': me['id']}),
         'notificationLogs': logs,
+        'announcements': store.find('announcements', {'$or': [{'audience': 'all'}, {'batchId': me.get('batchId')}]}),
+        'materials': store.find('materials', {'batchId': me.get('batchId')}),
     }
 
 
@@ -155,6 +165,33 @@ def _parse_change(name, change):
 
 def _teacher_plan(name, change, user, store):
     ids = user.get('batchIds') or []
+
+    if name == 'materials':
+        # Study material of their own batches: add, change and remove
+        existing = store.get_many('materials', [m['id'] for m in change['upsert']] + change['remove'])
+        for m in change['upsert']:
+            if m.get('batchId') not in ids or (m['id'] in existing and existing[m['id']].get('batchId') not in ids):
+                raise HttpError(403, 'You can only post study material for your own batches.')
+        for rid in change['remove']:
+            if rid in existing and existing[rid].get('batchId') not in ids:
+                raise HttpError(403, 'You can only remove study material of your own batches.')
+        return change
+
+    if name == 'announcements':
+        # Notices to their own batches; they can only change or remove their own notices
+        existing = store.get_many('announcements', [a['id'] for a in change['upsert']] + change['remove'])
+        upsert = []
+        for a in change['upsert']:
+            if a.get('audience') != 'batch' or a.get('batchId') not in ids:
+                raise HttpError(403, 'You can only post notices to your own batches.')
+            if a['id'] in existing and existing[a['id']].get('authorId') != user['id']:
+                raise HttpError(403, 'You can only change your own notices.')
+            upsert.append({**a, 'authorId': user['id'], 'authorName': user['name']})
+        for rid in change['remove']:
+            if rid in existing and existing[rid].get('authorId') != user['id']:
+                raise HttpError(403, 'You can only remove your own notices.')
+        return {'upsert': upsert, 'remove': change['remove']}
+
     if change['remove']:
         raise HttpError(403, 'Teachers cannot delete records.')
 
@@ -256,10 +293,46 @@ def _make_unique(name, plan, store):
     return len(fixed)
 
 
+_PHOTO_TYPES = {'image/jpeg', 'image/png', 'image/webp', 'image/gif'}
+MAX_PHOTO_BYTES = 1_500_000
+_DATA_URL = re.compile(r'^data:(image/[a-z+.-]+);base64,(.*)$', re.S)
+
+
+def parse_photo_data_url(url):
+    """'data:image/jpeg;base64,...' -> (content type, bytes). Raises HttpError for anything else."""
+    match = _DATA_URL.match(url)
+    if not match or match.group(1) not in _PHOTO_TYPES:
+        raise HttpError(400, 'The photo must be a JPG, PNG, WebP or GIF image.')
+    try:
+        data = base64.b64decode(match.group(2), validate=True)
+    except (binascii.Error, ValueError):
+        raise HttpError(400, 'The photo could not be read.')
+    if len(data) > MAX_PHOTO_BYTES:
+        raise HttpError(413, 'The photo is too big (the limit is 1.5 MB).')
+    return match.group(1), data
+
+
+def _store_photos(plan, store):
+    """A photo sent as a data URL is saved apart and replaced by a short address, so the lists stay small.
+    Returns how many photos were moved."""
+    moved = 0
+    upsert = []
+    for item in plan['upsert']:
+        url = item.get('photoUrl')
+        if isinstance(url, str) and url.startswith('data:'):
+            content_type, data = parse_photo_data_url(url)
+            token = store.save_photo(item['id'], content_type, data)
+            item = {**item, 'photoUrl': f"/api/photos/{item['id']}/{token}"}
+            moved += 1
+        upsert.append(item)
+    plan['upsert'] = upsert
+    return moved
+
+
 def apply_changes(user, store, changes):
     """Applies a set of changes. Nothing is written unless every part is allowed.
     changes: { profile?: dict, <list name>: { upsert?: [...], remove?: [ids] } }
-    Returns (summary for the activity log, how many numbers were changed)."""
+    Returns (summary for the activity log, how many things the server adjusted)."""
     if not isinstance(changes, dict):
         raise HttpError(400, 'Invalid changes.')
     if user['role'] == 'student':
@@ -287,9 +360,11 @@ def apply_changes(user, store, changes):
             parsed = _teacher_plan(name, parsed, user, store)
         plans.append((name, parsed))
 
-    renumbered_total = 0
+    adjusted_total = 0  # things the server changed for the browser (renumbered, photos moved): it must fetch them
     for name, plan in plans:
-        renumbered_total += _make_unique(name, plan, store)
+        adjusted_total += _make_unique(name, plan, store)
+        if name == 'students':
+            adjusted_total += _store_photos(plan, store)
 
     summary = []
     if has_profile:
@@ -298,9 +373,10 @@ def apply_changes(user, store, changes):
 
     for name, plan in plans:
         added, updated, removed = store.apply_list(name, plan['upsert'], plan['remove'])
+        if name == 'students':
+            store.delete_photos(plan['remove'])
         if added or updated or removed:
             summary.append(f'{name} +{added} ~{updated} -{removed}')
-    renumber_note = f' ({renumbered_total} renumbered)' if renumbered_total else ''
-    if renumber_note and summary:
-        summary[-1] += renumber_note
-    return summary, renumbered_total
+    if adjusted_total and summary:
+        summary[-1] += f' ({adjusted_total} adjusted)'
+    return summary, adjusted_total

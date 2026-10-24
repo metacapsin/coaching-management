@@ -5,10 +5,19 @@ import { fillTemplate, rankOf } from '../utils/helpers';
 import { CreateExamModal } from '../modals/CreateExamModal';
 import { ExamMarksModal } from '../modals/ExamMarksModal';
 import { PrintableReportCardModal } from '../modals/PrintableReportCardModal';
-import { Award, Plus, FileText, Printer, Send } from 'lucide-react';
+import { EditExamModal } from '../modals/EditExamModal';
+import { PrintableAdmitCardModal } from '../modals/PrintableAdmitCardModal';
+import { useAuth } from '../../Context/AuthContext';
+import { canManageInstitute } from '../../Context/Access';
+import { Award, Plus, FileText, Printer, Send, Pencil, Trash2, Ticket } from 'lucide-react';
 
 export const ExamsView: React.FC = () => {
-  const { exams, students, sendNotification, templates } = useInstitute();
+  const { exams, students, sendNotification, templates, deleteExam } = useInstitute();
+  const { user } = useAuth();
+  const office = canManageInstitute(user?.role);
+  const [editingExam, setEditingExam] = useState<Exam | null>(null);
+  const [deletingExam, setDeletingExam] = useState<Exam | null>(null);
+  const [admitExam, setAdmitExam] = useState<Exam | null>(null);
 
   const [selectedExamId, setSelectedExamId] = useState(exams[0]?.id || '');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -76,7 +85,8 @@ export const ExamsView: React.FC = () => {
           max_marks: exam.maxMarks,
           batch_rank: item.rank,
           remarks: item.remarks || 'Good attempt'
-        })
+        }),
+        status: 'pending'
       });
     });
 
@@ -179,6 +189,31 @@ export const ExamsView: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setAdmitExam(currentExam)}
+                    className="px-3 py-1.5 text-xs font-medium text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-lg transition-colors flex items-center gap-1.5"
+                  >
+                    <Ticket className="w-3.5 h-3.5" />
+                    Admit Cards
+                  </button>
+                  {office && (
+                    <>
+                      <button
+                        onClick={() => setEditingExam(currentExam)}
+                        title="Edit test details"
+                        className="p-1.5 text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => setDeletingExam(currentExam)}
+                        title="Delete test"
+                        className="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  )}
                   <button
                     onClick={() => setGradingExam(currentExam)}
                     className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors flex items-center gap-1.5"
@@ -343,6 +378,36 @@ export const ExamsView: React.FC = () => {
 
       {gradingExam && (
         <ExamMarksModal key={gradingExam.id} exam={gradingExam} onClose={() => setGradingExam(null)} />
+      )}
+
+      {editingExam && <EditExamModal exam={editingExam} onClose={() => setEditingExam(null)} />}
+      {admitExam && <PrintableAdmitCardModal exam={admitExam} onClose={() => setAdmitExam(null)} />}
+
+      {deletingExam && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="w-full max-w-sm bg-white border border-slate-200 rounded-xl shadow-2xl p-6 text-slate-900">
+            <h2 className="text-lg font-semibold">Delete this test?</h2>
+            <p className="text-sm text-slate-600 mt-2">
+              <strong>{deletingExam.title}</strong> and all {Object.keys(deletingExam.results).length} marks entered for it will be deleted.
+            </p>
+            <div className="pt-5 flex justify-end gap-2">
+              <button onClick={() => setDeletingExam(null)} className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg">
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  deleteExam(deletingExam.id);
+                  setSelectedExamId('');
+                  setDeletingExam(null);
+                }}
+                className="px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg flex items-center gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <PrintableReportCardModal

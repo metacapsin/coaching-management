@@ -184,7 +184,7 @@ class Flow(unittest.TestCase):
         admin = self.tokens['admin']
         status, data = self.call('PUT', '/api/institute', {'changes': {'students': {'upsert': [student('s-clash', '03', 'Clash', 'b2', '+91 98000 00099')]}}}, admin)
         self.assertEqual(status, 200)
-        self.assertEqual(data['renumbered'], 1)  # the browser is told, so it fetches the new number
+        self.assertEqual(data['adjusted'], 1)  # the browser is told, so it fetches the new number
         students = self.call('GET', '/api/sync', token=admin)[1]['institute']['students']
         rolls = [s['rollNo'] for s in students]
         self.assertEqual(len(set(rolls)), len(rolls))
@@ -369,6 +369,222 @@ class Robustness(unittest.TestCase):
         self.assertEqual(res.status_code, 401)  # treated as an empty form, not a crash
         self.assertEqual(self.api.call('DELETE', '/api/health')[0], 405)
         self.assertEqual(self.api.call('GET', '/api/does-not-exist')[0], 404)
+
+
+TINY_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+
+
+class Features(unittest.TestCase):
+    """Photos, notices, study material, enquiries, backups and own profile."""
+
+    def setUp(self):
+        self.db = new_db()
+        self.addCleanup(drop_db, self.db)
+        self.app = create_app(db=self.db, dist_dir='no-dist')
+        self.api = Api(self.app)
+        call = self.api.call
+        self.admin = call('POST', '/api/auth/setup', {'name': 'P', 'email': 'p@x.com', 'password': PASSWORD})[1]['token']
+        call('PUT', '/api/institute', {'changes': SEED}, self.admin)
+
+        call('POST', '/api/auth/register-teacher', {'name': 'Tina', 'phone': '9800000010', 'subject': 'Maths', 'email': 't@x.com', 'password': PASSWORD})
+        users = call('GET', '/api/sync', token=self.admin)[1]['users']
+        self.teacher_id = next(u for u in users if u['email'] == 't@x.com')['id']
+        call('POST', f'/api/users/{self.teacher_id}/approve', {'batchIds': ['b1']}, self.admin)
+        self.teacher = call('POST', '/api/auth/login', {'email': 't@x.com', 'password': PASSWORD, 'portal': 'teacher'})[1]['token']
+
+        call('POST', '/api/users', {'name': 'Alice', 'email': 'alice@x.com', 'password': PASSWORD, 'role': 'student', 'studentId': 's1'}, self.admin)
+        call('POST', '/api/users', {'name': 'Carol', 'email': 'carol@x.com', 'password': PASSWORD, 'role': 'student', 'studentId': 's3'}, self.admin)
+        self.alice = call('POST', '/api/auth/login', {'email': 'alice@x.com', 'password': PASSWORD, 'portal': 'student'})[1]['token']
+        self.carol = call('POST', '/api/auth/login', {'email': 'carol@x.com', 'password': PASSWORD, 'portal': 'student'})[1]['token']
+
+    def institute(self, token):
+        return self.api.call('GET', '/api/sync', token=token)[1]['institute']
+
+    def push(self, token, changes):
+        return self.api.call('PUT', '/api/institute', {'changes': changes}, token)
+
+    # ----- photos -----
+
+    def test_photos_are_kept_apart_from_the_records(self):
+        status, data = self.push(self.admin, {'students': {'upsert': [{**STUDENTS[0], 'photoUrl': TINY_PNG}]}})
+        self.assertEqual(status, 200)
+        self.assertEqual(data['adjusted'], 1)  # the browser must fetch the new address
+        alice = next(x for x in self.institute(self.admin)['students'] if x['id'] == 's1')
+        self.assertTrue(alice['photoUrl'].startswith('/api/photos/s1/'))
+        self.assertNotIn('data:image', json.dumps(self.institute(self.admin)))  # the lists stay small
+
+        res = self.api.client.get(alice['photoUrl'])  # no sign-in needed: an <img> cannot send one
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.mimetype, 'image/png')
+        self.assertIn('immutable', res.headers['Cache-Control'])
+        self.assertEqual(self.api.client.get('/api/photos/s1/wrong-token').status_code, 404)
+        self.assertEqual(self.api.client.get('/api/photos/s2/anything').status_code, 404)
+
+        # a new photo gets a new address
+        self.push(self.admin, {'students': {'upsert': [{**STUDENTS[0], 'photoUrl': TINY_PNG}]}})
+        again = next(x for x in self.institute(self.admin)['students'] if x['id'] == 's1')
+        self.assertNotEqual(again['photoUrl'], alice['photoUrl'])
+
+        # removing the student removes the photo
+        self.push(self.admin, {'students': {'remove': ['s1']}})
+        self.assertEqual(self.api.client.get(again['photoUrl']).status_code, 404)
+
+    def test_bad_photos_are_refused(self):
+        bad = self.push(self.admin, {'students': {'upsert': [{**STUDENTS[0], 'photoUrl': 'data:text/html;base64,PGI+aGk8L2I+'}]}})
+        self.assertEqual(bad[0], 400)
+        broken = self.push(self.admin, {'students': {'upsert': [{**STUDENTS[0], 'photoUrl': 'data:image/png;base64,@@@'}]}})
+        self.assertEqual(broken[0], 400)
+        import base64
+
+        big = 'data:image/jpeg;base64,' + base64.b64encode(b'x' * 1_600_000).decode()
+        self.assertEqual(self.push(self.admin, {'students': {'upsert': [{**STUDENTS[0], 'photoUrl': big}]}})[0], 413)
+
+    def test_photos_inside_old_records_are_moved_at_start(self):
+        self.db.students.update_one({'_id': 's2'}, {'$set': {'photoUrl': TINY_PNG}})
+        create_app(db=self.db, dist_dir='no-dist')  # a restart
+        bob = next(x for x in self.institute(self.admin)['students'] if x['id'] == 's2')
+        self.assertTrue(bob['photoUrl'].startswith('/api/photos/s2/'))
+
+    # ----- notices -----
+
+    def test_notices_reach_the_right_people(self):
+        def notice(nid, audience, batch_id=None, **extra):
+            return {'id': nid, 'title': nid, 'body': 'text', 'audience': audience, 'batchId': batch_id, 'createdAt': '2026-10-24T10:00:00Z', **extra}
+
+        self.assertEqual(self.push(self.admin, {'announcements': {'upsert': [notice('n-all', 'all'), notice('n-b1', 'batch', 'b1'), notice('n-b2', 'batch', 'b2')]}})[0], 200)
+        ids = lambda token: sorted(a['id'] for a in self.institute(token)['announcements'])
+        self.assertEqual(ids(self.admin), ['n-all', 'n-b1', 'n-b2'])
+        self.assertEqual(ids(self.teacher), ['n-all', 'n-b1'])  # teacher of b1
+        self.assertEqual(ids(self.alice), ['n-all', 'n-b1'])  # student of b1
+        self.assertEqual(ids(self.carol), ['n-all', 'n-b2'])  # student of b2
+
+        # a teacher can post to an own batch only, and the notice carries the teacher as author
+        self.assertEqual(self.push(self.teacher, {'announcements': {'upsert': [notice('t1', 'batch', 'b1', authorId='someone-else')]}})[0], 200)
+        mine = next(a for a in self.institute(self.admin)['announcements'] if a['id'] == 't1')
+        self.assertEqual(mine['authorName'], 'Tina')
+        self.assertNotEqual(mine['authorId'], 'someone-else')
+        self.assertEqual(self.push(self.teacher, {'announcements': {'upsert': [notice('t2', 'batch', 'b2')]}})[0], 403)  # not her batch
+        self.assertEqual(self.push(self.teacher, {'announcements': {'upsert': [notice('t3', 'all')]}})[0], 403)  # not for everybody
+        # only her own notices can be changed or removed
+        self.assertEqual(self.push(self.teacher, {'announcements': {'remove': ['n-b1']}})[0], 403)
+        self.assertEqual(self.push(self.teacher, {'announcements': {'upsert': [notice('n-b1', 'batch', 'b1')]}})[0], 403)
+        self.assertEqual(self.push(self.teacher, {'announcements': {'remove': ['t1']}})[0], 200)
+        self.assertEqual(self.push(self.alice, {'announcements': {'upsert': [notice('s1', 'all')]}})[0], 403)
+
+    # ----- study material -----
+
+    def test_study_material(self):
+        def material(mid, batch_id):
+            return {'id': mid, 'title': mid, 'description': '', 'type': 'link', 'url': 'https://example.com', 'batchId': batch_id, 'batchName': batch_id,
+                    'subject': 'Maths', 'createdAt': '2026-10-24T10:00:00Z', 'authorId': 'x', 'authorName': 'x'}
+
+        self.assertEqual(self.push(self.teacher, {'materials': {'upsert': [material('m1', 'b1')]}})[0], 200)
+        self.assertEqual(self.push(self.teacher, {'materials': {'upsert': [material('m2', 'b2')]}})[0], 403)  # not her batch
+        self.assertEqual(self.push(self.admin, {'materials': {'upsert': [material('m3', 'b2')]}})[0], 200)
+        ids = lambda token: sorted(m['id'] for m in self.institute(token)['materials'])
+        self.assertEqual(ids(self.admin), ['m1', 'm3'])
+        self.assertEqual(ids(self.teacher), ['m1'])
+        self.assertEqual(ids(self.alice), ['m1'])
+        self.assertEqual(ids(self.carol), ['m3'])
+        self.assertEqual(self.push(self.teacher, {'materials': {'remove': ['m3']}})[0], 403)  # not her batch
+        self.assertEqual(self.push(self.teacher, {'materials': {'remove': ['m1']}})[0], 200)
+        self.assertEqual(self.push(self.alice, {'materials': {'upsert': [material('m9', 'b1')]}})[0], 403)
+
+    # ----- enquiries -----
+
+    def test_enquiries_are_for_the_office_only(self):
+        enquiry = {'id': 'q1', 'name': 'Rahul', 'phone': '9811111111', 'source': 'walk-in', 'status': 'new', 'notes': '', 'createdAt': '2026-10-24T10:00:00Z'}
+        self.assertEqual(self.push(self.admin, {'enquiries': {'upsert': [enquiry]}})[0], 200)
+        self.assertEqual(self.push(self.teacher, {'enquiries': {'upsert': [{**enquiry, 'id': 'q2'}]}})[0], 403)
+        self.assertEqual(self.push(self.alice, {'enquiries': {'upsert': [{**enquiry, 'id': 'q3'}]}})[0], 403)
+        self.assertEqual([q['id'] for q in self.institute(self.admin)['enquiries']], ['q1'])
+        self.assertEqual(self.institute(self.teacher)['enquiries'], [])
+        self.assertEqual(self.institute(self.alice)['enquiries'], [])
+
+    # ----- backups -----
+
+    def test_backup_and_restore(self):
+        admin = self.admin
+        self.push(admin, {'students': {'upsert': [{**STUDENTS[0], 'photoUrl': TINY_PNG}]}})
+        res = self.api.client.get('/api/backup', headers={'Authorization': f'Bearer {admin}'})
+        self.assertEqual(res.status_code, 200)
+        self.assertIn('attachment', res.headers['Content-Disposition'])
+        backup = res.get_json()
+        self.assertEqual(backup['format'], 'academiaos-backup')
+        self.assertEqual(len(backup['institute']['students']), 3)
+        self.assertEqual(len(backup['photos']), 1)
+        self.assertTrue(any(u['email'] == 'p@x.com' and 'passwordHash' in u for u in backup['users']))
+        self.assertEqual(self.api.call('GET', '/api/backup', token=self.teacher)[0], 403)
+
+        # change things, then restore
+        self.push(admin, {'students': {'remove': ['s2', 's3']}})
+        self.assertEqual(len(self.institute(admin)['students']), 1)
+        self.assertEqual(self.api.call('POST', '/api/backup/restore', {'backup': backup}, admin)[0], 400)  # needs the confirmation
+        status, report = self.api.call('POST', '/api/backup/restore', {'backup': backup, 'confirm': 'RESTORE'}, admin)
+        self.assertEqual(status, 200)
+        self.assertEqual(report['lists']['students'], 3)
+        self.assertEqual(len(self.institute(admin)['students']), 3)
+        self.assertEqual(self.api.call('GET', '/api/auth/me', token=admin)[0], 200)  # still signed in
+        self.assertEqual(self.api.call('POST', '/api/backup/restore', {'backup': {'nothing': 1}, 'confirm': 'RESTORE'}, admin)[0], 400)
+
+        # the restore took a safety snapshot first
+        backups = self.api.call('GET', '/api/backups', token=admin)[1]['backups']
+        self.assertTrue(any(b['label'] == 'before restore' for b in backups))
+
+    def test_stored_snapshots(self):
+        admin = self.admin
+        self.assertEqual(self.api.call('GET', '/api/backups', token=admin)[1]['backups'], [])
+        status, created = self.api.call('POST', '/api/backups', {'label': 'manual'}, admin)
+        self.assertEqual(status, 200)
+        listed = self.api.call('GET', '/api/backups', token=admin)[1]['backups']
+        self.assertEqual([b['id'] for b in listed], [created['id']])
+        self.assertEqual(self.api.call('POST', '/api/backups', {}, self.teacher)[0], 403)
+
+        self.push(admin, {'students': {'remove': ['s1', 's2', 's3']}})
+        self.assertEqual(self.institute(admin)['students'], [])
+        self.assertEqual(self.api.call('POST', f'/api/backups/{created["id"]}/restore', {}, admin)[0], 400)
+        self.assertEqual(self.api.call('POST', f'/api/backups/{created["id"]}/restore', {'confirm': 'RESTORE'}, admin)[0], 200)
+        self.assertEqual(len(self.institute(admin)['students']), 3)
+        self.assertEqual(self.api.call('POST', '/api/backups/nope/restore', {'confirm': 'RESTORE'}, admin)[0], 404)
+        download = self.api.client.get(f'/api/backups/{created["id"]}', headers={'Authorization': f'Bearer {admin}'})
+        self.assertEqual(download.get_json()['format'], 'academiaos-backup')
+
+    def test_only_the_newest_snapshots_are_kept(self):
+        from datetime import datetime
+
+        store = self.app.extensions['store']
+        for i in range(17):
+            self.db.backups.insert_one({'_id': f'old-{i:02d}', 'createdAt': datetime(2026, 1, 1, 0, 0, i), 'label': 'automatic', 'size': 1, 'payload': b''})
+        store.prune_backups(keep=14)
+        self.assertEqual(self.db.backups.count_documents({}), 14)
+
+    def test_daily_snapshot_is_made_when_due(self):
+        from datetime import datetime, timedelta
+
+        from academia.scheduler import snapshot_if_due
+
+        store = self.app.extensions['store']
+        first = snapshot_if_due(store)
+        self.assertIsNotNone(first)  # none yet: made at once
+        self.assertIsNone(snapshot_if_due(store))  # less than a day later: nothing
+        later = datetime.utcnow() + timedelta(hours=25)
+        self.assertIsNotNone(snapshot_if_due(store, now=later))  # a day later: a new one
+        self.assertEqual(len(self.api.call('GET', '/api/backups', token=self.admin)[1]['backups']), 2)
+
+    # ----- own details -----
+
+    def test_own_details(self):
+        status, data = self.api.call('PUT', '/api/auth/profile', {'name': 'Tina T', 'phone': '9800000099', 'subject': 'Physics'}, self.teacher)
+        self.assertEqual(status, 200)
+        self.assertEqual((data['user']['name'], data['user']['phone'], data['user']['subject']), ('Tina T', '9800000099', 'Physics'))
+        users = self.api.call('GET', '/api/sync', token=self.admin)[1]['users']
+        self.assertEqual(next(u for u in users if u['email'] == 't@x.com')['name'], 'Tina T')
+        self.assertEqual(self.api.call('PUT', '/api/auth/profile', {'phone': '123'}, self.teacher)[0], 400)
+        self.assertEqual(self.api.call('PUT', '/api/auth/profile', {'name': ''}, self.teacher)[0], 400)
+        # a student can change the phone number, not the name
+        status, data = self.api.call('PUT', '/api/auth/profile', {'name': 'Hacker', 'phone': '9800000088'}, self.alice)
+        self.assertEqual((data['user']['name'], data['user']['phone']), ('Alice', '9800000088'))
+        self.assertEqual(self.api.call('PUT', '/api/auth/profile', {'phone': '9800000088'})[0], 401)
 
 
 class PasswordHashes(unittest.TestCase):

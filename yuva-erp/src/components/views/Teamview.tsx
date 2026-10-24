@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { request } from '../utils/api';
+import { request, updateOwnDetails, refreshNow, ApiError } from '../utils/api';
 import { useAuth, roleLabel } from '../../Context/AuthContext';
 import type { AuthUser, UserRole } from '../../Context/AuthContext';
 import { useInstitute } from '../../Context/InstituteContext';
@@ -130,6 +130,67 @@ const BatchPicker: React.FC<{
 type Credentials = { name: string; email: string; password: string; heading: string };
 
 // ---------- Component ----------
+
+// Everybody can change their own phone number; everybody except students also their name
+const MyDetails: React.FC<{ onDone: (type: 'success' | 'error', text: string) => void }> = ({ onDone }) => {
+  const { user } = useAuth();
+  const [name, setName] = useState(user?.name || '');
+  const [phone, setPhone] = useState(user?.phone || '');
+  const [subject, setSubject] = useState(user?.subject || '');
+  const [busy, setBusy] = useState(false);
+  if (!user) return null;
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await updateOwnDetails({
+        ...(user.role !== 'student' ? { name: name.trim() } : {}),
+        phone: phone.trim(),
+        ...(user.role === 'teacher' ? { subject: subject.trim() } : {})
+      });
+      await refreshNow(true);
+      onDone('success', 'Your details were saved.');
+    } catch (err) {
+      onDone('error', err instanceof ApiError ? err.message : 'Could not save your details.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const cls = 'w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-500';
+  return (
+    <form onSubmit={save} className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">My details</h3>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label className="block text-xs font-medium text-slate-700 mb-1">Name</label>
+          <input value={name} disabled={user.role === 'student'} onChange={e => setName(e.target.value)} className={cls} />
+          {user.role === 'student' && <p className="text-[11px] text-slate-400 mt-1">Your name comes from the admission record.</p>}
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-700 mb-1">Mobile number</label>
+          <input value={phone} onChange={e => setPhone(e.target.value)} className={cls} />
+        </div>
+        {user.role === 'teacher' && (
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Subject</label>
+            <input value={subject} onChange={e => setSubject(e.target.value)} className={cls} />
+          </div>
+        )}
+      </div>
+      <div className="pt-4 flex justify-end">
+        <button
+          type="submit"
+          disabled={busy}
+          className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-lg"
+        >
+          {busy ? 'Saving...' : 'Save my details'}
+        </button>
+      </div>
+    </form>
+  );
+};
 
 export const TeamView: React.FC = () => {
   const {
@@ -451,6 +512,8 @@ export const TeamView: React.FC = () => {
           <span>{notice.text}</span>
         </div>
       )}
+
+      <MyDetails onDone={(type, text) => setNotice({ type, text })} />
 
       {/* Pending requests (admin only) */}
       {isAdmin && pending.length > 0 && (

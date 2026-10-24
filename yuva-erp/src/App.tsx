@@ -18,6 +18,10 @@ import { ExamsView } from './components/views/ExamsView';
 import { BatchesTimetableView } from './components/views/BatchesTimetableView';
 import { NotificationsView } from './components/views/NotificationsView';
 import { SettingsView } from './components/views/SettingsView';
+import { EnquiriesView } from './components/views/EnquiriesView';
+import { NoticesView } from './components/views/NoticesView';
+import { MaterialView } from './components/views/MaterialView';
+import { ReportsView } from './components/views/ReportsView';
 import { TeamView } from './components/views/Teamview';
 import { StudentPortalView } from './components/views/Studentportalview';
 import { TeacherHomeView } from './components/views/Teacherhomeview';
@@ -46,7 +50,11 @@ import {
   Menu,
   X,
   LogOut,
-  ShieldCheck
+  ShieldCheck,
+  PhoneCall,
+  Megaphone,
+  BookOpen,
+  BarChart3
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { FeeTransaction, Student } from './types';
@@ -98,11 +106,15 @@ function MainApp() {
   const navItems: { id: TabId; label: string; icon: LucideIcon; badge?: number }[] = [
     { id: 'dashboard', label: dashboardLabel, icon: LayoutDashboard },
     { id: 'students', label: 'Admissions & Students', icon: Users, badge: students.length },
+    { id: 'enquiries', label: 'Enquiries', icon: PhoneCall },
     { id: 'attendance', label: 'Daily Attendance', icon: CalendarCheck },
     { id: 'fees', label: 'Fees & Invoicing', icon: CreditCard },
     { id: 'exams', label: role === 'teacher' ? 'Tests & Marks' : 'Exams & Results', icon: Award },
     { id: 'batches', label: 'Batches & Timetable', icon: Layers },
     { id: 'notifications', label: 'Parent Broadcasts', icon: Bell, badge: notificationLogs.length },
+    { id: 'notices', label: 'Notice Board', icon: Megaphone },
+    { id: 'material', label: role === 'student' ? 'Study Material' : 'Study Material & Homework', icon: BookOpen },
+    { id: 'reports', label: 'Reports', icon: BarChart3 },
     { id: 'team', label: role === 'admin' ? 'Team & Access' : 'My Account', icon: ShieldCheck },
     { id: 'settings', label: 'Institute Profile', icon: Settings }
   ];
@@ -125,7 +137,7 @@ function MainApp() {
 
     switch (activeTab) {
       case 'dashboard':
-        if (role === 'student') return <StudentPortalView />;
+        if (role === 'student') return <StudentPortalView onNavigate={tab => setActiveTab(tab as TabId)} />;
         if (role === 'teacher') return <TeacherHomeView onNavigate={tab => setActiveTab(tab as TabId)} />;
         return (
           <DashboardView
@@ -168,6 +180,14 @@ function MainApp() {
         return <BatchesTimetableView />;
       case 'notifications':
         return <NotificationsView />;
+      case 'enquiries':
+        return <EnquiriesView />;
+      case 'notices':
+        return <NoticesView />;
+      case 'material':
+        return <MaterialView />;
+      case 'reports':
+        return <ReportsView />;
       case 'team':
         return <TeamView />;
       case 'settings':

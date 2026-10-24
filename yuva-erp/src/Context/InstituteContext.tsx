@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { ApiError, pushInstitute, refreshNow, registerFlusher, subscribeSync } from '../components/utils/api';
+import { ApiError, pushInstitute, refreshNow, registerFlusher, subscribeSync, useSyncStatus } from '../components/utils/api';
 import type { InstituteChanges, InstituteData } from '../components/utils/api';
 import { useAuth } from './AuthContext';
 import { ConnectionScreen } from '../components/layout/ConnectionScreen';
-import {
+import { OnboardingScreen } from '../components/layout/OnboardingScreen';
+import type { StartMode } from '../components/layout/OnboardingScreen';
+import type {
   Student,
   Batch,
   Course,
@@ -15,7 +17,10 @@ import {
   InstituteProfile,
   AttendanceRecord,
   AttendanceStatus,
-  PaymentMethod
+  PaymentMethod,
+  Enquiry,
+  Announcement,
+  StudyMaterial
 } from '../types';
 import {
   initialInstituteProfile,
@@ -27,10 +32,15 @@ import {
   initialExams,
   initialTimetableSlots,
   initialNotificationTemplates,
-  initialNotificationLogs
+  initialNotificationLogs,
+  initialEnquiries,
+  initialAnnouncements,
+  initialMaterials
 } from '../data/mockData';
 import { nextRollNumber } from '../components/utils/rollNo';
 import { toLocalISODate, toLocalDateTime, uid } from '../components/utils/helpers';
+
+export const DEFAULT_PHOTO = '/avatar.svg';
 
 // Next receipt number: REC-<year>-<4 digits>, one higher than the highest used so far
 const newReceiptSuffix = (receiptNo: string) => receiptNo.split('-').pop() || '';
@@ -60,7 +70,10 @@ type ListKey =
   | 'exams'
   | 'timetable'
   | 'templates'
-  | 'notificationLogs';
+  | 'notificationLogs'
+  | 'enquiries'
+  | 'announcements'
+  | 'materials';
 
 const LIST_KEYS: ListKey[] = [
   'courses',
@@ -71,14 +84,17 @@ const LIST_KEYS: ListKey[] = [
   'exams',
   'timetable',
   'templates',
-  'notificationLogs'
+  'notificationLogs',
+  'enquiries',
+  'announcements',
+  'materials'
 ];
 
 // What each kind of account may send (the server checks this again)
 const writableKeys = (role?: string): string[] => {
   if (role === 'admin') return ['profile', ...LIST_KEYS];
   if (role === 'staff') return [...LIST_KEYS];
-  if (role === 'teacher') return ['attendance', 'exams', 'notificationLogs'];
+  if (role === 'teacher') return ['attendance', 'exams', 'notificationLogs', 'materials', 'announcements'];
   return [];
 };
 
@@ -95,6 +111,9 @@ interface Values {
   timetable: TimetableSlot[];
   templates: NotificationTemplate[];
   notificationLogs: NotificationLog[];
+  enquiries: Enquiry[];
+  announcements: Announcement[];
+  materials: StudyMaterial[];
 }
 
 // Compares a list with what the server has, record by record
@@ -133,6 +152,8 @@ const computeChanges = (values: Values, synced: Record<string, unknown>, role?: 
   return keys.length ? { changes: changes as InstituteChanges, keys } : null;
 };
 
+export type SaveState = 'saved' | 'saving' | 'offline';
+
 interface InstituteContextType {
   profile: InstituteProfile;
   courses: Course[];
@@ -144,6 +165,12 @@ interface InstituteContextType {
   timetable: TimetableSlot[];
   templates: NotificationTemplate[];
   notificationLogs: NotificationLog[];
+  enquiries: Enquiry[];
+  announcements: Announcement[];
+  materials: StudyMaterial[];
+
+  // Are the changes saved on the server?
+  saveState: SaveState;
 
   // Profile actions
   updateProfile: (updated: Partial<InstituteProfile>) => void;
@@ -160,6 +187,8 @@ interface InstituteContextType {
 
   // Course actions
   addCourse: (course: Omit<Course, 'id'>) => Course;
+  updateCourse: (id: string, updated: Partial<Omit<Course, 'id'>>) => void;
+  deleteCourse: (id: string) => void;
 
   // Attendance actions
   markAttendance: (date: string, batchId: string, records: Record<string, AttendanceStatus>) => void;
@@ -175,10 +204,12 @@ interface InstituteContextType {
     notes?: string;
     date?: string;
   }) => FeeTransaction;
-  deleteTransaction: (id: string) => void;
+  // The receipt stays in the ledger, marked cancelled, and the amount is taken off what the student has paid
+  cancelTransaction: (id: string, reason: string) => void;
 
   // Exam actions
   addExam: (exam: Omit<Exam, 'id' | 'status' | 'results'>) => Exam;
+  updateExam: (id: string, updated: Partial<Omit<Exam, 'id' | 'results' | 'status'>>) => void;
   updateExamMarks: (examId: string, results: Record<string, { marksObtained: number; remarks?: string; absent?: boolean }>, publish?: boolean) => void;
   deleteExam: (id: string) => void;
 
@@ -187,7 +218,23 @@ interface InstituteContextType {
   updateTimetableSlot: (id: string, updated: Partial<Omit<TimetableSlot, 'id'>>) => void;
   deleteTimetableSlot: (id: string) => void;
 
+  // Enquiry actions
+  addEnquiry: (enquiry: Omit<Enquiry, 'id' | 'createdAt' | 'createdBy'>) => Enquiry;
+  updateEnquiry: (id: string, updated: Partial<Omit<Enquiry, 'id'>>) => void;
+  deleteEnquiry: (id: string) => void;
+
+  // Notice actions
+  addAnnouncement: (notice: Omit<Announcement, 'id' | 'createdAt' | 'authorId' | 'authorName'>) => Announcement;
+  updateAnnouncement: (id: string, updated: Partial<Omit<Announcement, 'id'>>) => void;
+  deleteAnnouncement: (id: string) => void;
+
+  // Study material actions
+  addMaterial: (material: Omit<StudyMaterial, 'id' | 'createdAt' | 'authorId' | 'authorName'>) => StudyMaterial;
+  updateMaterial: (id: string, updated: Partial<Omit<StudyMaterial, 'id'>>) => void;
+  deleteMaterial: (id: string) => void;
+
   // Notification actions
+  // status: "sent" = the message was opened in WhatsApp, "pending" = waiting to be sent
   sendNotification: (notification: {
     type: NotificationLog['type'];
     channel: NotificationLog['channel'];
@@ -196,13 +243,14 @@ interface InstituteContextType {
     studentName: string;
     studentId?: string;
     content: string;
+    status?: NotificationLog['status'];
   }) => void;
+  updateNotificationStatus: (id: string, status: NotificationLog['status']) => void;
   updateTemplate: (id: string, body: string) => void;
 
   // Data management
   resetToDemoData: () => void;
-  exportDatabaseJson: () => void;
-  importDatabaseJson: (jsonString: string) => boolean;
+  clearAllData: () => void;
 }
 
 export const InstituteContext = createContext<InstituteContextType | null>(null);
@@ -211,9 +259,15 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const { user } = useAuth();
   const roleRef = useRef(user?.role);
   roleRef.current = user?.role;
+  const linkStatus = useSyncStatus();
 
   // The first data from the server has arrived
   const [ready, setReady] = useState(false);
+  // A brand-new institute: the principal chooses how to start before anything is saved
+  const [onboarding, setOnboarding] = useState(false);
+  const onboardingRef = useRef(false);
+  onboardingRef.current = onboarding;
+  const [saveState, setSaveState] = useState<SaveState>('saved');
 
   // Sample data is only used to start an institute that has no data on the server yet
   const [profile, setProfile] = useState<InstituteProfile>(initialInstituteProfile);
@@ -226,8 +280,25 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [timetable, setTimetable] = useState<TimetableSlot[]>(initialTimetableSlots);
   const [templates, setTemplates] = useState<NotificationTemplate[]>(initialNotificationTemplates);
   const [notificationLogs, setNotificationLogs] = useState<NotificationLog[]>(initialNotificationLogs);
+  const [enquiries, setEnquiries] = useState<Enquiry[]>(initialEnquiries);
+  const [announcements, setAnnouncements] = useState<Announcement[]>(initialAnnouncements);
+  const [materials, setMaterials] = useState<StudyMaterial[]>(initialMaterials);
 
-  const values: Values = { profile, courses, batches, students, attendance, transactions, exams, timetable, templates, notificationLogs };
+  const values: Values = {
+    profile,
+    courses,
+    batches,
+    students,
+    attendance,
+    transactions,
+    exams,
+    timetable,
+    templates,
+    notificationLogs,
+    enquiries,
+    announcements,
+    materials
+  };
   const valuesRef = useRef(values);
   valuesRef.current = values;
 
@@ -250,6 +321,9 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (data.timetable !== undefined) { setTimetable(data.timetable); mark('timetable', data.timetable); }
     if (data.templates !== undefined) { setTemplates(data.templates); mark('templates', data.templates); }
     if (data.notificationLogs !== undefined) { setNotificationLogs(data.notificationLogs); mark('notificationLogs', data.notificationLogs); }
+    if (data.enquiries !== undefined) { setEnquiries(data.enquiries); mark('enquiries', data.enquiries); }
+    if (data.announcements !== undefined) { setAnnouncements(data.announcements); mark('announcements', data.announcements); }
+    if (data.materials !== undefined) { setMaterials(data.materials); mark('materials', data.materials); }
   };
 
   const takeSkippedData = () => {
@@ -266,6 +340,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const pending = computeChanges(current, synced.current, roleRef.current);
     if (!pending) {
       dirty.current = false;
+      setSaveState('saved');
       takeSkippedData();
       return;
     }
@@ -274,11 +349,15 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       await pushInstitute(pending.changes);
       for (const key of pending.keys) synced.current[key] = current[key];
       dirty.current = pushTimer.current !== null || computeChanges(valuesRef.current, synced.current, roleRef.current) !== null;
-      if (!dirty.current) takeSkippedData();
+      if (!dirty.current) {
+        setSaveState('saved');
+        takeSkippedData();
+      }
     } catch (err) {
       if (err instanceof ApiError && (err.status === 0 || err.status >= 500)) {
         // no connection, or the server / database has a problem for now: keep the changes and try again
         dirty.current = true;
+        setSaveState('offline');
         pushTimer.current = setTimeout(flush, 3000);
         return;
       }
@@ -287,6 +366,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       console.error('The server did not accept a change:', err);
       dirty.current = false;
       skipped.current = false;
+      setSaveState('saved');
       void refreshNow(true);
     }
   };
@@ -295,11 +375,19 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   useEffect(
     () =>
       subscribeSync(payload => {
+        if (onboardingRef.current) return; // the principal is still choosing how to start
         if (dirty.current) {
           skipped.current = true; // do not overwrite what was just typed; fetch it after sending
           return;
         }
-        applyServerData(payload.institute);
+        const data = payload.institute;
+        // Nothing stored yet and this is the principal: a new institute
+        if (roleRef.current === 'admin' && data.students === undefined && data.profile === undefined) {
+          setOnboarding(true);
+          setReady(true);
+          return;
+        }
+        applyServerData(data);
         setReady(true);
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -308,13 +396,14 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   // Send changes shortly after they happen
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || onboarding) return;
     if (!computeChanges(values, synced.current, roleRef.current)) return;
     dirty.current = true;
+    setSaveState('saving');
     if (pushTimer.current) clearTimeout(pushTimer.current);
     pushTimer.current = setTimeout(flush, 300);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, profile, courses, batches, students, attendance, transactions, exams, timetable, templates, notificationLogs]);
+  }, [ready, onboarding, profile, courses, batches, students, attendance, transactions, exams, timetable, templates, notificationLogs, enquiries, announcements, materials]);
 
   // Signing out sends changes that are still waiting
   useEffect(
@@ -336,9 +425,13 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     []
   );
 
+  // ----- profile -----
+
   const updateProfile = (updated: Partial<InstituteProfile>) => {
     setProfile(prev => ({ ...prev, ...updated }));
   };
+
+  // ----- students -----
 
   const addStudent = (studentData: Omit<Student, 'id' | 'rollNo' | 'feePaid'>, initialPayment?: { amount: number; method: PaymentMethod; ref?: string }) => {
     const rollNo = nextRollNumber(students); // automatic: highest roll number in the list + 1
@@ -350,7 +443,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       id: studentId,
       rollNo,
       feePaid: initialPaid,
-      photoUrl: studentData.photoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+      photoUrl: studentData.photoUrl || DEFAULT_PHOTO
     };
 
     setStudents(prev => [newStudent, ...prev]);
@@ -412,6 +505,8 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     );
   };
 
+  // ----- batches -----
+
   const addBatch = (batchData: Omit<Batch, 'id' | 'enrolledCount'>) => {
     const newBatch: Batch = {
       ...batchData,
@@ -424,11 +519,13 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const updateBatch = (id: string, updated: Partial<Batch>) => {
     setBatches(prev => prev.map(b => b.id === id ? { ...b, ...updated } : b));
-    // Keep the batch name stored in the timetable and tests in step after a rename
+    // Keep the batch name stored in the timetable, tests, notices and study material in step after a rename
     if (updated.name) {
       const newName = updated.name;
       setTimetable(prev => prev.map(t => t.batchId === id ? { ...t, batchName: newName } : t));
       setExams(prev => prev.map(e => e.batchId === id ? { ...e, batchName: newName } : e));
+      setAnnouncements(prev => prev.map(a => a.batchId === id ? { ...a, batchName: newName } : a));
+      setMaterials(prev => prev.map(m => m.batchId === id ? { ...m, batchName: newName } : m));
     }
   };
 
@@ -437,7 +534,11 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setTimetable(prev => prev.filter(t => t.batchId !== id));
     setAttendance(prev => prev.filter(a => a.batchId !== id));
     setExams(prev => prev.filter(e => e.batchId !== id));
+    setAnnouncements(prev => prev.filter(a => a.batchId !== id));
+    setMaterials(prev => prev.filter(m => m.batchId !== id));
   };
+
+  // ----- courses -----
 
   const addCourse = (courseData: Omit<Course, 'id'>) => {
     const newCourse: Course = {
@@ -447,6 +548,21 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setCourses(prev => [...prev, newCourse]);
     return newCourse;
   };
+
+  const updateCourse = (id: string, updated: Partial<Omit<Course, 'id'>>) => {
+    setCourses(prev => prev.map(c => (c.id === id ? { ...c, ...updated } : c)));
+    // Batches keep the course name for display
+    if (updated.name) {
+      const newName = updated.name;
+      setBatches(prev => prev.map(b => (b.courseId === id ? { ...b, courseName: newName } : b)));
+    }
+  };
+
+  const deleteCourse = (id: string) => {
+    setCourses(prev => prev.filter(c => c.id !== id));
+  };
+
+  // ----- attendance -----
 
   const markAttendance = (date: string, batchId: string, records: Record<string, AttendanceStatus>) => {
     setAttendance(prev => {
@@ -496,6 +612,8 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const percentage = total > 0 ? Math.round((present / total) * 100) : 100;
     return { total, present, absent, late, excused, percentage };
   };
+
+  // ----- fees -----
 
   const recordPayment = ({
     studentId,
@@ -553,13 +671,20 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return newTx;
   };
 
-  const deleteTransaction = (id: string) => {
+  const cancelTransaction = (id: string, reason: string) => {
     const tx = transactions.find(t => t.id === id);
-    if (tx) {
-      setStudents(prev => prev.map(s => s.id === tx.studentId ? { ...s, feePaid: Math.max(0, s.feePaid - tx.amount) } : s));
-    }
-    setTransactions(prev => prev.filter(t => t.id !== id));
+    if (!tx || tx.status === 'cancelled') return;
+    setTransactions(prev =>
+      prev.map(t =>
+        t.id === id
+          ? { ...t, status: 'cancelled', cancelReason: reason, cancelledAt: toLocalDateTime(), cancelledBy: user?.name || undefined }
+          : t
+      )
+    );
+    setStudents(prev => prev.map(s => (s.id === tx.studentId ? { ...s, feePaid: Math.max(0, s.feePaid - tx.amount) } : s)));
   };
+
+  // ----- exams -----
 
   const addExam = (examData: Omit<Exam, 'id' | 'status' | 'results'>) => {
     const newExam: Exam = {
@@ -570,6 +695,10 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
     setExams(prev => [newExam, ...prev]);
     return newExam;
+  };
+
+  const updateExam = (id: string, updated: Partial<Omit<Exam, 'id' | 'results' | 'status'>>) => {
+    setExams(prev => prev.map(e => (e.id === id ? { ...e, ...updated } : e)));
   };
 
   const updateExamMarks = (examId: string, results: Record<string, { marksObtained: number; remarks?: string; absent?: boolean }>, publish = false) => {
@@ -590,6 +719,8 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setExams(prev => prev.filter(e => e.id !== id));
   };
 
+  // ----- timetable -----
+
   const addTimetableSlot = (slotData: Omit<TimetableSlot, 'id'>) => {
     const newSlot: TimetableSlot = {
       ...slotData,
@@ -607,6 +738,68 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setTimetable(prev => prev.filter(s => s.id !== id));
   };
 
+  // ----- enquiries -----
+
+  const addEnquiry = (data: Omit<Enquiry, 'id' | 'createdAt' | 'createdBy'>) => {
+    const enquiry: Enquiry = { ...data, id: uid('enq'), createdAt: new Date().toISOString(), createdBy: user?.name };
+    setEnquiries(prev => [enquiry, ...prev]);
+    return enquiry;
+  };
+
+  const updateEnquiry = (id: string, updated: Partial<Omit<Enquiry, 'id'>>) => {
+    setEnquiries(prev => prev.map(e => (e.id === id ? { ...e, ...updated } : e)));
+  };
+
+  const deleteEnquiry = (id: string) => {
+    setEnquiries(prev => prev.filter(e => e.id !== id));
+  };
+
+  // ----- notices -----
+
+  const addAnnouncement = (data: Omit<Announcement, 'id' | 'createdAt' | 'authorId' | 'authorName'>) => {
+    const notice: Announcement = {
+      ...data,
+      id: uid('ann'),
+      createdAt: new Date().toISOString(),
+      authorId: user?.id || '',
+      authorName: user?.name || ''
+    };
+    setAnnouncements(prev => [notice, ...prev]);
+    return notice;
+  };
+
+  const updateAnnouncement = (id: string, updated: Partial<Omit<Announcement, 'id'>>) => {
+    setAnnouncements(prev => prev.map(a => (a.id === id ? { ...a, ...updated } : a)));
+  };
+
+  const deleteAnnouncement = (id: string) => {
+    setAnnouncements(prev => prev.filter(a => a.id !== id));
+  };
+
+  // ----- study material -----
+
+  const addMaterial = (data: Omit<StudyMaterial, 'id' | 'createdAt' | 'authorId' | 'authorName'>) => {
+    const material: StudyMaterial = {
+      ...data,
+      id: uid('mat'),
+      createdAt: new Date().toISOString(),
+      authorId: user?.id || '',
+      authorName: user?.name || ''
+    };
+    setMaterials(prev => [material, ...prev]);
+    return material;
+  };
+
+  const updateMaterial = (id: string, updated: Partial<Omit<StudyMaterial, 'id'>>) => {
+    setMaterials(prev => prev.map(m => (m.id === id ? { ...m, ...updated } : m)));
+  };
+
+  const deleteMaterial = (id: string) => {
+    setMaterials(prev => prev.filter(m => m.id !== id));
+  };
+
+  // ----- messages -----
+
   const sendNotification = (notif: {
     type: NotificationLog['type'];
     channel: NotificationLog['channel'];
@@ -615,6 +808,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     studentName: string;
     studentId?: string;
     content: string;
+    status?: NotificationLog['status'];
   }) => {
     const newLog: NotificationLog = {
       id: uid('log'),
@@ -626,14 +820,21 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       studentId: notif.studentId,
       studentName: notif.studentName,
       content: notif.content,
-      status: 'delivered'
+      // Nothing is sent by this app itself: "sent" means the message was opened in WhatsApp
+      status: notif.status ?? 'sent'
     };
     setNotificationLogs(prev => [newLog, ...prev]);
+  };
+
+  const updateNotificationStatus = (id: string, status: NotificationLog['status']) => {
+    setNotificationLogs(prev => prev.map(l => (l.id === id ? { ...l, status } : l)));
   };
 
   const updateTemplate = (id: string, body: string) => {
     setTemplates(prev => prev.map(t => t.id === id ? { ...t, templateBody: body } : t));
   };
+
+  // ----- data management -----
 
   const resetToDemoData = () => {
     setProfile(initialInstituteProfile);
@@ -646,54 +847,44 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setTimetable(initialTimetableSlots);
     setTemplates(initialNotificationTemplates);
     setNotificationLogs(initialNotificationLogs);
+    setEnquiries(initialEnquiries);
+    setAnnouncements(initialAnnouncements);
+    setMaterials(initialMaterials);
   };
 
-  const exportDatabaseJson = () => {
-    const data = {
-      profile,
-      courses,
-      batches,
-      students,
-      attendance,
-      transactions,
-      exams,
-      timetable,
-      templates,
-      notificationLogs,
-      exportedAt: new Date().toISOString()
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `academia_os_backup_${toLocalISODate()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+  // Removes everything the institute entered (the profile and the message templates stay)
+  const clearAllData = () => {
+    setCourses([]);
+    setBatches([]);
+    setStudents([]);
+    setAttendance([]);
+    setTransactions([]);
+    setExams([]);
+    setTimetable([]);
+    setNotificationLogs([]);
+    setEnquiries([]);
+    setAnnouncements([]);
+    setMaterials([]);
   };
 
-  const importDatabaseJson = (jsonString: string): boolean => {
-    try {
-      const data = JSON.parse(jsonString);
-      if (data.students && data.batches && data.courses) {
-        if (data.profile) setProfile(data.profile);
-        if (data.courses) setCourses(data.courses);
-        if (data.batches) setBatches(data.batches);
-        if (data.students) setStudents(data.students);
-        if (data.attendance) setAttendance(data.attendance);
-        if (data.transactions) setTransactions(data.transactions);
-        if (data.exams) setExams(data.exams);
-        if (data.timetable) setTimetable(data.timetable);
-        if (data.templates) setTemplates(data.templates);
-        if (data.notificationLogs) setNotificationLogs(data.notificationLogs);
-        return true;
-      }
-      return false;
-    } catch {
-      return false;
-    }
+  // The principal's choice on a brand-new institute
+  const finishOnboarding = (mode: StartMode, details: { name: string; academicYear: string }) => {
+    const rename = (text: string) => text.split('Apex Pinnacle Academy').join(details.name);
+    setProfile({
+      ...initialInstituteProfile,
+      name: details.name,
+      academicYear: details.academicYear,
+      ...(mode === 'empty'
+        ? { tagline: '', registrationNo: '', address: '', phone: '', email: '', website: '', signatoryTitle: 'Principal' }
+        : {})
+    });
+    setTemplates(initialNotificationTemplates.map(t => ({ ...t, templateBody: rename(t.templateBody) })));
+    if (mode === 'empty') clearAllData();
+    setOnboarding(false);
   };
 
   if (!ready) return <ConnectionScreen message="Loading your institute data..." />;
+  if (onboarding) return <OnboardingScreen onDone={finishOnboarding} />;
 
   return (
     <InstituteContext.Provider
@@ -708,6 +899,10 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         timetable,
         templates,
         notificationLogs,
+        enquiries,
+        announcements,
+        materials,
+        saveState: linkStatus === 'offline' ? 'offline' : saveState,
         updateProfile,
         addStudent,
         updateStudent,
@@ -716,22 +911,34 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         updateBatch,
         deleteBatch,
         addCourse,
+        updateCourse,
+        deleteCourse,
         markAttendance,
         getAttendanceForBatchAndDate,
         getStudentAttendanceStats,
         recordPayment,
-        deleteTransaction,
+        cancelTransaction,
         addExam,
+        updateExam,
         updateExamMarks,
         deleteExam,
         addTimetableSlot,
         updateTimetableSlot,
         deleteTimetableSlot,
+        addEnquiry,
+        updateEnquiry,
+        deleteEnquiry,
+        addAnnouncement,
+        updateAnnouncement,
+        deleteAnnouncement,
+        addMaterial,
+        updateMaterial,
+        deleteMaterial,
         sendNotification,
+        updateNotificationStatus,
         updateTemplate,
         resetToDemoData,
-        exportDatabaseJson,
-        importDatabaseJson
+        clearAllData
       }}
     >
       {children}

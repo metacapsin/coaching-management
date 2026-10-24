@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { GettingStarted, FollowUpsCard, NoticesCard } from '../ui/HomeCards';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { TimetableSlot, Student } from '../../types';
 import {
@@ -166,7 +167,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     profile,
     students,
     batches,
-    transactions,
+    transactions: allTransactions,
     exams,
     attendance,
     timetable,
@@ -174,6 +175,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     sendNotification,
     getStudentAttendanceStats
   } = useInstitute();
+  // Cancelled receipts are not money received
+  const transactions = allTransactions.filter(t => t.status !== 'cancelled');
 
   const [feeRange, setFeeRange] = useState<FeeRange>('ALL');
   const [alertedIds, setAlertedIds] = useState<string[]>([]);
@@ -387,6 +390,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div className="space-y-6">
+      <GettingStarted onNavigate={onNavigate} onOpenAdmission={onOpenAdmission} />
+
       {/* Top Banner & Quick Action Shortcuts */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -1271,6 +1276,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             )}
           </div>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <FollowUpsCard onNavigate={onNavigate} />
+        <NoticesCard onNavigate={onNavigate} />
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import React from 'react';
+import { NoticesCard, MaterialCard } from '../ui/HomeCards';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { ScopedResult } from '../layout/Rolescope';
 import {
@@ -29,7 +30,7 @@ const STATUS_STYLE: Record<string, string> = {
   excused: 'bg-slate-100 text-slate-600'
 };
 
-export const StudentPortalView: React.FC = () => {
+export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }> = ({ onNavigate = () => undefined }) => {
   const {
     profile,
     students,
@@ -37,11 +38,13 @@ export const StudentPortalView: React.FC = () => {
     courses,
     timetable,
     attendance,
-    transactions,
+    transactions: allTransactions,
     exams,
     notificationLogs,
     getStudentAttendanceStats
   } = useInstitute();
+  // Cancelled receipts are not money received
+  const transactions = allTransactions.filter(t => t.status !== 'cancelled');
 
   const student = students[0];
 
@@ -477,6 +480,11 @@ export const StudentPortalView: React.FC = () => {
             )}
           </div>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <NoticesCard onNavigate={onNavigate} />
+        <MaterialCard onNavigate={onNavigate} />
       </div>
     </div>
   );
