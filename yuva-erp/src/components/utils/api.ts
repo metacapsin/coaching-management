@@ -111,6 +111,14 @@ export const rememberSuperSession = () => {
   }
 };
 
+export const hasSuperSession = (): boolean => {
+  try {
+    return !!sessionStorage.getItem(RETURN_KEY);
+  } catch {
+    return false;
+  }
+};
+
 export const takeSuperSession = (): string | null => {
   try {
     const value = sessionStorage.getItem(RETURN_KEY);

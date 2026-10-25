@@ -126,6 +126,22 @@ export const roleLabel = (role?: UserRole) => {
 export const portalLabel = (role: UserRole) =>
   role === 'student' ? 'Student' : role === 'teacher' ? 'Teacher' : 'Administration';
 
+// The Super Admin entered a coaching and that sign-in ended (sign out, expired, removed): take the Super Admin
+// sign-in back, if this tab has one. Returns the Super Admin account, or null.
+const restoreSuperSession = async (): Promise<AuthUser | null> => {
+  const back = takeSuperSession();
+  if (!back) return null;
+  try {
+    setToken(back, false);
+    const me = await request<{ user: AuthUser }>('GET', '/auth/me');
+    if (me.user.role === 'super') return me.user;
+  } catch {
+    /* the Super Admin sign in is not valid anymore */
+  }
+  clearToken();
+  return null;
+};
+
 // Turns a server answer into { ok } / { ok: false, error } for the screens
 const attempt = async (action: () => Promise<unknown>): Promise<AuthResult> => {
   try {
@@ -176,6 +192,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (!(err instanceof ApiError) || err.status !== 401) throw err; // 401: the session expired
           }
         }
+        // no sign-in left, but the Super Admin had entered a coaching in this tab: back to the Super Admin
+        if (!cancelled && !hasToken()) {
+          const superUser = await restoreSuperSession();
+          if (superUser && !cancelled) setUser(superUser);
+        }
         if (!cancelled) {
           setServerError(null);
           setReady(true);
@@ -193,8 +214,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(
     () =>
       onUnauthorized(() => {
-        setUser(null);
         setUsers([]);
+        // a coaching sign-in that ended: the Super Admin who entered it gets the dashboard back
+        void restoreSuperSession().then(superUser => setUser(superUser));
       }),
     []
   );
@@ -283,21 +305,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     stopSync();
     setUsers([]);
     // Signed out of a coaching that the Super Admin had entered: back to the Super Admin dashboard
-    const back = takeSuperSession();
-    if (back) {
-      try {
-        setToken(back, false);
-        const me = await request<{ user: AuthUser }>('GET', '/auth/me');
-        if (me.user.role === 'super') {
-          setUser(me.user);
-          return;
-        }
-      } catch {
-        /* the Super Admin sign in is not valid anymore: the login page is shown */
-      }
-      clearToken();
-    }
-    setUser(null);
+    setUser(await restoreSuperSession());
   }, []);
 
   // ----- Account management (administrator only) -----
