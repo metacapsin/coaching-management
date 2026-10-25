@@ -14,7 +14,7 @@ export interface OrgSummary {
   city: string;
   status: OrgStatus;
   createdAt: string;
-  admin: { id: string; name: string; email: string; phone: string } | null;
+  admin: { id: string; name: string; email: string; phone: string; resetRequestedAt?: string | null } | null;
   students: number;
   accounts: number;
 }

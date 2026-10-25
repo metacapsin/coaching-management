@@ -674,10 +674,11 @@ class Coachings(unittest.TestCase):
         # nobody can create a coaching principal through the first-run page, bypassing the approval
         self.assertEqual(self.call('GET', '/api/auth/status')[1]['hasUsers'], True)
         self.assertEqual(self.call('POST', '/api/auth/setup', {'name': 'Evil', 'email': 'e2@x.com', 'password': PASSWORD})[0], 409)
-        # one login page: the super admin signs in on the Administration tab, like the principals
-        self.assertEqual(self.login('super@x.com', portal='admin')[0], 200)
+        # one login page with two tabs: the super admin has its own, the principals use the other
         self.assertEqual(self.login('super@x.com', portal='super')[0], 200)
-        self.assertEqual(self.login('super@x.com', portal='student')[0], 403)  # not a student account
+        status, data = self.login('super@x.com', portal='admin')
+        self.assertEqual(status, 403)
+        self.assertIn('Super Admin', data['error'])
         self.assertEqual(self.call('GET', '/api/auth/status')[1]['hasSuper'], True)
         # the super admin cannot open the data of a coaching
         self.assertEqual(self.call('GET', '/api/sync', token=self.sup)[0], 403)

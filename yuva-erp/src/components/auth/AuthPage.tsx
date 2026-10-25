@@ -2,28 +2,22 @@ import React, { useState } from 'react';
 import { useAuth } from '../../Context/AuthContext';
 import type { Portal } from '../../Context/AuthContext';
 import { requestPasswordReset } from '../utils/api';
-import { CoachingPicker, RegisterCoachingForm } from './CoachingForms';
+import { RegisterCoachingForm } from './CoachingForms';
 import { ThemeToggle } from '../ui/ThemeToggle';
-import { StudentSignupForm } from '../auth/StudentsignupForm';
 import {
   GraduationCap,
-  BookOpen,
   ShieldCheck,
+  Crown,
   Mail,
   Lock,
   User,
-  Phone,
-  Hash,
   Eye,
   EyeOff,
   AlertCircle,
   Loader2,
-  CheckCircle2,
-  Clock
+  CheckCircle2
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-
-type Mode = 'signin' | 'signup';
 
 // "Forgot your password?": tells the principal, who then sets a new password in Team & Access
 const ForgotPassword: React.FC<{ initialEmail: string }> = ({ initialEmail }) => {
@@ -84,17 +78,18 @@ const ForgotPassword: React.FC<{ initialEmail: string }> = ({ initialEmail }) =>
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// Two logins on one page: the Super Admin (manages the coachings) and the coaching admin (principal).
+// Teachers and students get their accounts from the principal of their coaching, inside the app.
 const PORTALS: { id: Portal; label: string; icon: LucideIcon; blurb: string }[] = [
-  { id: 'student', label: 'Student', icon: GraduationCap, blurb: 'See your attendance, fees, results and timetable.' },
-  { id: 'teacher', label: 'Teacher', icon: BookOpen, blurb: 'Mark attendance and enter marks for your batches.' },
-  { id: 'admin', label: 'Administration', icon: ShieldCheck, blurb: 'Super Admin, coaching principal and office staff.' }
+  { id: 'super', label: 'Super Admin', icon: Crown, blurb: 'Approves coachings and manages all of them.' },
+  { id: 'admin', label: 'Coaching Admin', icon: ShieldCheck, blurb: 'Principal of one coaching, with its own data.' }
 ];
 
 const FEATURES = [
-  'Students: own attendance, fees, results and timetable',
-  'Teachers: attendance and marks for their own batches',
-  'Principal: complete control of every module and account',
-  'Admissions, fee receipts and instant parent alerts'
+  'Super Admin: approves coachings and sees who runs each one',
+  'Coaching Admin: complete control of one coaching only',
+  'Every coaching has its own students, fees and exams',
+  'No coaching can see the data of another coaching'
 ];
 
 const STRENGTH_LABELS = ['Too weak', 'Weak', 'Fair', 'Good', 'Strong'];
@@ -144,19 +139,14 @@ const Field: React.FC<{
 );
 
 export const AuthPage: React.FC = () => {
-  const { signIn, signUp, registerStudent, registerTeacher, hasUsers, hasSuper } = useAuth();
+  const { signIn, signUp, hasSuper } = useAuth();
 
-  // No Super Admin yet (or nobody at all): the first account is the Super Admin. Otherwise normal role-based login.
-  const [creatingSuper, setCreatingSuper] = useState(false);
-  const setupMode = !hasUsers || creatingSuper;
-
-  const [portal, setPortal] = useState<Portal>('student');
-  const [mode, setMode] = useState<Mode>('signin');
+  // Without a Super Admin the page starts on the Super Admin tab, to create it first
+  const [portal, setPortal] = useState<Portal>(hasSuper ? 'admin' : 'super');
+  // the principal of a new coaching registers here (and waits for the Super Admin's approval)
+  const [registering, setRegistering] = useState(false);
 
   const [name, setName] = useState('');
-  const [rollNo, setRollNo] = useState('');
-  const [phone, setPhone] = useState('');
-  const [subject, setSubject] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -166,20 +156,11 @@ export const AuthPage: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [teacherRequested, setTeacherRequested] = useState(false);
-  // Students can register as new (roll number is automatic) or verify an existing admission
-  const [studentMode, setStudentMode] = useState<'new' | 'existing'>('new');
-  // the coaching a student or teacher signs up to, and the 'register your coaching' form
-  const [orgId, setOrgId] = useState('');
-  const [registeringCoaching, setRegisteringCoaching] = useState(false);
 
-  // Administration accounts are created by the principal, so there is no public sign-up for them
-  const isSignup = !setupMode && mode === 'signup' && portal !== 'admin';
-  const isSignin = !setupMode && !isSignup;
-  const needsConfirm = setupMode || isSignup;
+  // The Super Admin tab: create the account first (only once), then sign in
+  const createSuper = portal === 'super' && !hasSuper;
   const strength = getPasswordStrength(password);
   const activePortal = PORTALS.find(p => p.id === portal)!;
-  const newStudentMode = isSignup && portal === 'student' && studentMode === 'new';
 
   const resetForm = () => {
     setErrors({});
@@ -187,41 +168,31 @@ export const AuthPage: React.FC = () => {
     setPassword('');
     setConfirm('');
     setShowPassword(false);
-    setTeacherRequested(false);
   };
 
   const choosePortal = (next: Portal) => {
     setPortal(next);
-    if (next === 'admin') setMode('signin');
-    resetForm();
-  };
-
-  const chooseMode = (next: Mode) => {
-    setMode(next);
+    setRegistering(false);
     resetForm();
   };
 
   const validate = () => {
     const errs: Record<string, string> = {};
-
-    if ((setupMode || (isSignup && portal === 'teacher')) && !name.trim()) errs.name = 'Full name is required';
-    if (isSignup && portal === 'student' && !rollNo.trim()) errs.rollNo = 'Roll number is required';
-    if (isSignup && phone.replace(/\D/g, '').length < 10) errs.phone = 'Enter a valid 10-digit mobile number';
-    if (isSignup && portal === 'teacher' && !subject.trim()) errs.subject = 'Subject is required';
+    if (createSuper && !name.trim()) errs.name = 'Full name is required';
 
     if (!email.trim()) errs.email = 'Email is required';
     else if (!EMAIL_REGEX.test(email.trim())) errs.email = 'Enter a valid email address';
 
     if (!password) {
       errs.password = 'Password is required';
-    } else if (needsConfirm) {
+    } else if (createSuper) {
       if (password.length < 8) errs.password = 'Use at least 8 characters';
       else if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
         errs.password = 'Include at least one letter and one number';
       }
     }
 
-    if (needsConfirm && confirm !== password) errs.confirm = 'Passwords do not match';
+    if (createSuper && confirm !== password) errs.confirm = 'Passwords do not match';
 
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -235,17 +206,10 @@ export const AuthPage: React.FC = () => {
 
     setSubmitting(true);
     try {
-      let result;
-      if (setupMode) result = await signUp({ name, email, password });
-      else if (isSignin) result = await signIn({ email, password, remember, portal });
-      else if (portal === 'student') result = await registerStudent({ rollNo, phone, email, password });
-      else result = await registerTeacher({ name, phone, subject, email, password });
-
-      if (!result.ok) {
-        setFormError(result.error);
-      } else if (isSignup && portal === 'teacher') {
-        setTeacherRequested(true);
-      }
+      const result = createSuper
+        ? await signUp({ name: name.trim(), email: email.trim(), password })
+        : await signIn({ email: email.trim(), password, remember, portal });
+      if (!result.ok) setFormError(result.error);
     } finally {
       setSubmitting(false);
     }
@@ -278,10 +242,10 @@ export const AuthPage: React.FC = () => {
 
         <div>
           <h2 className="text-3xl font-bold leading-tight tracking-tight max-w-md">
-            One platform for your principal, teachers and students.
+            One platform for every coaching of your area.
           </h2>
           <p className="mt-3 text-sm text-slate-400 max-w-md">
-            Everyone signs in with their own role and sees only what they need.
+            Each coaching signs in with its own principal and sees only its own data.
           </p>
           <ul className="mt-8 space-y-3 text-sm">
             {FEATURES.map(feature => (
@@ -311,350 +275,171 @@ export const AuthPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Teacher request submitted */}
-          {teacherRequested ? (
-            <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-xs text-center">
-              <span className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">
-                <Clock className="w-6 h-6" />
-              </span>
-              <h1 className="text-xl font-bold text-slate-900 mt-4">Request sent to the principal</h1>
-              <p className="text-sm text-slate-500 mt-2">
-                Your teacher account is <strong>pending approval</strong>. Once the principal approves it and
-                assigns your batches, you can sign in from the Teacher tab.
-              </p>
-              <button
-                onClick={() => {
-                  setTeacherRequested(false);
-                  chooseMode('signin');
-                }}
-                className="mt-5 px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-              >
-                Back to Sign In
-              </button>
-            </div>
-          ) : (
-            <>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-                {setupMode
-                  ? 'Create the Super Admin'
-                  : isSignin
-                  ? 'Welcome back'
-                  : portal === 'student'
-                  ? 'Create student account'
-                  : 'Create teacher account'}
-              </h1>
-              <p className="text-sm text-slate-500 mt-1">
-                {setupMode
-                  ? 'The Super Admin approves coachings. Create this account first.'
-                  : isSignin
-                  ? `Sign in as ${activePortal.label.toLowerCase()} to continue.`
-                  : portal === 'student'
-                  ? studentMode === 'new'
-                    ? 'Register as a new student. Your roll number is assigned automatically.'
-                    : 'Verify with your roll number and registered mobile number.'
-                  : 'Send a request to the principal for approval.'}
-              </p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            {createSuper ? 'Create the Super Admin' : registering ? 'Register your coaching' : 'Welcome back'}
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            {createSuper
+              ? 'The Super Admin approves coachings. Create this account first (only once).'
+              : registering
+              ? 'The Super Admin checks your request. After approval you sign in here as Coaching Admin.'
+              : `Sign in as ${activePortal.label} to continue.`}
+          </p>
 
-              {/* Role tabs */}
-              {!setupMode && (
-                <div className="mt-6 grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-lg">
-                  {PORTALS.map(p => {
-                    const Icon = p.icon;
-                    return (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => choosePortal(p.id)}
-                        className={`py-2 text-xs font-medium rounded-md transition-colors flex items-center justify-center gap-1.5 ${
-                          portal === p.id
-                            ? 'bg-white text-slate-900 shadow-xs font-semibold'
-                            : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                      >
-                        <Icon className="w-3.5 h-3.5" />
-                        {p.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {!setupMode && (
-                <p className="mt-2 text-[11px] text-slate-400 text-center">{activePortal.blurb}</p>
-              )}
-
-              {setupMode && (
-                <div className="mt-5 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900 flex items-start gap-2">
-                  <ShieldCheck className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
-                  <span>
-                    This account becomes the <strong>Super Admin</strong>. Coachings then register on this same page,
-                    you approve them, and each coaching gets its own principal, teachers and students. Nobody can see the
-                    data of another coaching.
-                  </span>
-                </div>
-              )}
-              {setupMode && creatingSuper && hasUsers && (
-                <button type="button" onClick={() => setCreatingSuper(false)} className="mt-3 text-xs font-medium text-blue-600 hover:underline">
-                  Back to sign in
+          {/* The two logins */}
+          <div className="mt-6 grid grid-cols-2 gap-1 bg-slate-100 p-1 rounded-lg">
+            {PORTALS.map(p => {
+              const Icon = p.icon;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => choosePortal(p.id)}
+                  className={`py-2 text-xs font-medium rounded-md transition-colors flex items-center justify-center gap-1.5 ${
+                    portal === p.id ? 'bg-white text-slate-900 shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {p.label}
                 </button>
-              )}
+              );
+            })}
+          </div>
+          <p className="mt-2 text-[11px] text-slate-400 text-center">{activePortal.blurb}</p>
 
-              {isSignup && portal === 'teacher' && (
-                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 flex items-start gap-2">
-                  <Clock className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-                  <span>
-                    Teacher accounts need the principal&apos;s approval before you can sign in.
-                  </span>
-                </div>
-              )}
+          {createSuper && (
+            <div className="mt-5 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900 flex items-start gap-2">
+              <ShieldCheck className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+              <span>
+                This account becomes the <strong>Super Admin</strong>. Coachings register on this same page, you approve
+                them, and each coaching gets its own principal. Nobody can see the data of another coaching.
+              </span>
+            </div>
+          )}
 
-              {isSignup && <CoachingPicker onChange={setOrgId} />}
+          {formError && (
+            <div className="mt-4 p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+              <span>{formError}</span>
+            </div>
+          )}
 
-              {isSignup && portal === 'student' && (
-                <div className="mt-4 grid grid-cols-2 gap-1 bg-slate-100 p-1 rounded-lg">
-                  {(
-                    [
-                      { id: 'new', label: 'New Registration' },
-                      { id: 'existing', label: 'Already Admitted' }
-                    ] as const
-                  ).map(m => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => {
-                        setStudentMode(m.id);
-                        resetForm();
-                      }}
-                      className={`py-1.5 text-xs font-medium rounded-md transition-colors ${
-                        studentMode === m.id
-                          ? 'bg-white text-slate-900 shadow-xs font-semibold'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {isSignup && portal === 'student' && studentMode === 'existing' && (
-                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900 flex items-start gap-2">
-                  <ShieldCheck className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
-                  <span>
-                    Use the mobile number (yours or your parent&apos;s) that was given at admission. Your account
-                    is linked to your admission record.
-                  </span>
-                </div>
-              )}
-
-              {formError && !newStudentMode && (
-                <div className="mt-4 p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700 flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                  <span>{formError}</span>
-                </div>
-              )}
-
-              {newStudentMode && orgId && <StudentSignupForm key={orgId} />}
-
-              <form
-                onSubmit={handleSubmit}
-                noValidate
-                className={`mt-5 space-y-4 ${newStudentMode || (isSignup && !orgId) ? 'hidden' : ''}`}
-              >
-                {(setupMode || (isSignup && portal === 'teacher')) && (
-                  <Field
-                    label="Full Name"
-                    icon={User}
-                    value={name}
-                    onChange={setName}
-                    error={errors.name}
-                    autoComplete="name"
-                    placeholder="e.g. Rahul Sharma"
-                  />
-                )}
-
-                {isSignup && portal === 'student' && (
-                  <Field
-                    label="Roll Number"
-                    icon={Hash}
-                    value={rollNo}
-                    onChange={setRollNo}
-                    error={errors.rollNo}
-                    placeholder="e.g. 05"
-                  />
-                )}
-
-                {isSignup && (
-                  <Field
-                    label={portal === 'student' ? 'Registered Mobile Number' : 'Mobile Number'}
-                    icon={Phone}
-                    value={phone}
-                    onChange={setPhone}
-                    error={errors.phone}
-                    inputMode="tel"
-                    autoComplete="tel"
-                    placeholder="10-digit mobile number"
-                  />
-                )}
-
-                {isSignup && portal === 'teacher' && (
-                  <Field
-                    label="Subject You Teach"
-                    icon={BookOpen}
-                    value={subject}
-                    onChange={setSubject}
-                    error={errors.subject}
-                    placeholder="e.g. Physics"
-                  />
-                )}
-
+          {registering ? (
+            <RegisterCoachingForm onClose={() => setRegistering(false)} />
+          ) : (
+            <form onSubmit={handleSubmit} noValidate className="mt-5 space-y-4">
+              {createSuper && (
                 <Field
-                  label="Email Address"
-                  icon={Mail}
-                  type="email"
-                  inputMode="email"
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={setEmail}
-                  error={errors.email}
+                  label="Full Name"
+                  icon={User}
+                  value={name}
+                  onChange={setName}
+                  error={errors.name}
+                  autoComplete="name"
+                  placeholder="e.g. Rahul Sharma"
+                />
+              )}
+
+              <Field
+                label="Email Address"
+                icon={Mail}
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={setEmail}
+                error={errors.email}
+              />
+
+              <div>
+                <Field
+                  label="Password"
+                  icon={Lock}
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete={createSuper ? 'new-password' : 'current-password'}
+                  placeholder={createSuper ? 'At least 8 characters' : 'Enter your password'}
+                  value={password}
+                  onChange={setPassword}
+                  error={errors.password}
+                  right={passwordToggle}
                 />
 
-                <div>
-                  <Field
-                    label="Password"
-                    icon={Lock}
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete={isSignin ? 'current-password' : 'new-password'}
-                    placeholder={isSignin ? 'Enter your password' : 'At least 8 characters'}
-                    value={password}
-                    onChange={setPassword}
-                    error={errors.password}
-                    right={passwordToggle}
-                  />
-
-                  {needsConfirm && password && (
-                    <div className="mt-2">
-                      <div className="grid grid-cols-4 gap-1">
-                        {[1, 2, 3, 4].map(level => (
-                          <div
-                            key={level}
-                            className={`h-1.5 rounded-full transition-colors ${
-                              strength >= level ? STRENGTH_COLORS[strength] : 'bg-slate-200'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <p className="text-[11px] text-slate-500 mt-1">
-                        Strength: <span className="font-medium text-slate-700">{STRENGTH_LABELS[strength]}</span>
-                      </p>
+                {createSuper && password && (
+                  <div className="mt-2">
+                    <div className="grid grid-cols-4 gap-1">
+                      {[1, 2, 3, 4].map(level => (
+                        <div
+                          key={level}
+                          className={`h-1.5 rounded-full transition-colors ${strength >= level ? STRENGTH_COLORS[strength] : 'bg-slate-200'}`}
+                        />
+                      ))}
                     </div>
-                  )}
-                </div>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Strength: <span className="font-medium text-slate-700">{STRENGTH_LABELS[strength]}</span>
+                    </p>
+                  </div>
+                )}
+              </div>
 
-                {needsConfirm && (
-                  <Field
-                    label="Confirm Password"
-                    icon={Lock}
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="new-password"
-                    placeholder="Re-enter your password"
-                    value={confirm}
-                    onChange={setConfirm}
-                    error={errors.confirm}
+              {createSuper && (
+                <Field
+                  label="Confirm Password"
+                  icon={Lock}
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  placeholder="Re-enter your password"
+                  value={confirm}
+                  onChange={setConfirm}
+                  error={errors.confirm}
+                />
+              )}
+
+              {!createSuper && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={remember}
+                    onChange={e => setRemember(e.target.checked)}
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
                   />
-                )}
-
-                {isSignin && (
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={remember}
-                      onChange={e => setRemember(e.target.checked)}
-                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
-                    />
-                    <span className="text-xs text-slate-700">Keep me signed in on this device</span>
-                  </label>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2"
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Please wait...
-                    </>
-                  ) : setupMode ? (
-                    'Create Super Admin Account'
-                  ) : isSignin ? (
-                    `Sign In as ${activePortal.label}`
-                  ) : portal === 'student' ? (
-                    'Create Student Account'
-                  ) : (
-                    'Send Request for Approval'
-                  )}
-                </button>
-              </form>
-
-              {/* Switch between sign in and create account */}
-              {!setupMode && portal !== 'admin' && (
-                <p className="mt-5 text-sm text-slate-600 text-center">
-                  {isSignin ? (
-                    <>
-                      New {portal}?{' '}
-                      <button
-                        type="button"
-                        onClick={() => chooseMode('signup')}
-                        className="font-semibold text-blue-600 hover:underline"
-                      >
-                        Create an account
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      Already have an account?{' '}
-                      <button
-                        type="button"
-                        onClick={() => chooseMode('signin')}
-                        className="font-semibold text-blue-600 hover:underline"
-                      >
-                        Sign in
-                      </button>
-                    </>
-                  )}
-                </p>
+                  <span className="text-xs text-slate-700">Keep me signed in on this device</span>
+                </label>
               )}
 
-              {!setupMode && portal === 'admin' && (
-                <div className="mt-5 text-xs text-slate-500 text-center leading-relaxed">
-                  <p>
-                    Office-staff accounts are created by the principal inside the app under{' '}
-                    <strong className="text-slate-700">Team &amp; Access</strong>.
-                  </p>
-                  {!registeringCoaching && (
-                    <button type="button" onClick={() => setRegisteringCoaching(true)} className="mt-3 font-semibold text-blue-600 hover:underline">
-                      Own a coaching? Register your coaching
-                    </button>
-                  )}
-                  {!hasSuper && !registeringCoaching && (
-                    <button type="button" onClick={() => setCreatingSuper(true)} className="mt-2 block mx-auto font-semibold text-slate-600 hover:underline">
-                      No Super Admin yet? Create it (first time only)
-                    </button>
-                  )}
-                  {registeringCoaching && <RegisterCoachingForm onClose={() => setRegisteringCoaching(false)} />}
-                </div>
-              )}
-
-              {isSignin && <ForgotPassword initialEmail={email} />}
-
-              <p className="mt-6 text-[11px] text-slate-400 text-center leading-relaxed">
-                Your account and data are stored on the institute's server.
-              </p>
-            </>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Please wait...
+                  </>
+                ) : createSuper ? (
+                  'Create Super Admin Account'
+                ) : (
+                  `Sign In as ${activePortal.label}`
+                )}
+              </button>
+            </form>
           )}
+
+          {portal === 'admin' && !registering && (
+            <div className="mt-5 text-sm text-slate-600 text-center">
+              New coaching?{' '}
+              <button type="button" onClick={() => setRegistering(true)} className="font-semibold text-blue-600 hover:underline">
+                Register your coaching
+              </button>
+            </div>
+          )}
+
+          {portal === 'admin' && !registering && <ForgotPassword initialEmail={email} />}
+
+          <p className="mt-6 text-[11px] text-slate-400 text-center leading-relaxed">
+            Your account and data are stored on the institute's server.
+          </p>
         </div>
       </div>
     </div>

@@ -19,7 +19,7 @@ import type { AuthUser } from '../components/utils/api';
 export type { UserRole } from './Access';
 export type { AuthUser, AccountStatus } from '../components/utils/api';
 
-export type Portal = 'student' | 'teacher' | 'admin';
+export type Portal = 'super' | 'admin';
 
 export type AuthResult = { ok: true } | { ok: false; error: string };
 

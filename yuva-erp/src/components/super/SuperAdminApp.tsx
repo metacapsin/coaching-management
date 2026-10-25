@@ -484,6 +484,12 @@ const Dashboard: React.FC<{ user: AuthUser; onSignOut: () => void }> = ({ user, 
                     <div className="text-sm font-medium text-slate-900">{o.admin?.name || '-'}</div>
                     <div className="text-[11px] text-slate-500 truncate">{o.admin?.email}</div>
                     <div className="text-[11px] text-slate-400 font-mono">{o.admin?.phone}</div>
+                    {o.admin?.resetRequestedAt && (
+                      <div className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+                        <KeyRound className="w-3 h-3" />
+                        Asked for a new password
+                      </div>
+                    )}
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="rounded-lg bg-slate-50 p-2.5">

@@ -294,14 +294,6 @@ def login():
             403, 'Your account is waiting for the principal’s approval. Please try again after it is approved.'
         )
 
-    # the Administration tab is for the super admin, the principal and the office staff
-    portal_ok = found['role'] in ('admin', 'staff', 'super') if portal == 'admin' else found['role'] == portal
-    if not portal_ok:
-        raise HttpError(
-            403,
-            f'This is a {role_label(found["role"])} account. Please use the “{portal_label(found["role"])}” tab to sign in.',
-        )
-
     # Signing in to one chosen coaching (from its card): only an account of THAT coaching is let in.
     # The answer is the same as for a wrong password, so nothing is revealed about other coachings.
     wanted = b.get('orgId')
@@ -309,6 +301,14 @@ def login():
         fail()
         s.audit(found, 'login-failed', 'wrong coaching')
         raise invalid
+
+    # two logins: 'super' for the super admin, 'admin' for the principal and the office staff of a coaching
+    portal_ok = found['role'] in ('admin', 'staff') if portal == 'admin' else found['role'] == portal
+    if not portal_ok:
+        raise HttpError(
+            403,
+            f'This is a {role_label(found["role"])} account. Please use the “{portal_label(found["role"])}” tab to sign in.',
+        )
 
     if auth.needs_upgrade(found):
         auth.set_password(found, password)
@@ -900,7 +900,13 @@ def _org_summary(org):
     admin = admins[0] if admins else None
     return {
         **org,
-        'admin': {'id': admin['id'], 'name': admin['name'], 'email': admin['email'], 'phone': admin.get('phone', '')}
+        'admin': {
+            'id': admin['id'],
+            'name': admin['name'],
+            'email': admin['email'],
+            'phone': admin.get('phone', ''),
+            'resetRequestedAt': admin.get('resetRequestedAt'),
+        }
         if admin
         else None,
         'students': tenant.lists['students'].count_documents({}),
