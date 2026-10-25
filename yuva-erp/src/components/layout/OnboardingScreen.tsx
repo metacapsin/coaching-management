@@ -9,7 +9,7 @@ interface OnboardingScreenProps {
 }
 
 // The academic year starts in April: from April 2026 it is 2026-2027, before that 2025-2026
-const defaultAcademicYear = () => {
+export const defaultAcademicYear = () => {
   const now = new Date();
   const start = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
   return `${start}-${start + 1}`;

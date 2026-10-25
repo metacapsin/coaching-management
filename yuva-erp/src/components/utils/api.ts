@@ -99,6 +99,28 @@ let token: string | null = readToken();
 
 export const hasToken = () => !!token;
 
+// When the Super Admin enters a coaching (with that coaching's principal login) the Super Admin sign-in is
+// kept for this browser tab only, so signing out of the coaching brings the Super Admin dashboard back.
+const RETURN_KEY = 'academia_os_return_token_v1';
+
+export const rememberSuperSession = () => {
+  try {
+    if (token) sessionStorage.setItem(RETURN_KEY, token);
+  } catch {
+    /* then signing out simply goes to the login page */
+  }
+};
+
+export const takeSuperSession = (): string | null => {
+  try {
+    const value = sessionStorage.getItem(RETURN_KEY);
+    sessionStorage.removeItem(RETURN_KEY);
+    return value;
+  } catch {
+    return null;
+  }
+};
+
 export const setToken = (value: string, remember: boolean) => {
   token = value;
   try {

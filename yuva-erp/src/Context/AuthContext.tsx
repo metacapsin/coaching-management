@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import type { Course, Batch } from '../types';
 import type { UserRole } from './Access';
 import {
@@ -8,11 +8,13 @@ import {
   hasToken,
   onUnauthorized,
   refreshNow,
+  rememberSuperSession,
   request,
   setToken,
   startSync,
   stopSync,
-  subscribeSync
+  subscribeSync,
+  takeSuperSession
 } from '../components/utils/api';
 import type { AuthUser } from '../components/utils/api';
 
@@ -151,6 +153,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const isAdmin = user?.role === 'admin';
   const userId = user?.id;
+  const userRef = useRef(user);
+  userRef.current = user;
 
   // Start: is there an account yet, and is the saved session still valid?
   useEffect(() => {
@@ -260,12 +264,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     (input: { email: string; password: string; remember: boolean; portal: Portal; orgId?: string }) =>
       attempt(async () => {
         const session = await request<Session>('POST', '/auth/login', input, { auth: false });
+        // the Super Admin enters a coaching: keep the Super Admin sign-in to come back to it
+        if (input.orgId && userRef.current?.role === 'super') rememberSuperSession();
         startSession(session, input.remember);
       }),
     []
   );
 
   const signOut = useCallback(async () => {
+    if (userRef.current?.role === 'super') takeSuperSession(); // a real Super Admin sign out: nothing to come back to
     await flushPending(); // changes that are still waiting are sent first
     try {
       await request('POST', '/auth/logout');
@@ -274,8 +281,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     clearToken();
     stopSync();
-    setUser(null);
     setUsers([]);
+    // Signed out of a coaching that the Super Admin had entered: back to the Super Admin dashboard
+    const back = takeSuperSession();
+    if (back) {
+      try {
+        setToken(back, false);
+        const me = await request<{ user: AuthUser }>('GET', '/auth/me');
+        if (me.user.role === 'super') {
+          setUser(me.user);
+          return;
+        }
+      } catch {
+        /* the Super Admin sign in is not valid anymore: the login page is shown */
+      }
+      clearToken();
+    }
+    setUser(null);
   }, []);
 
   // ----- Account management (administrator only) -----

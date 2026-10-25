@@ -5,6 +5,7 @@ import { useAuth } from './AuthContext';
 import { ConnectionScreen } from '../components/layout/ConnectionScreen';
 import { OnboardingScreen } from '../components/layout/OnboardingScreen';
 import type { StartMode } from '../components/layout/OnboardingScreen';
+import { defaultAcademicYear } from '../components/layout/OnboardingScreen';
 import type {
   Student,
   Batch,
@@ -265,6 +266,9 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [ready, setReady] = useState(false);
   // A brand-new institute: the principal chooses how to start before anything is saved
   const [onboarding, setOnboarding] = useState(false);
+  // For the demo every new coaching starts with the sample data (students, fees, exams, notices...), so all
+  // features can be seen at once. Set to false to let the principal choose "start empty" instead.
+  const AUTO_DEMO_FOR_NEW_COACHING = true;
   const [orgName, setOrgName] = useState('');
   const onboardingRef = useRef(false);
   onboardingRef.current = onboarding;
@@ -385,7 +389,14 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         // Nothing stored yet and this is the principal: a new institute
         if (roleRef.current === 'admin' && data.students === undefined && data.profile === undefined) {
           setOrgName(payload.org?.name || '');
-          setOnboarding(true);
+          if (AUTO_DEMO_FOR_NEW_COACHING) {
+            finishOnboarding('sample', {
+              name: payload.org?.name || initialInstituteProfile.name,
+              academicYear: defaultAcademicYear()
+            });
+          } else {
+            setOnboarding(true);
+          }
           setReady(true);
           return;
         }
