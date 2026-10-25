@@ -67,6 +67,7 @@ const inputClass =
   'w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500';
 
 const ROLE_BADGE: Record<UserRole, string> = {
+  super: 'bg-indigo-50 text-indigo-700 border-indigo-200',
   admin: 'bg-purple-50 text-purple-700 border-purple-200',
   staff: 'bg-blue-50 text-blue-700 border-blue-200',
   teacher: 'bg-emerald-50 text-emerald-700 border-emerald-200',

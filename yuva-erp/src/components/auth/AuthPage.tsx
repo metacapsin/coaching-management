@@ -87,7 +87,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PORTALS: { id: Portal; label: string; icon: LucideIcon; blurb: string }[] = [
   { id: 'student', label: 'Student', icon: GraduationCap, blurb: 'See your attendance, fees, results and timetable.' },
   { id: 'teacher', label: 'Teacher', icon: BookOpen, blurb: 'Mark attendance and enter marks for your batches.' },
-  { id: 'admin', label: 'Administration', icon: ShieldCheck, blurb: 'Principal and office staff. Full institute access.' }
+  { id: 'admin', label: 'Administration', icon: ShieldCheck, blurb: 'Super Admin, coaching principal and office staff.' }
 ];
 
 const FEATURES = [
@@ -144,10 +144,11 @@ const Field: React.FC<{
 );
 
 export const AuthPage: React.FC = () => {
-  const { signIn, signUp, registerStudent, registerTeacher, hasUsers } = useAuth();
+  const { signIn, signUp, registerStudent, registerTeacher, hasUsers, hasSuper } = useAuth();
 
-  // No account yet -> first-time principal setup. Otherwise normal role-based login / registration.
-  const setupMode = !hasUsers;
+  // No Super Admin yet (or nobody at all): the first account is the Super Admin. Otherwise normal role-based login.
+  const [creatingSuper, setCreatingSuper] = useState(false);
+  const setupMode = !hasUsers || creatingSuper;
 
   const [portal, setPortal] = useState<Portal>('student');
   const [mode, setMode] = useState<Mode>('signin');
@@ -335,7 +336,7 @@ export const AuthPage: React.FC = () => {
             <>
               <h1 className="text-2xl font-bold tracking-tight text-slate-900">
                 {setupMode
-                  ? 'Set up your institute'
+                  ? 'Create the Super Admin'
                   : isSignin
                   ? 'Welcome back'
                   : portal === 'student'
@@ -344,7 +345,7 @@ export const AuthPage: React.FC = () => {
               </h1>
               <p className="text-sm text-slate-500 mt-1">
                 {setupMode
-                  ? 'Create the principal (administrator) account to get started.'
+                  ? 'The Super Admin approves coachings. Create this account first.'
                   : isSignin
                   ? `Sign in as ${activePortal.label.toLowerCase()} to continue.`
                   : portal === 'student'
@@ -386,11 +387,16 @@ export const AuthPage: React.FC = () => {
                 <div className="mt-5 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900 flex items-start gap-2">
                   <ShieldCheck className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
                   <span>
-                    This first account becomes the <strong>Principal (Administrator)</strong> with full access.
-                    Teachers and students can then register, and you can add office staff from{' '}
-                    <strong>Team &amp; Access</strong>.
+                    This account becomes the <strong>Super Admin</strong>. Coachings then register on this same page,
+                    you approve them, and each coaching gets its own principal, teachers and students. Nobody can see the
+                    data of another coaching.
                   </span>
                 </div>
+              )}
+              {setupMode && creatingSuper && hasUsers && (
+                <button type="button" onClick={() => setCreatingSuper(false)} className="mt-3 text-xs font-medium text-blue-600 hover:underline">
+                  Back to sign in
+                </button>
               )}
 
               {isSignup && portal === 'teacher' && (
@@ -582,7 +588,7 @@ export const AuthPage: React.FC = () => {
                       Please wait...
                     </>
                   ) : setupMode ? (
-                    'Create Principal Account'
+                    'Create Super Admin Account'
                   ) : isSignin ? (
                     `Sign In as ${activePortal.label}`
                   ) : portal === 'student' ? (
@@ -633,6 +639,11 @@ export const AuthPage: React.FC = () => {
                       Own a coaching? Register your coaching
                     </button>
                   )}
+                  {!hasSuper && !registeringCoaching && (
+                    <button type="button" onClick={() => setCreatingSuper(true)} className="mt-2 block mx-auto font-semibold text-slate-600 hover:underline">
+                      No Super Admin yet? Create it (first time only)
+                    </button>
+                  )}
                   {registeringCoaching && <RegisterCoachingForm onClose={() => setRegisteringCoaching(false)} />}
                 </div>
               )}
@@ -640,10 +651,7 @@ export const AuthPage: React.FC = () => {
               {isSignin && <ForgotPassword initialEmail={email} />}
 
               <p className="mt-6 text-[11px] text-slate-400 text-center leading-relaxed">
-                Your account and data are stored on the institute's server.{' '}
-                <a href="/superadmin" className="text-slate-500 hover:text-blue-600 hover:underline">
-                  Super Admin
-                </a>
+                Your account and data are stored on the institute's server.
               </p>
             </>
           )}

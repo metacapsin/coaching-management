@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Building2,
   Check,
@@ -12,27 +12,23 @@ import {
   PlayCircle,
   Plus,
   Trash2,
+  Lock,
   Users,
   X,
-  AlertTriangle,
-  ArrowLeft
+  AlertTriangle
 } from 'lucide-react';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { ModalShell } from '../ui/ModalShell';
 import { formatDate } from '../utils/helpers';
-import {
-  SuperApiError,
-  clearSuperToken,
-  hasSuperToken,
-  setSuperToken,
-  superApi,
-  useOrgs
-} from './superApi';
-import type { NewCoaching, OrgStatus, OrgSummary, SuperUser } from './superApi';
+import { ApiError } from '../utils/api';
+import type { AuthUser } from '../utils/api';
+import { useAuth } from '../../Context/AuthContext';
+import { superApi, useOrgs } from './superApi';
+import type { NewCoaching, OrgStatus, OrgSummary } from './superApi';
 
 const inputCls = 'w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500';
 
-const errText = (err: unknown) => (err instanceof SuperApiError ? err.message : 'Something went wrong. Please try again.');
+const errText = (err: unknown) => (err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
 
 const STATUS_STYLE: Record<OrgStatus, string> = {
   pending: 'bg-amber-100 text-amber-800',
@@ -63,91 +59,6 @@ const Shell: React.FC<{ children: React.ReactNode; right?: React.ReactNode }> = 
     <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">{children}</main>
   </div>
 );
-
-// ---------- sign in / first set-up ----------
-
-const SignIn: React.FC<{ hasSuper: boolean; onDone: (user: SuperUser) => void }> = ({ hasSuper, onDone }) => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [remember, setRemember] = useState(true);
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setBusy(true);
-    try {
-      const res = hasSuper
-        ? await superApi.login(email.trim(), password, remember)
-        : await superApi.setup({ name: name.trim(), email: email.trim(), password });
-      setSuperToken(res.token, remember);
-      onDone(res.user);
-    } catch (err) {
-      setError(errText(err));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Shell>
-      <div className="max-w-md mx-auto mt-10 bg-white border border-slate-200 rounded-2xl shadow-sm p-7">
-        <h1 className="text-xl font-bold">{hasSuper ? 'Super Admin sign in' : 'Create the Super Admin'}</h1>
-        <p className="text-xs text-slate-500 mt-1">
-          {hasSuper
-            ? 'Only for the person who manages all coachings. Coaching principals sign in on the normal page.'
-            : 'There is no Super Admin yet. This can only be done on the computer where the server runs.'}
-        </p>
-        <form onSubmit={submit} className="mt-5 space-y-4">
-          {!hasSuper && (
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">Full name</label>
-              <input value={name} onChange={e => setName(e.target.value)} className={inputCls} />
-            </div>
-          )}
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Email</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="username" className={inputCls} />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              autoComplete={hasSuper ? 'current-password' : 'new-password'}
-              placeholder={hasSuper ? '' : 'At least 8 characters, with letters and numbers'}
-              className={inputCls}
-            />
-          </div>
-          <label className="flex items-center gap-2 text-xs text-slate-600">
-            <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} />
-            Keep me signed in on this device
-          </label>
-          {error && (
-            <p className="text-xs text-rose-600 flex items-start gap-1.5">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
-              {error}
-            </p>
-          )}
-          <button
-            type="submit"
-            disabled={busy}
-            className="w-full py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 rounded-lg"
-          >
-            {busy ? 'Please wait...' : hasSuper ? 'Sign in' : 'Create Super Admin'}
-          </button>
-        </form>
-        <a href="/" className="mt-5 inline-flex items-center gap-1 text-xs text-blue-600 hover:underline">
-          <ArrowLeft className="w-3.5 h-3.5" />
-          Back to the coaching login page
-        </a>
-      </div>
-    </Shell>
-  );
-};
 
 // ---------- pop-ups ----------
 
@@ -352,14 +263,59 @@ const MyPasswordModal: React.FC<{ onClose: () => void; onDone: (msg: string) => 
   );
 };
 
+const EnterModal: React.FC<{ org: OrgSummary; onClose: () => void }> = ({ org, onClose }) => {
+  const { signIn } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setBusy(true);
+    // Only the principal (or staff) of THIS coaching is let in; the server checks it, not this screen
+    const result = await signIn({ email: email.trim(), password, remember: false, portal: 'admin', orgId: org.id });
+    setBusy(false);
+    if (!result.ok) setError(result.error || 'Could not sign in.');
+  };
+
+  return (
+    <ModalShell title={`Enter ${org.name}`} subtitle="Sign in with this coaching's principal email and password" icon={Lock} iconClass="bg-indigo-600" width="sm" onClose={onClose}>
+      <form onSubmit={submit} className="p-6 space-y-4">
+        <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-600">
+          Only the principal of this coaching can enter. Not even the Super Admin can open it without that login.
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-700 mb-1">Principal email</label>
+          <input type="email" autoFocus value={email} onChange={e => setEmail(e.target.value)} autoComplete="off" className={inputCls} />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-700 mb-1">Password</label>
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="off" className={inputCls} />
+        </div>
+        {error && <p className="text-xs text-rose-600">{error}</p>}
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="px-4 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">
+            Cancel
+          </button>
+          <button type="submit" disabled={busy} className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 rounded-lg">
+            {busy ? 'Signing in...' : 'Enter coaching'}
+          </button>
+        </div>
+      </form>
+    </ModalShell>
+  );
+};
+
 // ---------- the dashboard ----------
 
-const Dashboard: React.FC<{ user: SuperUser; onSignOut: () => void }> = ({ user, onSignOut }) => {
+const Dashboard: React.FC<{ user: AuthUser; onSignOut: () => void }> = ({ user, onSignOut }) => {
   const { orgs, error, loaded, reload } = useOrgs(true);
   const [notice, setNotice] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
   const [modal, setModal] = useState<
     | { kind: 'add' }
-    | { kind: 'edit' | 'password' | 'delete'; org: OrgSummary }
+    | { kind: 'edit' | 'password' | 'delete' | 'enter'; org: OrgSummary }
     | { kind: 'mine' }
     | null
   >(null);
@@ -415,7 +371,7 @@ const Dashboard: React.FC<{ user: SuperUser; onSignOut: () => void }> = ({ user,
           onClick={() => setModal({ kind: 'add' })}
           className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm flex items-center gap-1.5 self-start"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-5 h-5" />
           Add coaching
         </button>
       </div>
@@ -478,106 +434,124 @@ const Dashboard: React.FC<{ user: SuperUser; onSignOut: () => void }> = ({ user,
         </section>
       )}
 
-      <section className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
-        <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold">All coachings ({shown.length})</h2>
-          <select
-            value={filter}
-            onChange={e => setFilter(e.target.value as 'all' | OrgStatus)}
-            className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
-          >
-            <option value="all">All</option>
-            <option value="active">Active</option>
-            <option value="pending">Waiting for approval</option>
-            <option value="suspended">Switched off</option>
-          </select>
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <h2 className="text-sm font-semibold">All coachings ({shown.length})</h2>
+        <select
+          value={filter}
+          onChange={e => setFilter(e.target.value as 'all' | OrgStatus)}
+          className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+        >
+          <option value="all">All</option>
+          <option value="active">Active</option>
+          <option value="pending">Waiting for approval</option>
+          <option value="suspended">Switched off</option>
+        </select>
+      </div>
+
+      {!loaded ? (
+        <p className="p-8 text-center text-xs text-slate-400">Loading...</p>
+      ) : shown.length === 0 ? (
+        <div className="bg-white border border-slate-200 rounded-xl py-14 text-center shadow-xs">
+          <Building2 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+          <p className="text-sm font-medium text-slate-700">No coaching yet</p>
+          <p className="text-xs text-slate-400 mt-1">Press + Add coaching, or wait for requests from the login page.</p>
         </div>
-        {!loaded ? (
-          <p className="p-8 text-center text-xs text-slate-400">Loading...</p>
-        ) : shown.length === 0 ? (
-          <div className="py-14 text-center">
-            <Building2 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-            <p className="text-sm font-medium text-slate-700">No coaching yet</p>
-            <p className="text-xs text-slate-400 mt-1">Add the first coaching, or wait for requests from the login page.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase">
-                <tr>
-                  <th className="p-3.5">Coaching</th>
-                  <th className="p-3.5">Principal</th>
-                  <th className="p-3.5 text-right">Students</th>
-                  <th className="p-3.5 text-right">Accounts</th>
-                  <th className="p-3.5">Status</th>
-                  <th className="p-3.5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {shown.map(o => (
-                  <tr key={o.id} className="align-top hover:bg-slate-50/60">
-                    <td className="p-3.5">
-                      <div className="font-semibold text-slate-900">{o.name}</div>
-                      <div className="text-[11px] text-slate-500">{o.city || '-'} · since {formatDate(o.createdAt)}</div>
-                    </td>
-                    <td className="p-3.5">
-                      <div className="text-slate-800">{o.admin?.name || '-'}</div>
-                      <div className="text-[11px] text-slate-500">{o.admin?.email}</div>
-                      <div className="text-[11px] text-slate-400 font-mono">{o.admin?.phone}</div>
-                    </td>
-                    <td className="p-3.5 text-right font-mono">
-                      <span className="inline-flex items-center gap-1">
-                        <Users className="w-3 h-3 text-slate-400" />
-                        {o.students}
-                      </span>
-                    </td>
-                    <td className="p-3.5 text-right font-mono">{o.accounts}</td>
-                    <td className="p-3.5">
-                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${STATUS_STYLE[o.status]}`}>{STATUS_LABEL[o.status]}</span>
-                    </td>
-                    <td className="p-3.5">
-                      <div className="flex justify-end gap-1.5 flex-wrap">
-                        {o.status === 'active' && o.id !== 'default' && (
-                          <button
-                            title="Switch off (nobody of this coaching can sign in)"
-                            onClick={() => window.confirm(`Switch off ${o.name}? Everybody of this coaching is signed out.`) && act(() => superApi.suspend(o.id), `${o.name} was switched off.`)}
-                            className="p-1.5 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg"
-                          >
-                            <PauseCircle className="w-4 h-4" />
-                          </button>
-                        )}
-                        {o.status === 'suspended' && (
-                          <button title="Switch on again" onClick={() => act(() => superApi.activate(o.id), `${o.name} is active again.`)} className="p-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg">
-                            <PlayCircle className="w-4 h-4" />
-                          </button>
-                        )}
-                        {o.admin && (
-                          <button title="Set a new password for the principal" onClick={() => setModal({ kind: 'password', org: o })} className="p-1.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg">
-                            <KeyRound className="w-4 h-4" />
-                          </button>
-                        )}
-                        <button title="Edit" onClick={() => setModal({ kind: 'edit', org: o })} className="p-1.5 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg">
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        {o.id !== 'default' && (
-                          <button title="Delete" onClick={() => setModal({ kind: 'delete', org: o })} className="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          {shown.map(o => {
+            const canEnter = o.status === 'active';
+            return (
+              <div
+                key={o.id}
+                role={canEnter ? 'button' : undefined}
+                tabIndex={canEnter ? 0 : undefined}
+                onClick={() => canEnter && setModal({ kind: 'enter', org: o })}
+                onKeyDown={e => canEnter && e.key === 'Enter' && setModal({ kind: 'enter', org: o })}
+                className={`bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden flex flex-col transition-shadow ${
+                  canEnter ? 'cursor-pointer hover:shadow-md hover:border-indigo-300' : 'opacity-80'
+                }`}
+              >
+                <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold min-w-0">
+                    <Building2 className="w-4 h-4 text-indigo-600 shrink-0" />
+                    <span className="truncate">{o.name}</span>
+                  </h3>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded shrink-0 ${STATUS_STYLE[o.status]}`}>{STATUS_LABEL[o.status]}</span>
+                </div>
+                <div className="px-5 py-4 flex-1 space-y-3">
+                  <div>
+                    <div className="text-[11px] text-slate-500">Principal</div>
+                    <div className="text-sm font-medium text-slate-900">{o.admin?.name || '-'}</div>
+                    <div className="text-[11px] text-slate-500 truncate">{o.admin?.email}</div>
+                    <div className="text-[11px] text-slate-400 font-mono">{o.admin?.phone}</div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-lg bg-slate-50 p-2.5">
+                      <div className="text-[11px] text-slate-500 flex items-center gap-1">
+                        <Users className="w-3 h-3" />
+                        Students
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+                      <div className="text-lg font-bold">{o.students}</div>
+                    </div>
+                    <div className="rounded-lg bg-slate-50 p-2.5">
+                      <div className="text-[11px] text-slate-500">Accounts</div>
+                      <div className="text-lg font-bold">{o.accounts}</div>
+                    </div>
+                  </div>
+                  <div className="text-[11px] text-slate-400">
+                    {o.city || 'City not given'} · since {formatDate(o.createdAt)}
+                  </div>
+                </div>
+                <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between gap-2" onClick={e => e.stopPropagation()}>
+                  {canEnter ? (
+                    <button onClick={() => setModal({ kind: 'enter', org: o })} className="text-xs font-semibold text-blue-600 hover:underline flex items-center gap-1">
+                      <Lock className="w-3.5 h-3.5" />
+                      Enter coaching →
+                    </button>
+                  ) : (
+                    <span className="text-[11px] text-slate-400">{o.status === 'pending' ? 'Approve it above first' : 'Switched on again to enter'}</span>
+                  )}
+                  <div className="flex gap-1">
+                    {o.status === 'active' && o.id !== 'default' && (
+                      <button
+                        title="Switch off (nobody of this coaching can sign in)"
+                        onClick={() => window.confirm(`Switch off ${o.name}? Everybody of this coaching is signed out.`) && act(() => superApi.suspend(o.id), `${o.name} was switched off.`)}
+                        className="p-1.5 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg"
+                      >
+                        <PauseCircle className="w-4 h-4" />
+                      </button>
+                    )}
+                    {o.status === 'suspended' && (
+                      <button title="Switch on again" onClick={() => act(() => superApi.activate(o.id), `${o.name} is active again.`)} className="p-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg">
+                        <PlayCircle className="w-4 h-4" />
+                      </button>
+                    )}
+                    {o.admin && (
+                      <button title="Set a new password for the principal" onClick={() => setModal({ kind: 'password', org: o })} className="p-1.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg">
+                        <KeyRound className="w-4 h-4" />
+                      </button>
+                    )}
+                    <button title="Edit" onClick={() => setModal({ kind: 'edit', org: o })} className="p-1.5 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg">
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    {o.id !== 'default' && (
+                      <button title="Delete" onClick={() => setModal({ kind: 'delete', org: o })} className="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {modal?.kind === 'add' && <AddCoachingModal onClose={() => setModal(null)} onDone={name => { flash('ok', `${name} was added.`); reload(); }} />}
       {modal?.kind === 'edit' && <EditModal org={modal.org} onClose={() => setModal(null)} onDone={() => { flash('ok', 'Saved.'); reload(); }} />}
       {modal?.kind === 'password' && <PasswordModal org={modal.org} onClose={() => setModal(null)} onDone={msg => flash('ok', msg)} />}
       {modal?.kind === 'delete' && <DeleteModal org={modal.org} onClose={() => setModal(null)} onDone={msg => { flash('ok', msg); reload(); }} />}
+      {modal?.kind === 'enter' && <EnterModal org={modal.org} onClose={() => setModal(null)} />}
       {modal?.kind === 'mine' && <MyPasswordModal onClose={() => setModal(null)} onDone={msg => flash('ok', msg)} />}
     </Shell>
   );
@@ -585,78 +559,9 @@ const Dashboard: React.FC<{ user: SuperUser; onSignOut: () => void }> = ({ user,
 
 // ---------- the page ----------
 
+// What the Super Admin sees after signing in on the normal login page
 export const SuperAdminApp: React.FC = () => {
-  const [state, setState] = useState<'loading' | 'error' | 'signin' | 'in'>('loading');
-  const [hasSuper, setHasSuper] = useState(true);
-  const [user, setUser] = useState<SuperUser | null>(null);
-  const [message, setMessage] = useState('');
-
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const status = await superApi.status();
-        if (!alive) return;
-        setHasSuper(status.hasSuper);
-        if (hasSuperToken()) {
-          try {
-            const me = await superApi.me();
-            if (alive) {
-              setUser(me.user);
-              setState('in');
-            }
-            return;
-          } catch {
-            clearSuperToken();
-          }
-        }
-        if (alive) setState('signin');
-      } catch (err) {
-        if (alive) {
-          setMessage(errText(err));
-          setState('error');
-        }
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  const signOut = async () => {
-    try {
-      await superApi.logout();
-    } catch {
-      /* signed out here anyway */
-    }
-    clearSuperToken();
-    setUser(null);
-    setHasSuper(true);
-    setState('signin');
-  };
-
-  if (state === 'loading') return <Shell>{<p className="text-sm text-slate-500">Loading...</p>}</Shell>;
-  if (state === 'error')
-    return (
-      <Shell>
-        <div className="max-w-md mx-auto mt-16 text-center">
-          <p className="text-sm font-semibold text-rose-600">Cannot reach the server</p>
-          <p className="text-xs text-slate-500 mt-1">{message}</p>
-          <button onClick={() => window.location.reload()} className="mt-4 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 rounded-lg">
-            Try again
-          </button>
-        </div>
-      </Shell>
-    );
-  if (state === 'signin' || !user)
-    return (
-      <SignIn
-        hasSuper={hasSuper}
-        onDone={u => {
-          setUser(u);
-          setState('in');
-        }}
-      />
-    );
+  const { user, signOut } = useAuth();
+  if (!user) return null;
   return <Dashboard user={user} onSignOut={signOut} />;
 };

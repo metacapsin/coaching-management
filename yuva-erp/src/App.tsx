@@ -409,6 +409,8 @@ function AuthGate() {
   if (serverError) return <ConnectionScreen error={serverError} onRetry={retryConnection} />;
   if (!ready) return <ConnectionScreen />;
   if (!user) return <AuthPage />;
+  // the Super Admin signed in on the same login page: the list of coachings instead of a coaching
+  if (user.role === 'super') return <SuperAdminApp />;
 
   return (
     <InstituteProvider>
@@ -418,8 +420,6 @@ function AuthGate() {
 }
 
 export default function App() {
-  // /superadmin is the separate page of the super admin (its own sign in, never mixed with a coaching)
-  if (window.location.pathname.replace(/\/+$/, '') === '/superadmin') return <SuperAdminApp />;
   return (
     <AuthProvider>
       <AuthGate />

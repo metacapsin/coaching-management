@@ -15,9 +15,11 @@ export type TabId =
   | 'team'
   | 'settings';
 
-export type UserRole = 'admin' | 'staff' | 'teacher' | 'student';
+export type UserRole = 'super' | 'admin' | 'staff' | 'teacher' | 'student';
 
 export const ROLE_TABS: Record<UserRole, TabId[]> = {
+  // Super admin: has its own screen (the list of coachings), no coaching pages
+  super: [],
   // Principal: everything
   admin: [
     'dashboard',

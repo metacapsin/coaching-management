@@ -216,7 +216,10 @@ def forgot_password():
 @route('/api/auth/status', ['GET'])
 def auth_status():
     # any account in the database (also a super admin or another coaching) means the first-run set-up is over
-    return {'hasUsers': root().users.count_documents({}) > 0}
+    return {
+        'hasUsers': root().users.count_documents({}) > 0,
+        'hasSuper': root().for_org(PLATFORM_ORG).user_count() > 0,
+    }
 
 
 @route('/api/auth/setup', ['POST'])
@@ -291,12 +294,21 @@ def login():
             403, 'Your account is waiting for the principal’s approval. Please try again after it is approved.'
         )
 
-    portal_ok = found['role'] in ('admin', 'staff') if portal == 'admin' else found['role'] == portal
+    # the Administration tab is for the super admin, the principal and the office staff
+    portal_ok = found['role'] in ('admin', 'staff', 'super') if portal == 'admin' else found['role'] == portal
     if not portal_ok:
         raise HttpError(
             403,
             f'This is a {role_label(found["role"])} account. Please use the “{portal_label(found["role"])}” tab to sign in.',
         )
+
+    # Signing in to one chosen coaching (from its card): only an account of THAT coaching is let in.
+    # The answer is the same as for a wrong password, so nothing is revealed about other coachings.
+    wanted = b.get('orgId')
+    if isinstance(wanted, str) and wanted and (found.get('orgId') != wanted or found['role'] not in ('admin', 'staff')):
+        fail()
+        s.audit(found, 'login-failed', 'wrong coaching')
+        raise invalid
 
     if auth.needs_upgrade(found):
         auth.set_password(found, password)

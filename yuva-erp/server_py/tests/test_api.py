@@ -658,6 +658,9 @@ class Coachings(unittest.TestCase):
     def login(self, email, password=PASSWORD, portal='admin'):
         return self.call('POST', '/api/auth/login', {'email': email, 'password': password, 'portal': portal})
 
+    def login_to(self, email, org_id, password=PASSWORD):
+        return self.call('POST', '/api/auth/login', {'email': email, 'password': password, 'portal': 'admin', 'orgId': org_id})
+
     def coaching(self, name, email):
         return {'coachingName': name, 'city': 'Bijainagar', 'adminName': f'{name} Admin', 'email': email, 'phone': '+91 98000 11111', 'password': PASSWORD}
 
@@ -671,10 +674,15 @@ class Coachings(unittest.TestCase):
         # nobody can create a coaching principal through the first-run page, bypassing the approval
         self.assertEqual(self.call('GET', '/api/auth/status')[1]['hasUsers'], True)
         self.assertEqual(self.call('POST', '/api/auth/setup', {'name': 'Evil', 'email': 'e2@x.com', 'password': PASSWORD})[0], 409)
+        # one login page: the super admin signs in on the Administration tab, like the principals
+        self.assertEqual(self.login('super@x.com', portal='admin')[0], 200)
         self.assertEqual(self.login('super@x.com', portal='super')[0], 200)
-        self.assertEqual(self.login('super@x.com', portal='admin')[0], 403)  # wrong login page
+        self.assertEqual(self.login('super@x.com', portal='student')[0], 403)  # not a student account
+        self.assertEqual(self.call('GET', '/api/auth/status')[1]['hasSuper'], True)
         # the super admin cannot open the data of a coaching
         self.assertEqual(self.call('GET', '/api/sync', token=self.sup)[0], 403)
+        for method, url in (('GET', '/api/backups'), ('GET', '/api/backup'), ('GET', '/api/audit'), ('POST', '/api/users'), ('PUT', '/api/institute')):
+            self.assertEqual(self.call(method, url, {}, self.sup)[0], 403, url)
         self.assertEqual(self.call('GET', '/api/auth/me', token=self.sup)[0], 200)
 
     def test_02_a_new_coaching_waits_for_approval(self):
@@ -738,6 +746,15 @@ class Coachings(unittest.TestCase):
         self.assertEqual(data['user']['orgId'], self.org_a)
         me = self.call('GET', '/api/sync', token=data['token'])[1]
         self.assertEqual(me['institute']['students'][0]['name'], 'Alice')
+
+    def test_05b_a_coaching_card_lets_in_only_its_own_principal(self):
+        # signing in from the card of Alpha: Alpha's principal enters, Beta's principal does not
+        self.assertEqual(self.login_to('a@x.com', self.org_a)[0], 200)
+        status, data = self.login_to('b@x.com', self.org_a)
+        self.assertEqual((status, data['error']), (401, 'Incorrect email or password.'))
+        self.assertEqual(self.login_to('a@x.com', self.org_b)[0], 401)
+        self.assertEqual(self.login_to('super@x.com', self.org_a)[0], 401)  # the super admin needs the principal's login too
+        self.assertEqual(self.login_to('a@x.com', 'no-such-coaching')[0], 401)
 
     def test_06_switching_a_coaching_off_and_on(self):
         self.assertEqual(self.call('POST', f'/api/super/orgs/{self.org_b}/suspend', token=self.sup)[0], 200)

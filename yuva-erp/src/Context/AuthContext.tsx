@@ -70,9 +70,10 @@ interface AuthContextType {
   user: AuthUser | null;
   users: AuthUser[]; // filled for the principal and front desk staff
   hasUsers: boolean;
+  hasSuper: boolean; // false until the Super Admin was created
   isAdmin: boolean;
 
-  // First-time setup only (creates the Principal / Administrator)
+  // First-time setup only (creates the Super Admin)
   signUp: (input: { name: string; email: string; password: string }) => Promise<AuthResult>;
   // Public registration
   registerNewStudent: (input: NewStudentInput) => Promise<AuthResult>;
@@ -86,7 +87,7 @@ interface AuthContextType {
     password: string;
   }) => Promise<AuthResult>;
 
-  signIn: (input: { email: string; password: string; remember: boolean; portal: Portal }) => Promise<AuthResult>;
+  signIn: (input: { email: string; password: string; remember: boolean; portal: Portal; orgId?: string }) => Promise<AuthResult>;
   signOut: () => Promise<void>;
 
   // Administrator only
@@ -104,6 +105,8 @@ interface AuthContextType {
 
 export const roleLabel = (role?: UserRole) => {
   switch (role) {
+    case 'super':
+      return 'Super Admin';
     case 'admin':
       return 'Principal (Administrator)';
     case 'staff':
@@ -143,6 +146,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<AuthUser | null>(null);
   const [users, setUsers] = useState<AuthUser[]>([]);
   const [hasUsers, setHasUsers] = useState(true);
+  const [hasSuper, setHasSuper] = useState(true);
   const [attemptNo, setAttemptNo] = useState(0);
 
   const isAdmin = user?.role === 'admin';
@@ -153,16 +157,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let cancelled = false;
     (async () => {
       try {
-        const status = await request<{ hasUsers: boolean }>('GET', '/auth/status', undefined, { auth: false });
+        const status = await request<{ hasUsers: boolean; hasSuper: boolean }>('GET', '/auth/status', undefined, { auth: false });
         if (cancelled) return;
         setHasUsers(status.hasUsers);
+        setHasSuper(status.hasSuper);
 
         if (hasToken()) {
           try {
             const me = await request<{ user: AuthUser }>('GET', '/auth/me');
             if (cancelled) return;
             setUser(me.user);
-            startSync();
+            if (me.user.role !== 'super') startSync(); // the super admin has no coaching data to sync
           } catch (err) {
             if (!(err instanceof ApiError) || err.status !== 401) throw err; // 401: the session expired
           }
@@ -204,14 +209,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(session.token, remember);
     setUser(session.user);
     setHasUsers(true);
-    startSync();
+    if (session.user.role === 'super') setHasSuper(true);
+    else startSync(); // the super admin has no coaching data to sync
   };
 
-  // ----- First-time setup: creates the Administrator -----
+  // ----- First-time setup: creates the Super Admin (only on the server computer itself) -----
   const signUp = useCallback(
     (input: { name: string; email: string; password: string }) =>
       attempt(async () => {
-        const session = await request<Session>('POST', '/auth/setup', input, { auth: false });
+        const session = await request<Session>('POST', '/super/setup', input, { auth: false });
         startSession(session, true);
       }),
     []
@@ -251,7 +257,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // ----- Sign in / out -----
   const signIn = useCallback(
-    (input: { email: string; password: string; remember: boolean; portal: Portal }) =>
+    (input: { email: string; password: string; remember: boolean; portal: Portal; orgId?: string }) =>
       attempt(async () => {
         const session = await request<Session>('POST', '/auth/login', input, { auth: false });
         startSession(session, input.remember);
@@ -329,6 +335,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         users,
         hasUsers,
+        hasSuper,
         isAdmin,
         signUp,
         registerNewStudent,

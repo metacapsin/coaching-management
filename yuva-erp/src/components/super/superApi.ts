@@ -1,72 +1,10 @@
 import { useEffect, useState } from 'react';
+import { request } from '../utils/api';
 
-// The Super Admin page has its own sign-in: its token is kept apart from the coaching app's token,
-// so the two can never mix up.
+// The Super Admin signs in on the same login page as everybody else (Administration tab); these calls
+// use the same sign-in as the rest of the app.
 
-const KEY = 'academia_os_super_token_v1';
-
-const read = (): string | null => {
-  try {
-    return localStorage.getItem(KEY) || sessionStorage.getItem(KEY);
-  } catch {
-    return null;
-  }
-};
-
-let token = read();
-
-export const hasSuperToken = () => !!token;
-
-export const setSuperToken = (value: string, remember: boolean) => {
-  token = value;
-  try {
-    localStorage.removeItem(KEY);
-    sessionStorage.removeItem(KEY);
-    (remember ? localStorage : sessionStorage).setItem(KEY, value);
-  } catch {
-    /* the sign-in then lasts until the page is closed */
-  }
-};
-
-export const clearSuperToken = () => {
-  token = null;
-  try {
-    localStorage.removeItem(KEY);
-    sessionStorage.removeItem(KEY);
-  } catch {
-    /* ignore */
-  }
-};
-
-export class SuperApiError extends Error {
-  status: number;
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-  }
-}
-
-export const superRequest = async <T>(method: string, path: string, body?: unknown, auth = true): Promise<T> => {
-  let res: Response;
-  try {
-    res = await fetch(`/api${path}`, {
-      method,
-      headers: {
-        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-        ...(auth && token ? { Authorization: `Bearer ${token}` } : {})
-      },
-      body: body === undefined ? undefined : JSON.stringify(body)
-    });
-  } catch {
-    throw new SuperApiError(0, 'Cannot reach the server. Please check that it is running.');
-  }
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    if (res.status === 401 && auth && token) clearSuperToken();
-    throw new SuperApiError(res.status, (data && data.error) || `Request failed (${res.status}).`);
-  }
-  return data as T;
-};
+const superRequest = <T>(method: string, path: string, body?: unknown) => request<T>(method, path, body);
 
 export type OrgStatus = 'pending' | 'active' | 'suspended';
 
@@ -81,13 +19,6 @@ export interface OrgSummary {
   accounts: number;
 }
 
-export interface SuperUser {
-  id: string;
-  name: string;
-  email: string;
-  role: 'super';
-}
-
 export interface NewCoaching {
   coachingName: string;
   city: string;
@@ -98,13 +29,6 @@ export interface NewCoaching {
 }
 
 export const superApi = {
-  status: () => superRequest<{ hasSuper: boolean }>('GET', '/super/status', undefined, false),
-  setup: (input: { name: string; email: string; password: string }) =>
-    superRequest<{ token: string; user: SuperUser }>('POST', '/super/setup', input, false),
-  login: (email: string, password: string, remember: boolean) =>
-    superRequest<{ token: string; user: SuperUser }>('POST', '/auth/login', { email, password, portal: 'super', remember }, false),
-  me: () => superRequest<{ user: SuperUser }>('GET', '/auth/me'),
-  logout: () => superRequest<{ ok: true }>('POST', '/auth/logout'),
   orgs: () => superRequest<{ orgs: OrgSummary[] }>('GET', '/super/orgs').then(r => r.orgs),
   add: (input: NewCoaching) => superRequest<{ org: OrgSummary }>('POST', '/super/orgs', input),
   edit: (id: string, input: { name: string; city: string }) => superRequest<{ org: OrgSummary }>('PUT', `/super/orgs/${id}`, input),
