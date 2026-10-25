@@ -1,12 +1,13 @@
 # AcademiaOS
 
-Coaching institute management: admissions, enquiries, attendance, fees, exams, batches, timetable,
-notices, study material, reports, parent messages, and separate logins for the principal, staff,
-teachers and students.
+A coaching-institute management platform for a whole area. A **Super Admin** (for example one for a town)
+approves coachings; every **coaching** has its own principal and its own data: admissions, enquiries,
+attendance, fees, expenses and profit, exams, batches, timetable, notices, study material, reports and
+parent messages. One coaching can never see the data of another.
 
-- Front end: React + Vite + Tailwind (this folder, `src/`)
-- Back end: Flask + MongoDB (`server_py/`). All data lives in your MongoDB database.
-- No paid API key is needed. WhatsApp messages open through `wa.me` links (see "Messages" below).
+- Front end: React + Vite + Tailwind (`src/`)
+- Back end: Flask + MongoDB (`server_py/`). Everything is stored in your MongoDB database.
+- No paid API key is needed. WhatsApp messages open through `wa.me` links (see "Messages").
 
 ## Run it
 
@@ -35,12 +36,11 @@ You need [Node.js](https://nodejs.org) 18+, Python 3.10+ and a MongoDB connectio
    ```
 
 Open <http://localhost:3000>. `dev:all` starts the server (port 3001) and the app (port 3000).
-The first time, the app asks you to create the principal account and how to start
-(empty, or with sample data for a demo).
-
+For daily use, `npm start` builds the app and the server shows it at <http://localhost:3001>.
 Other computers in the same network open `http://<this computer's IP>:3000`.
 
-For daily use, `npm start` builds the app and the server shows it at <http://localhost:3001>.
+With MongoDB Atlas, the computer's IP address must be allowed under **Network Access** (a phone hotspot
+changes the IP often; "Allow access from anywhere" is the easy way for a demo, remove it afterwards).
 
 ### Tests
 
@@ -51,37 +51,67 @@ npm test
 Runs the Python tests (in-memory MongoDB, nothing real is touched). Set `ACADEMIA_TEST_REAL=1` to run
 them on a temporary database in your real cluster (it is dropped afterwards).
 
-## What the app does
+## How people sign in (one page, two tabs)
+
+| Tab | Who | What |
+| --- | --- | --- |
+| **Super Admin** | The person who manages all coachings | First time: create the account (only on the server computer, only once). Then sign in. |
+| **Coaching Admin** | The principal (and office staff) of one coaching | Sign in. A new coaching clicks "Register your coaching" and waits for the Super Admin's approval. |
+
+Teachers and students get their accounts from the principal of their coaching (Team & Access, or the
+"Add Teacher" button on the dashboard). Their login tabs are not on the page yet; the server side is ready.
+
+### The Super Admin
+
+- Sees each coaching as a card: principal, number of students and accounts, status.
+- **Approves or rejects** coachings that registered themselves. A coaching can add itself only through this approval.
+- "+ Add coaching" adds a coaching directly (the Super Admin is the approver, so it is active at once).
+- Switch a coaching off or on, edit it, delete it (the name must be typed), set a new password for its principal
+  (the principal then has to choose an own password at the next sign in), and read the platform activity log.
+- Never sees a coaching's data (students, fees, exams...). To enter a coaching the Super Admin needs the
+  principal's own email and password, like anybody else. "Back to Super Admin" in the sidebar (or signing out)
+  returns to the list.
+
+### Isolation and security
+
+- Every request is tied to a sign-in token. The server decides the coaching from the token, never from the browser.
+- Every coaching has its own collections (data, backups, activity log, photos). Accounts are checked against the coaching.
+- A principal cannot delete, switch off, approve or rename a coaching; only the Super Admin can (the server answers 403).
+- Passwords are hashed (scrypt), sign in is throttled, sign-ups are limited, sessions end when a coaching is switched off.
+- Teachers see only their batches, students only their own record, staff do not see the expenses or the institute profile.
+- Security headers are sent (no framing, no sniffing). For HTTPS see "Going online".
+
+## What a coaching can do
 
 | Screen | Who | What |
 | --- | --- | --- |
-| Dashboard | Principal, staff | Numbers, fee chart, follow-ups due, notices, getting-started checklist |
-| Enquiries | Principal, staff | Leads, follow-up dates, WhatsApp, one-click "Admit" that fills the admission form |
+| Dashboard | Principal, staff | Numbers, fee chart, follow-ups due, notices, quick buttons (Add Teacher, New Admission) |
+| Enquiries | Principal, staff | Leads, follow-up dates, WhatsApp, one-click "Admit" (open enquiries are shown first) |
 | Admissions & Students | Principal, staff | Admission, search, edit, ID card, receipts, archive |
-| Fees & Invoicing | Principal, staff | Receipts, cancel receipt (stays in ledger), overdue accounts, programs and standard fees |
+| Fees & Invoicing | Principal, staff | Receipts, cancel receipt, overdue accounts, programs and standard fees |
+| **Expenses & Profit** | Principal only | Write down salary, rent and bills; profit = fees collected minus expenses, per month |
 | Attendance | Principal, staff, teacher | Roll call per batch, absent alerts |
-| Exams | Principal, staff, teacher | Tests, marks, ranks, report cards, admit cards, edit / delete test |
-| Notice Board | Everybody | Principal/staff write for all or a batch; teachers for their batches; students read |
-| Study Material | Everybody | Links, notes, homework with date, per batch |
-| Reports | Principal, staff | Fees by month and mode, attendance by batch, exam results, admissions (CSV and print) |
+| Exams | Principal, staff, teacher | Tests, marks, ranks, report cards, admit cards |
+| Notice Board, Study Material | Everybody | Notices and homework per batch |
+| Reports | Principal, staff | Fees, attendance, exam results, admissions (profit and loss for the principal); CSV and print |
 | Parent Broadcasts | Principal, staff | Templates and a message queue |
-| Team & Access | Principal | Accounts, roles, batches. Everybody edits their own phone / name here |
+| Team & Access | Principal | Teacher, staff and student accounts, batches, password reset |
 | Institute Profile | Principal | Letterhead, backup and restore, clean start |
 
-Each role gets only its own data from the server (a student cannot see classmates, a teacher only their batches).
+A new coaching opens with sample data so every screen can be seen at once (`AUTO_DEMO_FOR_NEW_COACHING` in
+`src/Context/InstituteContext.tsx`; "Delete all data" in the Institute Profile clears it for real use).
 
 ## Backups
 
 Institute Profile → Data Backup: download everything (data, accounts, photos) as one file, restore it
-(you must type RESTORE; a safety copy is taken first), or use the backups the server keeps itself
-(one automatic copy a day, the last 14 are kept, plus "Backup now").
+(you must type RESTORE; a safety copy is taken first), or use the backups the server keeps for every coaching
+itself (one automatic copy a day, the last 14 are kept, plus "Backup now").
 
 ## Messages
 
-The app has no WhatsApp/SMS gateway (that needs a paid account). Messages to parents are opened
-as a ready-made WhatsApp chat on the computer. Bulk messages go to a queue ("Waiting to be sent");
-press "Send now" on each one. To send automatically later, a gateway can be connected at
-`sendNotification` in `src/Context/InstituteContext.tsx`.
+The app has no WhatsApp/SMS gateway (that needs a paid account). Messages to parents are opened as a ready-made
+WhatsApp chat on the computer. Bulk messages go to a queue ("Waiting to be sent"); press "Send now" on each one.
+To send automatically later, a gateway can be connected at `sendNotification` in `src/Context/InstituteContext.tsx`.
 
 ## Going online (HTTPS)
 
@@ -93,12 +123,12 @@ your-domain.com {
 }
 ```
 
-Caddy gets the HTTPS certificate by itself. In MongoDB Atlas, allow the server's IP address under
-Network Access.
+Caddy gets the HTTPS certificate by itself. In MongoDB Atlas, allow the server's IP address under Network Access.
 
 ## Notes for a demo
 
-- The database is in MongoDB Atlas, so the computer needs internet (a mobile hotspot is fine). With a
-  local MongoDB (`mongodb://localhost:27017`) it works fully offline.
-- Choose "Start with sample data" on a new database to see every screen filled.
+- The database is in MongoDB Atlas, so the computer needs internet (a mobile hotspot is fine). With a local
+  MongoDB (`mongodb://localhost:27017`) it works fully offline.
+- Show it in this order: create the Super Admin, register a coaching (second tab), approve it as Super Admin,
+  open the coaching card (principal's email and password), look around, "Back to Super Admin".
 - Change the Atlas password if it was ever shared, and never put the connection string in code or git.

@@ -105,7 +105,7 @@ def build_user(data, status):
     return user
 
 
-PUBLIC_FIELDS = ('id', 'name', 'email', 'role', 'status', 'createdAt', 'phone', 'subject', 'studentId', 'batchIds', 'resetRequestedAt', 'orgId')
+PUBLIC_FIELDS = ('id', 'name', 'email', 'role', 'status', 'createdAt', 'phone', 'subject', 'studentId', 'batchIds', 'resetRequestedAt', 'orgId', 'mustChangePassword')
 
 
 def public_user(u):

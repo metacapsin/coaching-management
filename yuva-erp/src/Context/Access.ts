@@ -11,6 +11,7 @@ export type TabId =
   | 'notices'
   | 'material'
   | 'reports'
+  | 'expenses'
   | 'notifications'
   | 'team'
   | 'settings';
@@ -32,6 +33,7 @@ export const ROLE_TABS: Record<UserRole, TabId[]> = {
     'notices',
     'material',
     'reports',
+    'expenses',
     'notifications',
     'team',
     'settings'

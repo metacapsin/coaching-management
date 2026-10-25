@@ -35,7 +35,7 @@ export const EnquiriesView: React.FC = () => {
   const { enquiries, courses, batches, profile, updateEnquiry, deleteEnquiry } = useInstitute();
 
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'due' | EnquiryStatus>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'due' | EnquiryStatus>('open');
   const [sourceFilter, setSourceFilter] = useState('all');
 
   const [editing, setEditing] = useState<{ enquiry: Enquiry | null } | null>(null);
@@ -60,7 +60,9 @@ export const EnquiriesView: React.FC = () => {
         e.name.toLowerCase().includes(q) ||
         (e.parentName || '').toLowerCase().includes(q) ||
         (qDigits.length >= 3 && e.phone.replace(/\D/g, '').includes(qDigits));
-      const matchesStatus = statusFilter === 'all' || (statusFilter === 'due' ? isDue(e) : e.status === statusFilter);
+      const matchesStatus =
+        statusFilter === 'all' ||
+        (statusFilter === 'open' ? isOpen(e) : statusFilter === 'due' ? isDue(e) : e.status === statusFilter);
       const matchesSource = sourceFilter === 'all' || e.source === sourceFilter;
       return matchesSearch && matchesStatus && matchesSource;
     });
@@ -207,6 +209,7 @@ export const EnquiriesView: React.FC = () => {
           onChange={e => setStatusFilter(e.target.value as typeof statusFilter)}
           className="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
         >
+          <option value="open">Open ones (not admitted, not lost)</option>
           <option value="all">All statuses</option>
           <option value="due">Follow-up due ({dueCount})</option>
           {(Object.keys(STATUS_LABEL) as EnquiryStatus[]).map(s => (

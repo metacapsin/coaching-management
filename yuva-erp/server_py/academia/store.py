@@ -12,7 +12,7 @@ Collections (in the database named by MONGODB_DB):
   meta         "version" (counts every change), "profile" (institute profile), "present" (which lists exist)
   audit        the activity log
   courses, batches, students, attendance, transactions, exams, timetable, templates, notificationLogs,
-  enquiries, announcements, materials
+  enquiries, announcements, materials, expenses
                one document per record (_id = record id); "_pos" keeps the order of the list
   photos       student photos (_id = student id), kept apart so the data stays small
   backups      automatic and manual snapshots of the data (compressed)
@@ -42,6 +42,7 @@ LISTS = [
     'enquiries',
     'announcements',
     'materials',
+    'expenses',
 ]
 
 # The app shows the newest first for these lists
@@ -54,6 +55,7 @@ NEWEST_FIRST = {
     'enquiries',
     'announcements',
     'materials',
+    'expenses',
 }
 
 DEFAULT_ORG = 'default'  # the coaching whose data lives in the plain collection names

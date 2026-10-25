@@ -1,12 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
+import { useAuth } from '../../Context/AuthContext';
 import { downloadCsv, formatINR, toLocalISODate } from '../utils/helpers';
 import { BarChart3, Download, Printer } from 'lucide-react';
 
-type ReportId = 'fees' | 'attendance' | 'exams' | 'admissions';
+type ReportId = 'fees' | 'profit' | 'attendance' | 'exams' | 'admissions';
 
 const REPORTS: { id: ReportId; label: string }[] = [
   { id: 'fees', label: 'Fee Collection' },
+  { id: 'profit', label: 'Profit & Loss' }, // principal only
   { id: 'attendance', label: 'Attendance' },
   { id: 'exams', label: 'Exam Results' },
   { id: 'admissions', label: 'Admissions' }
@@ -54,7 +56,9 @@ const Table: React.FC<{ head: string[]; rows: (string | number)[][]; right?: num
 );
 
 export const ReportsView: React.FC = () => {
-  const { students, transactions, attendance, exams, batches, profile } = useInstitute();
+  const { students, transactions, attendance, exams, batches, profile, expenses } = useInstitute();
+  const { user } = useAuth();
+  const reports = REPORTS.filter(r => r.id !== 'profit' || user?.role === 'admin');
   const [report, setReport] = useState<ReportId>('fees');
   const cur = profile.currencySymbol;
 
@@ -131,6 +135,17 @@ export const ReportsView: React.FC = () => {
     return [...byMonth.entries()].sort((a, b) => b[0].localeCompare(a[0]));
   }, [students]);
 
+  // month by month: what came in, what went out
+  const pl = useMemo(() => {
+    const byMonth = new Map<string, { collected: number; spent: number }>();
+    const row = (key: string) => byMonth.get(key) || { collected: 0, spent: 0 };
+    for (const t of valid) byMonth.set(monthKey(t.date), { ...row(monthKey(t.date)), collected: row(monthKey(t.date)).collected + t.amount });
+    for (const e of expenses) byMonth.set(monthKey(e.date), { ...row(monthKey(e.date)), spent: row(monthKey(e.date)).spent + e.amount });
+    return [...byMonth.entries()]
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([key, v]) => ({ key, ...v, profit: v.collected - v.spent }));
+  }, [valid, expenses]);
+
   const tables = {
     fees: {
       head: ['Month', 'Receipts', `Collected (${cur})`],
@@ -146,6 +161,11 @@ export const ReportsView: React.FC = () => {
       head: ['Test', 'Batch', 'Date', 'Appeared', 'Absent', 'Average', 'Highest', 'Pass %'],
       rows: ex.map(e => [e.title, e.batch, e.date, e.appeared, e.absent, `${e.avg} / ${e.max}`, e.high, `${e.passPct}%`]) as (string | number)[][],
       right: [3, 4, 5, 6, 7]
+    },
+    profit: {
+      head: ['Month', `Fees collected (${cur})`, `Expenses (${cur})`, `Profit / loss (${cur})`],
+      rows: pl.map(r => [monthLabel(r.key), formatINR(r.collected), formatINR(r.spent), `${r.profit < 0 ? '-' : ''}${formatINR(Math.abs(r.profit))}`]) as (string | number)[][],
+      right: [1, 2, 3]
     },
     admissions: {
       head: ['Month', 'New admissions'],
@@ -182,7 +202,7 @@ export const ReportsView: React.FC = () => {
       </div>
 
       <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit flex-wrap print:hidden">
-        {REPORTS.map(r => (
+        {reports.map(r => (
           <button
             key={r.id}
             onClick={() => setReport(r.id)}

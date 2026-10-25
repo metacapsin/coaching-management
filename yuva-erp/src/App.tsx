@@ -22,6 +22,7 @@ import { EnquiriesView } from './components/views/EnquiriesView';
 import { NoticesView } from './components/views/NoticesView';
 import { MaterialView } from './components/views/MaterialView';
 import { ReportsView } from './components/views/ReportsView';
+import { ExpensesView } from './components/views/ExpensesView';
 import { TeamView } from './components/views/Teamview';
 import { StudentPortalView } from './components/views/Studentportalview';
 import { TeacherHomeView } from './components/views/Teacherhomeview';
@@ -29,6 +30,7 @@ import { TeacherHomeView } from './components/views/Teacherhomeview';
 // Auth + layout
 import { SuperAdminApp } from './components/super/SuperAdminApp';
 import { AuthPage } from './components/auth/AuthPage';
+import { ForcePasswordChange } from './components/auth/ForcePasswordChange';
 import { Navbar } from './components/layout/Navbar';
 import { ConnectionScreen } from './components/layout/ConnectionScreen';
 
@@ -55,7 +57,8 @@ import {
   PhoneCall,
   Megaphone,
   BookOpen,
-  BarChart3
+  BarChart3,
+  Wallet
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { FeeTransaction, Student } from './types';
@@ -122,6 +125,7 @@ function MainApp() {
     { id: 'notices', label: 'Notice Board', icon: Megaphone },
     { id: 'material', label: role === 'student' ? 'Study Material' : 'Study Material & Homework', icon: BookOpen },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
+    { id: 'expenses', label: 'Expenses & Profit', icon: Wallet },
     { id: 'team', label: role === 'admin' ? 'Team & Access' : 'My Account', icon: ShieldCheck },
     { id: 'settings', label: 'Institute Profile', icon: Settings }
   ];
@@ -196,6 +200,8 @@ function MainApp() {
         return <MaterialView />;
       case 'reports':
         return <ReportsView />;
+      case 'expenses':
+        return <ExpensesView />;
       case 'team':
         return <TeamView addTeacherSignal={addTeacherSignal} />;
       case 'settings':
@@ -430,6 +436,8 @@ function AuthGate() {
   if (serverError) return <ConnectionScreen error={serverError} onRetry={retryConnection} />;
   if (!ready) return <ConnectionScreen />;
   if (!user) return <AuthPage />;
+  // somebody else set this password: choose an own one before anything else
+  if (user.mustChangePassword) return <ForcePasswordChange />;
   // the Super Admin signed in on the same login page: the list of coachings instead of a coaching
   if (user.role === 'super') return <SuperAdminApp />;
 

@@ -6,6 +6,13 @@ import { request } from '../utils/api';
 
 const superRequest = <T>(method: string, path: string, body?: unknown) => request<T>(method, path, body);
 
+export interface ActivityEntry {
+  at: string;
+  name: string | null;
+  action: string;
+  detail: string;
+}
+
 export type OrgStatus = 'pending' | 'active' | 'suspended';
 
 export interface OrgSummary {
@@ -29,6 +36,7 @@ export interface NewCoaching {
 }
 
 export const superApi = {
+  audit: () => superRequest<{ entries: ActivityEntry[] }>('GET', '/super/audit?limit=100').then(r => r.entries),
   orgs: () => superRequest<{ orgs: OrgSummary[] }>('GET', '/super/orgs').then(r => r.orgs),
   add: (input: NewCoaching) => superRequest<{ org: OrgSummary }>('POST', '/super/orgs', input),
   edit: (id: string, input: { name: string; city: string }) => superRequest<{ org: OrgSummary }>('PUT', `/super/orgs/${id}`, input),

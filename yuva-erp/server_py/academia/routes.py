@@ -553,6 +553,7 @@ def change_password():
         raise HttpError(400, 'New password must be different from the current one.')
 
     auth.set_password(g.user, new)
+    g.user.pop('mustChangePassword', None)  # a password reset by somebody else has to be replaced by an own one
     s.save_user(g.user)
     auth.destroy_sessions_of(s, g.user['id'], g.token)  # other devices must sign in again
     s.audit(g.user, 'change-password')
@@ -723,6 +724,8 @@ def reset_user_password(user_id):
         raise HttpError(404, 'User not found.')
     auth.set_password(target, new)
     target.pop('resetRequestedAt', None)
+    if target['id'] != g.user['id']:
+        target['mustChangePassword'] = True  # the person has to choose an own password at the next sign in
     s.save_user(target)
     if target['id'] == g.user['id']:
         auth.destroy_sessions_of(s, target['id'], g.token)
@@ -921,6 +924,13 @@ def _get_org(org_id):
     return org
 
 
+@route('/api/super/audit', ['GET'], 'super')
+def super_audit():
+    """What happened on the platform: coachings requested, approved, switched off, passwords reset..."""
+    limit = min(500, max(1, request.args.get('limit', default=100, type=int) or 100))
+    return {'entries': g.store.audit_recent(limit)}
+
+
 @route('/api/super/orgs', ['GET'], 'super')
 def super_orgs():
     return {'orgs': [_org_summary(o) for o in root().org_list()]}
@@ -1030,6 +1040,7 @@ def super_reset_admin_password(org_id):
         raise HttpError(404, 'This coaching has no administrator.')
     auth.set_password(admin, new)
     admin.pop('resetRequestedAt', None)
+    admin['mustChangePassword'] = True  # the Super Admin knows this password, so the principal must replace it
     tenant.save_user(admin)
     auth.destroy_sessions_of(root(), admin['id'])
     g.store.audit(g.user, 'coaching-admin-password', f'{org["name"]} ({admin["email"]})')

@@ -6,6 +6,7 @@ import type {
   Course,
   Enquiry,
   Exam,
+  Expense,
   FeeTransaction,
   InstituteProfile,
   NotificationLog,
@@ -37,6 +38,7 @@ export interface AuthUser {
   studentId?: string; // students: linked admission record
   batchIds?: string[]; // teachers: batches they handle
   resetRequestedAt?: string; // set when the person asked for a new password
+  mustChangePassword?: boolean; // somebody else set the password: the person must choose an own one
 }
 
 export interface InstituteData {
@@ -51,6 +53,7 @@ export interface InstituteData {
   templates?: NotificationTemplate[];
   notificationLogs?: NotificationLog[];
   enquiries?: Enquiry[];
+  expenses?: Expense[];
   announcements?: Announcement[];
   materials?: StudyMaterial[];
 }

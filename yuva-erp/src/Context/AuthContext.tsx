@@ -349,7 +349,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ----- Own account -----
   const changeOwnPassword = useCallback(
     (currentPassword: string, newPassword: string) =>
-      attempt(() => request('POST', '/auth/change-password', { currentPassword, newPassword })),
+      attempt(async () => {
+        await request('POST', '/auth/change-password', { currentPassword, newPassword });
+        // the account no longer has to change its password: fetch it again (the screen follows)
+        const me = await request<{ user: AuthUser }>('GET', '/auth/me');
+        setUser(me.user);
+      }),
     []
   );
 

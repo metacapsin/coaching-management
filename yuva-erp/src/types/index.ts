@@ -199,3 +199,18 @@ export interface StudyMaterial {
   authorId: string;
   authorName: string;
 }
+
+// Money the coaching spends (salary, rent...). Only the principal sees it.
+export type ExpenseCategory = 'salary' | 'rent' | 'electricity' | 'marketing' | 'maintenance' | 'stationery' | 'other';
+
+export interface Expense {
+  id: string;
+  date: string; // YYYY-MM-DD
+  title: string;
+  category: ExpenseCategory;
+  amount: number;
+  paymentMethod?: PaymentMethod;
+  notes?: string;
+  createdAt: string;
+  createdBy?: string;
+}

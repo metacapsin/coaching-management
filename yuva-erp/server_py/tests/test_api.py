@@ -109,6 +109,11 @@ class Flow(unittest.TestCase):
     def call(self, *a, **kw):
         return self.api.call(*a, **kw)
 
+    def test_00_security_headers(self):
+        res = self.api.client.get('/api/health')
+        self.assertEqual(res.headers['X-Frame-Options'], 'DENY')
+        self.assertEqual(res.headers['X-Content-Type-Options'], 'nosniff')
+
     def test_01_setup_creates_the_principal_once(self):
         self.assertEqual(self.call('GET', '/api/auth/status')[1]['hasUsers'], False)
         self.assertEqual(self.call('POST', '/api/auth/setup', {'name': 'P', 'email': 'p@x.com', 'password': 'short'})[0], 400)
@@ -701,6 +706,10 @@ class Coachings(unittest.TestCase):
         self.assertEqual(status, 200)
         self.__class__.admin_a, self.__class__.org_a = data['token'], alpha['id']
         self.assertEqual(self.call('GET', '/api/super/orgs', token=self.admin_a)[0], 403)  # a principal is not a super admin
+        self.assertEqual(self.call('GET', '/api/super/audit', token=self.admin_a)[0], 403)
+        actions = [e['action'] for e in self.call('GET', '/api/super/audit', token=self.sup)[1]['entries']]
+        self.assertIn('coaching-approve', actions)
+        self.assertIn('coaching-requested', actions)
 
     def test_03_super_admin_adds_a_coaching_directly(self):
         status, data = self.call('POST', '/api/super/orgs', self.coaching('Beta', 'b@x.com'), self.sup)
@@ -780,7 +789,15 @@ class Coachings(unittest.TestCase):
         self.assertEqual(self.call('POST', f'/api/super/orgs/{self.org_b}/reset-admin-password', {'newPassword': 'weak'}, self.sup)[0], 400)
         self.assertEqual(self.call('POST', f'/api/super/orgs/{self.org_b}/reset-admin-password', {'newPassword': 'Fresh12345'}, self.sup)[0], 200)
         self.assertEqual(self.login('b@x.com')[0], 401)
-        self.assertEqual(self.login('b@x.com', 'Fresh12345')[0], 200)
+        status, data = self.login('b@x.com', 'Fresh12345')
+        self.assertEqual(status, 200)
+        # the Super Admin knows this password, so the principal has to choose an own one
+        self.assertTrue(data['user']['mustChangePassword'])
+        token = data['token']
+        self.assertEqual(self.call('POST', '/api/auth/change-password', {'currentPassword': 'Fresh12345', 'newPassword': 'Own12345pw'}, token)[0], 200)
+        self.assertFalse(self.call('GET', '/api/auth/me', token=token)[1]['user'].get('mustChangePassword'))
+        self.assertEqual(self.login('b@x.com', 'Own12345pw')[0], 200)
+        self.assertEqual(self.call('POST', f'/api/super/orgs/{self.org_b}/reset-admin-password', {'newPassword': 'Fresh12345'}, self.sup)[0], 200)
 
         self.call('POST', '/api/public/register-coaching', self.coaching('Gamma', 'g@x.com'))
         gamma = next(o for o in self.call('GET', '/api/super/orgs', token=self.sup)[1]['orgs'] if o['name'] == 'Gamma')
@@ -802,6 +819,44 @@ class Coachings(unittest.TestCase):
         self.assertEqual(store.user_by_id('u1')['orgId'], 'default')
         self.assertEqual(store.org_get('default')['status'], 'active')
         drop_db(db)
+
+
+class Expenses(unittest.TestCase):
+    """The expenses (and so the profit) are for the principal only."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.db = new_db()
+        cls.api = Api(create_app(db=cls.db, dist_dir='no-dist'))
+        call = cls.api.call
+        cls.admin = call('POST', '/api/auth/setup', {'name': 'P', 'email': 'p@x.com', 'password': PASSWORD})[1]['token']
+        for role, email in (('staff', 's@x.com'), ('teacher', 't@x.com')):
+            call('POST', '/api/users', {'name': role, 'email': email, 'password': PASSWORD, 'role': role, 'batchIds': ['b1']}, cls.admin)
+        cls.staff = call('POST', '/api/auth/login', {'email': 's@x.com', 'password': PASSWORD, 'portal': 'admin'})[1]['token']
+        cls.teacher = call('POST', '/api/auth/login', {'email': 't@x.com', 'password': PASSWORD, 'portal': 'teacher'})[1]['token']
+
+    @classmethod
+    def tearDownClass(cls):
+        drop_db(cls.db)
+
+    def call(self, *a, **kw):
+        return self.api.call(*a, **kw)
+
+    def test_1_the_principal_keeps_the_expenses(self):
+        rent = {'id': 'x1', 'date': '2026-10-01', 'title': 'Rent', 'category': 'rent', 'amount': 40000, 'createdAt': ''}
+        self.assertEqual(self.call('PUT', '/api/institute', {'changes': {'expenses': {'upsert': [rent]}}}, self.admin)[0], 200)
+        seen = self.call('GET', '/api/sync', token=self.admin)[1]['institute']
+        self.assertEqual([e['title'] for e in seen['expenses']], ['Rent'])
+
+    def test_2_staff_and_teachers_neither_see_nor_change_them(self):
+        staff_view = self.call('GET', '/api/sync', token=self.staff)[1]['institute']
+        self.assertNotIn('expenses', staff_view)
+        self.assertEqual(self.call('GET', '/api/sync', token=self.teacher)[1]['institute']['expenses'], [])
+        change = {'changes': {'expenses': {'remove': ['x1']}}}
+        self.assertEqual(self.call('PUT', '/api/institute', change, self.staff)[0], 403)
+        self.assertEqual(self.call('PUT', '/api/institute', change, self.teacher)[0], 403)
+        still = self.call('GET', '/api/sync', token=self.admin)[1]['institute']['expenses']
+        self.assertEqual(len(still), 1)
 
 
 if __name__ == '__main__':

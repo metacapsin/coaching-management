@@ -75,6 +75,9 @@ def create_app(db=None, dist_dir=None):
     @app.after_request
     def headers(response):
         response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'DENY'  # nobody can show the app inside another website
+        response.headers['Referrer-Policy'] = 'same-origin'
+        response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
         if request.path.startswith('/api'):
             response.headers.setdefault('Cache-Control', 'no-store')
         return response

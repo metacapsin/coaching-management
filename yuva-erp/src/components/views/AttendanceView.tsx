@@ -119,14 +119,14 @@ export const AttendanceView: React.FC = () => {
       <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
           {/* Batch Selector */}
-          <div>
+          <div className="w-full sm:w-auto">
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
               Select Batch
             </label>
             <select
               value={selectedBatchId}
               onChange={e => setSelectedBatchId(e.target.value)}
-              className="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium min-w-56"
+              className="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium min-w-0 w-full sm:min-w-56 sm:w-auto"
             >
               {batches.map(b => (
                 <option key={b.id} value={b.id}>

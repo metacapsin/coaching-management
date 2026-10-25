@@ -20,6 +20,7 @@ import type {
   AttendanceStatus,
   PaymentMethod,
   Enquiry,
+  Expense,
   Announcement,
   StudyMaterial
 } from '../types';
@@ -35,6 +36,7 @@ import {
   initialNotificationTemplates,
   initialNotificationLogs,
   initialEnquiries,
+  initialExpenses,
   initialAnnouncements,
   initialMaterials
 } from '../data/mockData';
@@ -73,6 +75,7 @@ type ListKey =
   | 'templates'
   | 'notificationLogs'
   | 'enquiries'
+  | 'expenses'
   | 'announcements'
   | 'materials';
 
@@ -87,6 +90,7 @@ const LIST_KEYS: ListKey[] = [
   'templates',
   'notificationLogs',
   'enquiries',
+  'expenses',
   'announcements',
   'materials'
 ];
@@ -94,7 +98,7 @@ const LIST_KEYS: ListKey[] = [
 // What each kind of account may send (the server checks this again)
 const writableKeys = (role?: string): string[] => {
   if (role === 'admin') return ['profile', ...LIST_KEYS];
-  if (role === 'staff') return [...LIST_KEYS];
+  if (role === 'staff') return LIST_KEYS.filter(key => key !== 'expenses'); // the expenses are for the principal only
   if (role === 'teacher') return ['attendance', 'exams', 'notificationLogs', 'materials', 'announcements'];
   return [];
 };
@@ -113,6 +117,7 @@ interface Values {
   templates: NotificationTemplate[];
   notificationLogs: NotificationLog[];
   enquiries: Enquiry[];
+  expenses: Expense[];
   announcements: Announcement[];
   materials: StudyMaterial[];
 }
@@ -167,6 +172,7 @@ interface InstituteContextType {
   templates: NotificationTemplate[];
   notificationLogs: NotificationLog[];
   enquiries: Enquiry[];
+  expenses: Expense[];
   announcements: Announcement[];
   materials: StudyMaterial[];
 
@@ -223,6 +229,11 @@ interface InstituteContextType {
   addEnquiry: (enquiry: Omit<Enquiry, 'id' | 'createdAt' | 'createdBy'>) => Enquiry;
   updateEnquiry: (id: string, updated: Partial<Omit<Enquiry, 'id'>>) => void;
   deleteEnquiry: (id: string) => void;
+
+  // Expense actions (principal only)
+  addExpense: (expense: Omit<Expense, 'id' | 'createdAt' | 'createdBy'>) => Expense;
+  updateExpense: (id: string, updated: Partial<Omit<Expense, 'id'>>) => void;
+  deleteExpense: (id: string) => void;
 
   // Notice actions
   addAnnouncement: (notice: Omit<Announcement, 'id' | 'createdAt' | 'authorId' | 'authorName'>) => Announcement;
@@ -286,6 +297,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [templates, setTemplates] = useState<NotificationTemplate[]>(initialNotificationTemplates);
   const [notificationLogs, setNotificationLogs] = useState<NotificationLog[]>(initialNotificationLogs);
   const [enquiries, setEnquiries] = useState<Enquiry[]>(initialEnquiries);
+  const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
   const [announcements, setAnnouncements] = useState<Announcement[]>(initialAnnouncements);
   const [materials, setMaterials] = useState<StudyMaterial[]>(initialMaterials);
 
@@ -301,6 +313,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     templates,
     notificationLogs,
     enquiries,
+    expenses,
     announcements,
     materials
   };
@@ -327,6 +340,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (data.templates !== undefined) { setTemplates(data.templates); mark('templates', data.templates); }
     if (data.notificationLogs !== undefined) { setNotificationLogs(data.notificationLogs); mark('notificationLogs', data.notificationLogs); }
     if (data.enquiries !== undefined) { setEnquiries(data.enquiries); mark('enquiries', data.enquiries); }
+    if (data.expenses !== undefined) { setExpenses(data.expenses); mark('expenses', data.expenses); }
     if (data.announcements !== undefined) { setAnnouncements(data.announcements); mark('announcements', data.announcements); }
     if (data.materials !== undefined) { setMaterials(data.materials); mark('materials', data.materials); }
   };
@@ -416,7 +430,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (pushTimer.current) clearTimeout(pushTimer.current);
     pushTimer.current = setTimeout(flush, 300);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, onboarding, profile, courses, batches, students, attendance, transactions, exams, timetable, templates, notificationLogs, enquiries, announcements, materials]);
+  }, [ready, onboarding, profile, courses, batches, students, attendance, transactions, exams, timetable, templates, notificationLogs, enquiries, expenses, announcements, materials]);
 
   // Signing out sends changes that are still waiting
   useEffect(
@@ -767,6 +781,22 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setEnquiries(prev => prev.filter(e => e.id !== id));
   };
 
+  // ----- expenses -----
+
+  const addExpense = (data: Omit<Expense, 'id' | 'createdAt' | 'createdBy'>) => {
+    const expense: Expense = { ...data, id: uid('exp'), createdAt: new Date().toISOString(), createdBy: user?.name };
+    setExpenses(prev => [expense, ...prev]);
+    return expense;
+  };
+
+  const updateExpense = (id: string, updated: Partial<Omit<Expense, 'id'>>) => {
+    setExpenses(prev => prev.map(e => (e.id === id ? { ...e, ...updated } : e)));
+  };
+
+  const deleteExpense = (id: string) => {
+    setExpenses(prev => prev.filter(e => e.id !== id));
+  };
+
   // ----- notices -----
 
   const addAnnouncement = (data: Omit<Announcement, 'id' | 'createdAt' | 'authorId' | 'authorName'>) => {
@@ -861,6 +891,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setTemplates(initialNotificationTemplates);
     setNotificationLogs(initialNotificationLogs);
     setEnquiries(initialEnquiries);
+    setExpenses(initialExpenses);
     setAnnouncements(initialAnnouncements);
     setMaterials(initialMaterials);
   };
@@ -876,6 +907,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setTimetable([]);
     setNotificationLogs([]);
     setEnquiries([]);
+    setExpenses([]);
     setAnnouncements([]);
     setMaterials([]);
   };
@@ -913,6 +945,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         templates,
         notificationLogs,
         enquiries,
+        expenses,
         announcements,
         materials,
         saveState: linkStatus === 'offline' ? 'offline' : saveState,
@@ -941,6 +974,9 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         addEnquiry,
         updateEnquiry,
         deleteEnquiry,
+        addExpense,
+        updateExpense,
+        deleteExpense,
         addAnnouncement,
         updateAnnouncement,
         deleteAnnouncement,

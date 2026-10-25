@@ -13,18 +13,20 @@ import {
   Plus,
   Trash2,
   Lock,
+  Search,
+  History,
   Users,
   X,
   AlertTriangle
 } from 'lucide-react';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { ModalShell } from '../ui/ModalShell';
-import { formatDate } from '../utils/helpers';
+import { formatDate, formatDateTime } from '../utils/helpers';
 import { ApiError } from '../utils/api';
 import type { AuthUser } from '../utils/api';
 import { useAuth } from '../../Context/AuthContext';
 import { superApi, useOrgs } from './superApi';
-import type { NewCoaching, OrgStatus, OrgSummary } from './superApi';
+import type { ActivityEntry, NewCoaching, OrgStatus, OrgSummary } from './superApi';
 
 const inputCls = 'w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500';
 
@@ -308,6 +310,78 @@ const EnterModal: React.FC<{ org: OrgSummary; onClose: () => void }> = ({ org, o
   );
 };
 
+const ACTION_TEXT: Record<string, string> = {
+  'super-setup': 'Super Admin created',
+  'coaching-requested': 'Coaching asked to join',
+  'coaching-add': 'Coaching added',
+  'coaching-approve': 'Coaching approved',
+  'coaching-reject': 'Request rejected',
+  'coaching-suspend': 'Coaching switched off',
+  'coaching-activate': 'Coaching switched on',
+  'coaching-edit': 'Coaching edited',
+  'coaching-delete': 'Coaching deleted',
+  'coaching-admin-password': 'Principal password set',
+  login: 'Signed in',
+  'login-failed': 'Failed sign in',
+  'change-password': 'Password changed'
+};
+
+// What happened on the platform (newest first)
+const ActivityPanel: React.FC = () => {
+  const [open, setOpen] = useState(false);
+  const [entries, setEntries] = useState<ActivityEntry[] | null>(null);
+  const [error, setError] = useState('');
+
+  const load = async () => {
+    try {
+      setEntries(await superApi.audit());
+      setError('');
+    } catch (err) {
+      setError(errText(err));
+    }
+  };
+
+  return (
+    <section className="mt-8 bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
+      <button
+        onClick={() => {
+          const next = !open;
+          setOpen(next);
+          if (next) void load();
+        }}
+        className="w-full px-5 py-3 flex items-center justify-between text-sm font-semibold hover:bg-slate-50"
+      >
+        <span className="flex items-center gap-2">
+          <History className="w-4 h-4 text-indigo-600" />
+          Recent activity
+        </span>
+        <span className="text-xs text-slate-400">{open ? 'Hide' : 'Show'}</span>
+      </button>
+      {open && (
+        <div className="border-t border-slate-100">
+          {error && <p className="p-4 text-xs text-rose-600">{error}</p>}
+          {!entries && !error && <p className="p-4 text-xs text-slate-400">Loading...</p>}
+          {entries && entries.length === 0 && <p className="p-4 text-xs text-slate-400">Nothing yet.</p>}
+          {entries && entries.length > 0 && (
+            <ul className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
+              {entries.map((e, i) => (
+                <li key={i} className="px-5 py-2.5 flex items-start justify-between gap-3 text-xs">
+                  <div className="min-w-0">
+                    <span className="font-semibold text-slate-800">{ACTION_TEXT[e.action] || e.action}</span>
+                    {e.detail && <span className="text-slate-500"> · {e.detail}</span>}
+                    {e.name && <div className="text-[11px] text-slate-400">by {e.name}</div>}
+                  </div>
+                  <span className="text-[11px] text-slate-400 shrink-0">{formatDateTime(e.at)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </section>
+  );
+};
+
 // ---------- the dashboard ----------
 
 const Dashboard: React.FC<{ user: AuthUser; onSignOut: () => void }> = ({ user, onSignOut }) => {
@@ -320,6 +394,7 @@ const Dashboard: React.FC<{ user: AuthUser; onSignOut: () => void }> = ({ user, 
     | null
   >(null);
   const [filter, setFilter] = useState<'all' | OrgStatus>('all');
+  const [query, setQuery] = useState('');
 
   const flash = (type: 'ok' | 'error', text: string) => {
     setNotice({ type, text });
@@ -337,7 +412,12 @@ const Dashboard: React.FC<{ user: AuthUser; onSignOut: () => void }> = ({ user, 
   };
 
   const pending = orgs.filter(o => o.status === 'pending');
-  const shown = orgs.filter(o => filter === 'all' || o.status === filter);
+  const q = query.trim().toLowerCase();
+  const shown = orgs.filter(
+    o =>
+      (filter === 'all' || o.status === filter) &&
+      (!q || [o.name, o.city, o.admin?.name, o.admin?.email].some(v => (v || '').toLowerCase().includes(q)))
+  );
   const totalStudents = orgs.reduce((n, o) => n + o.students, 0);
 
   const stat = (label: string, value: number | string, cls = 'text-slate-900') => (
@@ -434,8 +514,18 @@ const Dashboard: React.FC<{ user: AuthUser; onSignOut: () => void }> = ({ user, 
         </section>
       )}
 
-      <div className="flex items-center justify-between gap-3 mb-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
         <h2 className="text-sm font-semibold">All coachings ({shown.length})</h2>
+        <div className="relative flex-1 min-w-48 max-w-sm">
+          <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
+          <input
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search by coaching, city or principal..."
+            className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
         <select
           value={filter}
           onChange={e => setFilter(e.target.value as 'all' | OrgStatus)}
@@ -552,6 +642,8 @@ const Dashboard: React.FC<{ user: AuthUser; onSignOut: () => void }> = ({ user, 
           })}
         </div>
       )}
+
+      <ActivityPanel />
 
       {modal?.kind === 'add' && <AddCoachingModal onClose={() => setModal(null)} onDone={name => { flash('ok', `${name} was added.`); reload(); }} />}
       {modal?.kind === 'edit' && <EditModal org={modal.org} onClose={() => setModal(null)} onDone={() => { flash('ok', 'Saved.'); reload(); }} />}

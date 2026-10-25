@@ -1,5 +1,5 @@
 import { toLocalISODate } from '../components/utils/helpers';
-import type { Enquiry, Announcement, StudyMaterial } from '../types';
+import type { Enquiry, Announcement, StudyMaterial, Expense } from '../types';
 
 // Dates in the sample data are relative to today, so the sample always looks current
 const inDays = (n: number) => toLocalISODate(new Date(Date.now() + n * 86400000));
@@ -900,4 +900,32 @@ export const initialMaterials: StudyMaterial[] = [
     authorId: "seed",
     authorName: "Prof. Rajesh Kulkarni"
   }
+];
+
+// Dates are relative to today, so the current month and the months before always have entries
+const expense = (id: string, daysAgo: number, title: string, category: Expense['category'], amount: number, method: Expense['paymentMethod']): Expense => ({
+  id,
+  date: inDays(-daysAgo),
+  title,
+  category,
+  amount,
+  paymentMethod: method,
+  createdAt: hoursAgo(daysAgo * 24),
+  createdBy: 'Principal'
+});
+
+export const initialExpenses: Expense[] = [
+  expense('exp-1', 2, 'Teachers salary (this month)', 'salary', 95000, 'Bank Transfer'),
+  expense('exp-2', 4, 'Building rent', 'rent', 40000, 'Bank Transfer'),
+  expense('exp-3', 6, 'Electricity bill', 'electricity', 6200, 'UPI'),
+  expense('exp-4', 9, 'Pamphlets and banner for admission drive', 'marketing', 8500, 'Cash'),
+  expense('exp-5', 12, 'Projector repair', 'maintenance', 3200, 'Cash'),
+  // The sample fees were collected in April, May and August 2025: the costs of those months, so the profit looks real
+  { id: 'exp-6', date: '2025-08-03', title: 'Building rent', category: 'rent', amount: 40000, paymentMethod: 'Bank Transfer', createdAt: '2025-08-03T09:00:00.000Z', createdBy: 'Principal' },
+  { id: 'exp-7', date: '2025-08-12', title: 'Electricity bill', category: 'electricity', amount: 5800, paymentMethod: 'UPI', createdAt: '2025-08-12T09:00:00.000Z', createdBy: 'Principal' },
+  { id: 'exp-8', date: '2025-05-02', title: 'Teachers salary', category: 'salary', amount: 85000, paymentMethod: 'Bank Transfer', createdAt: '2025-05-02T09:00:00.000Z', createdBy: 'Principal' },
+  { id: 'exp-9', date: '2025-05-04', title: 'Building rent', category: 'rent', amount: 40000, paymentMethod: 'Bank Transfer', createdAt: '2025-05-04T09:00:00.000Z', createdBy: 'Principal' },
+  { id: 'exp-10', date: '2025-05-20', title: 'Social media advertising', category: 'marketing', amount: 8000, paymentMethod: 'UPI', createdAt: '2025-05-20T09:00:00.000Z', createdBy: 'Principal' },
+  { id: 'exp-11', date: '2025-04-03', title: 'Teachers salary', category: 'salary', amount: 85000, paymentMethod: 'Bank Transfer', createdAt: '2025-04-03T09:00:00.000Z', createdBy: 'Principal' },
+  { id: 'exp-12', date: '2025-04-05', title: 'Building rent', category: 'rent', amount: 40000, paymentMethod: 'Bank Transfer', createdAt: '2025-04-05T09:00:00.000Z', createdBy: 'Principal' }
 ];

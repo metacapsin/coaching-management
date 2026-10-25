@@ -1,7 +1,7 @@
 """Who may see and change which institute data.
 
   admin    everything
-  staff    everything except the institute profile (settings)
+  staff    everything except the institute profile (settings) and the expenses (money the coaching spends)
   teacher  only their own batches: attendance and test marks, study material and notices for those batches
   student  only their own record, attendance, fees, results, timetable, notices and study material (read only)
 
@@ -18,6 +18,9 @@ from .errors import HttpError
 from .store import LISTS
 
 MAX_ITEMS_PER_REQUEST = 200000
+
+# Lists only the principal may see and change
+PRINCIPAL_ONLY = {'expenses'}
 
 
 def rank_of(score, scores):
@@ -43,7 +46,7 @@ def scope_institute(user, store):
         if profile is not None:
             out['profile'] = profile
         for name in LISTS:
-            if name in present:
+            if name in present and (role == 'admin' or name not in PRINCIPAL_ONLY):
                 out[name] = store.find(name)
         return out
 
@@ -63,6 +66,7 @@ def scope_institute(user, store):
             'transactions': [],
             'notificationLogs': [],
             'enquiries': [],
+            'expenses': [],
             'announcements': store.find('announcements', {'$or': [{'audience': 'all'}, {'batchId': {'$in': ids}}]}),
             'materials': store.find('materials', {'batchId': {'$in': ids}}),
         }
@@ -80,6 +84,7 @@ def scope_institute(user, store):
         'transactions': [],
         'notificationLogs': [],
         'enquiries': [],
+        'expenses': [],
         'announcements': [],
         'materials': [],
     }
@@ -356,6 +361,8 @@ def apply_changes(user, store, changes):
             profile = change
             continue
         parsed = _parse_change(name, change)
+        if name in PRINCIPAL_ONLY and user['role'] != 'admin':
+            raise HttpError(403, 'Only the principal can change the expenses.')
         if user['role'] == 'teacher':
             parsed = _teacher_plan(name, parsed, user, store)
         plans.append((name, parsed))
