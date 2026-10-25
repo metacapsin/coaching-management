@@ -23,9 +23,15 @@ def start_daily_snapshots(store):
     def loop():
         while True:
             try:
-                snapshot_if_due(store)
-            except Exception as err:  # a failed backup must never stop the server
-                print('Automatic backup failed:', err)
+                orgs = [o['id'] for o in store.org_list() if o.get('status') != 'pending'] or [store.org]
+            except Exception as err:
+                print('Could not list the coachings:', err)
+                orgs = [store.org]
+            for org in orgs:  # every coaching gets its own daily backup
+                try:
+                    snapshot_if_due(store.for_org(org))
+                except Exception as err:  # a failed backup must never stop the server
+                    print('Automatic backup failed:', err)
             time.sleep(CHECK_EVERY_SEC)
 
     thread = threading.Thread(target=loop, name='daily-backup', daemon=True)

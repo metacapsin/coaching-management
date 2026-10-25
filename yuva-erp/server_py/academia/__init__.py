@@ -35,6 +35,7 @@ def create_app(db=None, dist_dir=None):
     app.config['MAX_CONTENT_LENGTH'] = MAX_BODY
     app.json.sort_keys = False
     app.extensions['store'] = Store(db)
+    app.extensions['store'].migrate_to_coachings()  # data from before the coachings belongs to the first one
     app.extensions['store'].move_inline_photos()  # older data keeps photos inside the records
 
     from .routes import bp, make_limiters

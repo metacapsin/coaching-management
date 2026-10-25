@@ -1,7 +1,9 @@
 """All API routes. Each route says who may call it:
   public   anybody (sign in, sign up)
   user     any signed-in account
-  admin    principal only
+  admin    principal only (of one coaching)
+  super    the super admin only (manages the coachings, never sees their data)
+  any      any signed-in account, also the super admin
 """
 
 import functools
@@ -17,6 +19,7 @@ from . import auth
 from .errors import HttpError
 from .rollno import next_roll_number
 from .scope import apply_changes, scope_institute
+from .store import DEFAULT_ORG, PLATFORM_ORG
 from .validate import (
     EMAIL_REGEX,
     last10,
@@ -46,8 +49,15 @@ def make_limiters():
     }
 
 
-def store():
+def root():
+    """The store that knows all coachings (and the accounts, which are shared)."""
     return current_app.extensions['store']
+
+
+def store():
+    """The data of the coaching this request is about (set by the route, or the first coaching)."""
+    chosen = g.get('store')
+    return chosen if chosen is not None else root()
 
 
 def limiters():
@@ -61,10 +71,23 @@ def route(rule, methods, access='public'):
         def wrapper(*args, **kwargs):
             g.token = _bearer_token()
             g.user = None
+            g.store = None
             if access != 'public':
-                g.user = auth.user_for_token(store(), g.token)
+                r = root()
+                g.user = auth.user_for_token(r, g.token)
                 if not g.user:
                     raise HttpError(401, 'Please sign in.')
+                is_super = g.user['role'] == 'super'
+                if access == 'super' and not is_super:
+                    raise HttpError(403, 'Only the super admin can do this.')
+                if access not in ('super', 'any') and is_super:
+                    raise HttpError(403, 'The super admin manages the coachings and cannot open their data.')
+                org_id = PLATFORM_ORG if is_super else (g.user.get('orgId') or DEFAULT_ORG)
+                if not is_super:
+                    org = r.org_get(org_id)
+                    if not org or org.get('status') != 'active':
+                        raise HttpError(403, 'This coaching is not active. Please contact the super admin.')
+                g.store = r.for_org(org_id)
                 if access == 'admin' and g.user['role'] != 'admin':
                     raise HttpError(403, 'Only the principal (administrator) can do this.')
             return fn(*args, **kwargs)
@@ -109,6 +132,24 @@ def require_setup():
         )
 
 
+def choose_org():
+    """The coaching a public sign-up form is for (the browser sends orgId). When only one coaching
+    exists it is used without asking."""
+    r = root()
+    data = request.get_json(silent=True) if request.method == 'POST' else None
+    org_id = (data.get('orgId') if isinstance(data, dict) else None) or request.args.get('orgId')
+    if not org_id:
+        active = r.org_active_list()
+        if len(active) != 1:
+            raise HttpError(400, 'Please choose your coaching.')
+        org_id = active[0]['id']
+    org = r.org_get(org_id) if isinstance(org_id, str) else None
+    if not org or org.get('status') != 'active':
+        raise HttpError(404, 'This coaching was not found or is not active.')
+    g.store = r.for_org(org_id)
+    return g.store
+
+
 def limit_registrations():
     """Public sign-up forms are limited per address so nobody can flood the server."""
     ip = client_ip()
@@ -134,7 +175,7 @@ def check_password(pw):
 
 
 def email_taken(email):
-    return store().user_by_email(email) is not None
+    return root().user_by_email(email) is not None  # one email, one account, over all coachings
 
 
 def add_user_or_conflict(user):
@@ -161,10 +202,10 @@ def forgot_password():
     """Marks that somebody forgot the password, so the principal sees it in Team & Access and sets a new one.
     The answer is always the same, so nobody can find out which emails have an account."""
     limit_registrations()
-    s = store()
     email = text(body().get('email')).lower()
-    target = s.user_by_email(email) if email else None
+    target = root().user_by_email(email) if email else None
     if target and (target.get('status') or 'active') == 'active':
+        s = root().for_org(target.get('orgId') or DEFAULT_ORG)
         target['resetRequestedAt'] = datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z')
         s.save_user(target)
         s.bump()
@@ -174,14 +215,15 @@ def forgot_password():
 
 @route('/api/auth/status', ['GET'])
 def auth_status():
-    return {'hasUsers': store().user_count() > 0}
+    # any account in the database (also a super admin or another coaching) means the first-run set-up is over
+    return {'hasUsers': root().users.count_documents({}) > 0}
 
 
 @route('/api/auth/setup', ['POST'])
 def setup():
     """First start: creates the principal. Only works while there is no account at all."""
     s = store()
-    if s.user_count() > 0:
+    if root().users.count_documents({}) > 0:
         raise HttpError(409, 'Setup is already complete. Please sign in, or register as a student or teacher.')
     b = body()
     name = text(b.get('name'))
@@ -194,6 +236,7 @@ def setup():
 
     user = auth.build_user({'name': name, 'email': email, 'password': password, 'role': 'admin'}, 'active')
     add_user_or_conflict(user)
+    root().ensure_default_org()
     s.bump()
     s.audit(user, 'setup', 'Principal account created')
     return start_session(user)
@@ -224,6 +267,8 @@ def login():
         ip_limiter.fail(ip)
 
     found = s.user_by_email(email)
+    if found:
+        s = s.for_org(PLATFORM_ORG if found['role'] == 'super' else (found.get('orgId') or DEFAULT_ORG))
     if not found or len(password) > 200:
         auth.hash_password(password[:200], '0' * 32)  # same time whether or not the email exists
         fail()
@@ -233,6 +278,13 @@ def login():
         fail()
         s.audit(found, 'login-failed', 'wrong password')
         raise invalid
+
+    if found['role'] != 'super':
+        org = root().org_get(found.get('orgId') or DEFAULT_ORG)
+        if not org or org.get('status') == 'pending':
+            raise HttpError(403, 'Your coaching is waiting for the super admin’s approval. Please try again after it is approved.')
+        if org.get('status') == 'suspended':
+            raise HttpError(403, 'This coaching has been switched off by the super admin. Please contact the super admin.')
 
     if (found.get('status') or 'active') == 'pending':
         raise HttpError(
@@ -256,7 +308,7 @@ def login():
 
 @route('/api/auth/register-teacher', ['POST'])
 def register_teacher():
-    s = store()
+    s = choose_org()
     require_setup()
     limit_registrations()
     b = body()
@@ -293,7 +345,7 @@ def register_teacher():
 @route('/api/auth/register-student', ['POST'])
 def register_student():
     """A student that was admitted by the office creates a login (checked against the admission record)."""
-    s = store()
+    s = choose_org()
     require_setup()
     limit_registrations()
     b = body()
@@ -355,7 +407,7 @@ def register_student():
 
 @route('/api/public/registration-options', ['GET'])
 def registration_options():
-    s = store()
+    s = choose_org()
     students = s.find('students')
     batches = [
         {
@@ -380,7 +432,7 @@ def registration_options():
 @route('/api/auth/register-new-student', ['POST'])
 def register_new_student():
     """A new student registers on the portal: the student record gets an automatic roll number."""
-    s = store()
+    s = choose_org()
     require_setup()
     limit_registrations()
     b = body()
@@ -465,18 +517,18 @@ def register_new_student():
 # ---------- any signed-in account ----------
 
 
-@route('/api/auth/logout', ['POST'], 'user')
+@route('/api/auth/logout', ['POST'], 'any')
 def logout():
     auth.destroy_session(store(), g.token)
     return ok()
 
 
-@route('/api/auth/me', ['GET'], 'user')
+@route('/api/auth/me', ['GET'], 'any')
 def me():
     return {'user': auth.public_user(g.user)}
 
 
-@route('/api/auth/change-password', ['POST'], 'user')
+@route('/api/auth/change-password', ['POST'], 'any')
 def change_password():
     s = store()
     b = body()
@@ -510,6 +562,9 @@ def sync():
         'user': auth.public_user(g.user),
         'institute': scope_institute(g.user, s),
     }
+    org = root().org_get(s.org)
+    if org:
+        out['org'] = {'id': org['id'], 'name': org['name'], 'city': org.get('city', '')}
     if g.user['role'] in ('admin', 'staff'):
         out['users'] = [auth.public_user(u) for u in s.users_all()]
     return out
@@ -720,6 +775,249 @@ def update_profile():
     return {'user': auth.public_user(user)}
 
 
+# ---------- coachings: public ----------
+
+
+@route('/api/public/coachings', ['GET'])
+def public_coachings():
+    """The coachings a student or teacher can sign up to."""
+    return {'coachings': [{'id': o['id'], 'name': o['name'], 'city': o.get('city', '')} for o in root().org_active_list()]}
+
+
+def _now_iso():
+    return datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z')
+
+
+def _new_coaching(b, status):
+    """Creates a coaching and its principal account. status: 'pending' (waits for the super admin) or 'active'."""
+    r = root()
+    name = text(b.get('coachingName'), 120)
+    admin_name = text(b.get('adminName'))
+    email = text(b.get('email')).lower()
+    if not name:
+        raise HttpError(400, 'Please enter the name of the coaching.')
+    if not admin_name:
+        raise HttpError(400, 'Please enter the name of the administrator.')
+    if len(last10(b.get('phone'))) < 10:
+        raise HttpError(400, 'Please enter a valid 10-digit mobile number.')
+    check_email(email)
+    check_password(b.get('password'))
+    if email_taken(email):
+        raise HttpError(409, 'An account with this email already exists.')
+
+    org = {
+        'id': new_id('org'),
+        'name': name,
+        'city': text(b.get('city'), 80),
+        'status': status,
+        'createdAt': _now_iso(),
+    }
+    user = auth.build_user(
+        {
+            'name': admin_name,
+            'email': email,
+            'password': b['password'],
+            'role': 'admin',
+            'phone': text(b.get('phone'), 30),
+        },
+        'active' if status == 'active' else 'pending',
+    )
+    r.org_save(org)
+    tenant = r.for_org(org['id'])
+    try:
+        tenant.add_user(user)
+    except DuplicateKeyError:
+        r.org_remove(org['id'])
+        raise HttpError(409, 'An account with this email already exists.')
+    tenant.bump()
+    return org, user
+
+
+@route('/api/public/register-coaching', ['POST'])
+def register_coaching():
+    """A coaching asks to join. The super admin has to approve it before its principal can sign in."""
+    limit_registrations()
+    org, user = _new_coaching(body(), 'pending')
+    root().for_org(PLATFORM_ORG).audit(None, 'coaching-requested', f'{org["name"]} ({user["email"]})')
+    return ok()
+
+
+# ---------- the super admin ----------
+
+
+def _loopback():
+    return client_ip() in ('127.0.0.1', '::1', 'localhost')
+
+
+@route('/api/super/status', ['GET'])
+def super_status():
+    return {'hasSuper': root().for_org(PLATFORM_ORG).user_count() > 0}
+
+
+@route('/api/super/setup', ['POST'])
+def super_setup():
+    """The first super admin. Only from the server computer itself, and only while there is none."""
+    platform = root().for_org(PLATFORM_ORG)
+    if platform.user_count() > 0:
+        raise HttpError(409, 'The super admin already exists. Please sign in.')
+    if not _loopback():
+        raise HttpError(403, 'The first super admin can only be created on the server computer itself.')
+    b = body()
+    name = text(b.get('name'))
+    email = text(b.get('email')).lower()
+    if not name:
+        raise HttpError(400, 'Please enter your full name.')
+    check_email(email)
+    check_password(b.get('password'))
+    if email_taken(email):
+        raise HttpError(409, 'An account with this email already exists.')
+    user = auth.build_user({'name': name, 'email': email, 'password': b['password'], 'role': 'super'}, 'active')
+    try:
+        platform.add_user(user)
+    except DuplicateKeyError:
+        raise HttpError(409, 'An account with this email already exists.')
+    platform.audit(user, 'super-setup', 'Super admin created')
+    g.store = platform
+    return start_session(user)
+
+
+def _org_summary(org):
+    """What the super admin may see of a coaching: who runs it and how big it is. Never its data."""
+    tenant = root().for_org(org['id'])
+    admins = [u for u in tenant.users_all() if u['role'] == 'admin']
+    admin = admins[0] if admins else None
+    return {
+        **org,
+        'admin': {'id': admin['id'], 'name': admin['name'], 'email': admin['email'], 'phone': admin.get('phone', '')}
+        if admin
+        else None,
+        'students': tenant.lists['students'].count_documents({}),
+        'accounts': tenant.user_count(),
+    }
+
+
+def _get_org(org_id):
+    org = root().org_get(org_id)
+    if not org:
+        raise HttpError(404, 'Coaching not found.')
+    return org
+
+
+@route('/api/super/orgs', ['GET'], 'super')
+def super_orgs():
+    return {'orgs': [_org_summary(o) for o in root().org_list()]}
+
+
+@route('/api/super/orgs', ['POST'], 'super')
+def super_add_org():
+    """The super admin adds a coaching and its principal directly (no approval needed)."""
+    org, user = _new_coaching(body(), 'active')
+    g.store.audit(g.user, 'coaching-add', f'{org["name"]} ({user["email"]})')
+    return {'org': _org_summary(org)}
+
+
+@route('/api/super/orgs/<org_id>', ['PUT'], 'super')
+def super_edit_org(org_id):
+    org = _get_org(org_id)
+    b = body()
+    name = text(b.get('name'), 120)
+    if not name:
+        raise HttpError(400, 'Please enter the name of the coaching.')
+    org['name'] = name
+    org['city'] = text(b.get('city'), 80)
+    root().org_save(org)
+    g.store.audit(g.user, 'coaching-edit', org['name'])
+    return {'org': _org_summary(org)}
+
+
+def _set_org_status(org_id, status, only_from=None):
+    org = _get_org(org_id)
+    if only_from and org.get('status') not in only_from:
+        raise HttpError(400, 'This coaching is not in the right state for this action.')
+    if org['id'] == DEFAULT_ORG and status == 'suspended':
+        raise HttpError(400, 'The first coaching cannot be switched off.')
+    org['status'] = status
+    root().org_save(org)
+    tenant = root().for_org(org['id'])
+    if status == 'active':  # its principal can sign in now
+        for u in tenant.users_all():
+            if u['role'] == 'admin' and (u.get('status') or 'active') == 'pending':
+                u['status'] = 'active'
+                tenant.save_user(u)
+    if status == 'suspended':  # everybody is signed out
+        for u in tenant.users_all():
+            auth.destroy_sessions_of(root(), u['id'])
+    tenant.bump()
+    return org
+
+
+@route('/api/super/orgs/<org_id>/approve', ['POST'], 'super')
+def super_approve_org(org_id):
+    org = _set_org_status(org_id, 'active', only_from=('pending',))
+    g.store.audit(g.user, 'coaching-approve', org['name'])
+    return {'org': _org_summary(org)}
+
+
+@route('/api/super/orgs/<org_id>/activate', ['POST'], 'super')
+def super_activate_org(org_id):
+    org = _set_org_status(org_id, 'active', only_from=('suspended',))
+    g.store.audit(g.user, 'coaching-activate', org['name'])
+    return {'org': _org_summary(org)}
+
+
+@route('/api/super/orgs/<org_id>/suspend', ['POST'], 'super')
+def super_suspend_org(org_id):
+    org = _set_org_status(org_id, 'suspended', only_from=('active',))
+    g.store.audit(g.user, 'coaching-suspend', org['name'])
+    return {'org': _org_summary(org)}
+
+
+@route('/api/super/orgs/<org_id>/reject', ['POST'], 'super')
+def super_reject_org(org_id):
+    """A request that is turned down is removed (nothing was ever stored for it)."""
+    org = _get_org(org_id)
+    if org.get('status') != 'pending':
+        raise HttpError(400, 'Only a request that is waiting can be rejected.')
+    root().for_org(org['id']).drop_org_data()
+    root().org_remove(org['id'])
+    g.store.audit(g.user, 'coaching-reject', org['name'])
+    return ok()
+
+
+@route('/api/super/orgs/<org_id>', ['DELETE'], 'super')
+def super_delete_org(org_id):
+    """Deletes a coaching with ALL its data. The super admin has to type the name of the coaching."""
+    org = _get_org(org_id)
+    if org['id'] == DEFAULT_ORG:
+        raise HttpError(400, 'The first coaching cannot be deleted.')
+    if text(body().get('confirmName')) != org['name']:
+        raise HttpError(400, 'Type the exact name of the coaching to delete it.')
+    tenant = root().for_org(org['id'])
+    for u in tenant.users_all():
+        auth.destroy_sessions_of(root(), u['id'])
+    tenant.drop_org_data()
+    root().org_remove(org['id'])
+    g.store.audit(g.user, 'coaching-delete', org['name'])
+    return ok()
+
+
+@route('/api/super/orgs/<org_id>/reset-admin-password', ['POST'], 'super')
+def super_reset_admin_password(org_id):
+    org = _get_org(org_id)
+    new = body().get('newPassword')
+    check_password(new)
+    tenant = root().for_org(org['id'])
+    admin = next((u for u in tenant.users_all() if u['role'] == 'admin'), None)
+    if not admin:
+        raise HttpError(404, 'This coaching has no administrator.')
+    auth.set_password(admin, new)
+    admin.pop('resetRequestedAt', None)
+    tenant.save_user(admin)
+    auth.destroy_sessions_of(root(), admin['id'])
+    g.store.audit(g.user, 'coaching-admin-password', f'{org["name"]} ({admin["email"]})')
+    return ok()
+
+
 # ---------- student photos ----------
 
 
@@ -727,7 +1025,11 @@ def update_profile():
 def student_photo(student_id, token):
     """The address contains a random token, so only people who were sent the record can open a photo
     (a browser <img> cannot send the sign-in token)."""
-    doc = store().get_photo(student_id)
+    org_id = request.args.get('o') or DEFAULT_ORG
+    r = root()
+    if r.org_get(org_id) is None:
+        raise HttpError(404, 'Not found')
+    doc = r.for_org(org_id).get_photo(student_id)
     if not doc or not hmac.compare_digest(str(doc.get('token', '')).encode(), token.encode()):
         raise HttpError(404, 'Not found')
     response = Response(doc['data'], mimetype=doc.get('contentType', 'image/jpeg'))

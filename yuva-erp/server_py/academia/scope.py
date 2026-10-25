@@ -322,7 +322,7 @@ def _store_photos(plan, store):
         if isinstance(url, str) and url.startswith('data:'):
             content_type, data = parse_photo_data_url(url)
             token = store.save_photo(item['id'], content_type, data)
-            item = {**item, 'photoUrl': f"/api/photos/{item['id']}/{token}"}
+            item = {**item, 'photoUrl': store.photo_url(item['id'], token)}
             moved += 1
         upsert.append(item)
     plan['upsert'] = upsert

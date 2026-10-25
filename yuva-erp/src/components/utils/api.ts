@@ -69,6 +69,7 @@ export interface SyncPayload {
   version: number;
   user: AuthUser;
   users?: AuthUser[]; // only for the principal and front desk staff
+  org?: { id: string; name: string; city: string }; // the coaching this account belongs to
   institute: InstituteData;
 }
 
@@ -131,6 +132,13 @@ export const onUnauthorized = (fn: () => void) => {
   };
 };
 
+// The coaching a student or teacher is signing up to. The sign-up forms send it with their requests.
+let publicOrgId: string | null = null;
+export const setPublicOrg = (id: string | null) => {
+  publicOrgId = id;
+};
+const needsOrg = (path: string) => /^\/(auth\/register-|public\/registration-options)/.test(path);
+
 export const request = async <T>(
   method: string,
   path: string,
@@ -138,9 +146,14 @@ export const request = async <T>(
   options: { auth?: boolean } = {}
 ): Promise<T> => {
   const auth = options.auth !== false;
+  let url = `/api${path}`;
+  if (!auth && publicOrgId && needsOrg(path)) {
+    if (method === 'GET') url += `${url.includes('?') ? '&' : '?'}orgId=${encodeURIComponent(publicOrgId)}`;
+    else if (body && typeof body === 'object') body = { ...(body as Record<string, unknown>), orgId: publicOrgId };
+  }
   let res: Response;
   try {
-    res = await fetch(`/api${path}`, {
+    res = await fetch(url, {
       method,
       headers: {
         ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
@@ -323,3 +336,26 @@ export const updateOwnDetails = (details: { name?: string; phone?: string; subje
 // Tells the principal that somebody forgot the password (the answer is always the same)
 export const requestPasswordReset = (email: string) =>
   request<{ ok: true }>('POST', '/auth/forgot-password', { email }, { auth: false });
+
+// ---------- coachings (sign-up pages) ----------
+
+export interface PublicCoaching {
+  id: string;
+  name: string;
+  city: string;
+}
+
+export const listCoachings = () => request<{ coachings: PublicCoaching[] }>('GET', '/public/coachings', undefined, { auth: false }).then(r => r.coachings);
+
+export interface CoachingRequest {
+  coachingName: string;
+  city: string;
+  adminName: string;
+  phone: string;
+  email: string;
+  password: string;
+}
+
+// A coaching asks to join; the super admin has to approve it before its principal can sign in
+export const registerCoaching = (input: CoachingRequest) =>
+  request<{ ok: true }>('POST', '/public/register-coaching', input, { auth: false });

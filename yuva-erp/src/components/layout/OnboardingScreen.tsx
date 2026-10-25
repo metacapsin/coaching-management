@@ -5,6 +5,7 @@ export type StartMode = 'empty' | 'sample';
 
 interface OnboardingScreenProps {
   onDone: (mode: StartMode, details: { name: string; academicYear: string }) => void;
+  initialName?: string; // the name the coaching was registered with
 }
 
 // The academic year starts in April: from April 2026 it is 2026-2027, before that 2025-2026
@@ -15,8 +16,8 @@ const defaultAcademicYear = () => {
 };
 
 // Shown once, to the principal, when the institute has no data yet
-export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onDone }) => {
-  const [name, setName] = useState('');
+export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onDone, initialName = '' }) => {
+  const [name, setName] = useState(initialName);
   const [academicYear, setAcademicYear] = useState(defaultAcademicYear());
   const [error, setError] = useState('');
 

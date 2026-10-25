@@ -105,7 +105,7 @@ def build_user(data, status):
     return user
 
 
-PUBLIC_FIELDS = ('id', 'name', 'email', 'role', 'status', 'createdAt', 'phone', 'subject', 'studentId', 'batchIds', 'resetRequestedAt')
+PUBLIC_FIELDS = ('id', 'name', 'email', 'role', 'status', 'createdAt', 'phone', 'subject', 'studentId', 'batchIds', 'resetRequestedAt', 'orgId')
 
 
 def public_user(u):
@@ -131,7 +131,7 @@ def user_for_token(store, token):
     session = store.get_session(sha256_hex(token))
     if not session or store.session_expired(session):
         return None
-    user = store.user_by_id(session['userId'])
+    user = store.user_by_id_any(session['userId'])
     return user if user and (user.get('status') or 'active') == 'active' else None
 
 

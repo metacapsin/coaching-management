@@ -1,8 +1,14 @@
 """Everything that is stored in MongoDB.
 
+Several coachings (organisations) share one database. Every coaching has its own data; the first one
+("default", the data that existed before) keeps the plain collection names, the others get a prefix
+("o_<id>_students"). The accounts, sessions and the list of coachings are shared, and each account says
+which coaching it belongs to (orgId). The super admins belong to the "platform" pseudo coaching.
+
 Collections (in the database named by MONGODB_DB):
-  users        one document per account (_id = account id)
-  sessions     one document per signed-in session (_id = hash of the token); old ones are removed automatically
+  users        one document per account (_id = account id, orgId = its coaching)   [shared]
+  sessions     one document per signed-in session (_id = hash of the token)        [shared]
+  orgs         one document per coaching (name, city, status)                      [shared]
   meta         "version" (counts every change), "profile" (institute profile), "present" (which lists exist)
   audit        the activity log
   courses, batches, students, attendance, transactions, exams, timetable, templates, notificationLogs,
@@ -50,6 +56,12 @@ NEWEST_FIRST = {
     'materials',
 }
 
+DEFAULT_ORG = 'default'  # the coaching whose data lives in the plain collection names
+PLATFORM_ORG = '__platform__'  # the super admins (they have no institute data)
+
+# A coaching is waiting for approval / works / was switched off by the super admin
+ORG_STATUSES = ('pending', 'active', 'suspended')
+
 MAX_AUDIT = 3000
 MAX_BACKUP_BYTES = 15 * 1024 * 1024  # one MongoDB document can hold 16 MB
 
@@ -65,17 +77,89 @@ def clean(doc):
     return {k: v for k, v in doc.items() if k not in ('_id', '_pos')}
 
 
+def _prefix(org):
+    if org == DEFAULT_ORG:
+        return ''
+    if org == PLATFORM_ORG:
+        return 'platform_'
+    return f'o_{org}_'
+
+
 class Store:
-    def __init__(self, db):
+    """The data of ONE coaching (`org`). `for_org` gives the store of another coaching."""
+
+    def __init__(self, db, org=DEFAULT_ORG, _tenants=None):
         self.db = db
+        self.org = org
+        prefix = _prefix(org)
+        self._tenants = _tenants if _tenants is not None else {}
+        self._tenants[org] = self
+        # shared by all coachings
         self.users = db['users']
         self.sessions = db['sessions']
-        self.meta = db['meta']
-        self.audit_col = db['audit']
-        self.photos = db['photos']
-        self.backups = db['backups']
-        self.lists = {name: db[name] for name in LISTS}
+        self.orgs = db['orgs']
+        # the data of this coaching
+        self.meta = db[prefix + 'meta']
+        self.audit_col = db[prefix + 'audit']
+        self.photos = db[prefix + 'photos']
+        self.backups = db[prefix + 'backups']
+        self.lists = {name: db[prefix + name] for name in LISTS}
         self._ensure_indexes()
+
+    def for_org(self, org):
+        """The store of another coaching (the same database)."""
+        found = self._tenants.get(org)
+        return found if found is not None else Store(self.db, org, self._tenants)
+
+    # ---------- coachings ----------
+
+    def org_list(self):
+        return [clean(d) for d in self.orgs.find({}).sort('createdAt', ASCENDING)]
+
+    def org_get(self, org_id):
+        return clean(self.orgs.find_one({'_id': org_id})) if isinstance(org_id, str) else None
+
+    def org_save(self, org):
+        self.orgs.replace_one({'_id': org['id']}, {**org, '_id': org['id']}, upsert=True)
+
+    def org_remove(self, org_id):
+        self.orgs.delete_one({'_id': org_id})
+
+    def org_active_list(self):
+        return [o for o in self.org_list() if o.get('status') == 'active']
+
+    def drop_org_data(self):
+        """Deletes everything of this coaching (never the first one or the platform)."""
+        if self.org in (DEFAULT_ORG, PLATFORM_ORG):
+            raise ValueError('This coaching cannot be deleted.')
+        for col in [self.meta, self.audit_col, self.photos, self.backups, *self.lists.values()]:
+            col.drop()
+        self.users.delete_many({'orgId': self.org})
+        self._tenants.pop(self.org, None)
+
+    def migrate_to_coachings(self):
+        """Data from before the coachings existed: accounts get the first coaching, which gets a record."""
+        self.users.update_many(
+            {'orgId': {'$exists': False}, 'role': {'$ne': 'super'}}, {'$set': {'orgId': DEFAULT_ORG}}
+        )
+        default = self.for_org(DEFAULT_ORG)
+        # a database that never had data of its own (only super admins and new coachings) has no first coaching
+        if default.user_count() > 0 or default.profile() is not None:
+            self.ensure_default_org()
+
+    def ensure_default_org(self):
+        """The first coaching (the plain collections). Created when the first principal is set up, or for old data."""
+        if self.org_get(DEFAULT_ORG) is None:
+            profile = self.for_org(DEFAULT_ORG).profile() or {}
+            self.org_save(
+                {
+                    'id': DEFAULT_ORG,
+                    'name': str(profile.get('name') or 'My Coaching'),
+                    'city': '',
+                    'status': 'active',
+                    'createdAt': datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z'),
+                }
+            )
 
     def _ensure_indexes(self):
         try:
@@ -102,31 +186,38 @@ class Store:
     # ---------- accounts ----------
 
     def users_all(self):
-        return [clean(d) for d in self.users.find({}).sort('createdAt', ASCENDING)]
+        return [clean(d) for d in self.users.find({'orgId': self.org}).sort('createdAt', ASCENDING)]
 
     def user_count(self):
-        return self.users.count_documents({})
+        return self.users.count_documents({'orgId': self.org})
 
     def admin_count(self):
-        return self.users.count_documents({'role': 'admin'})
+        return self.users.count_documents({'orgId': self.org, 'role': 'admin'})
 
     def user_by_id(self, user_id):
+        """An account of THIS coaching (another coaching's account is never found)."""
+        return clean(self.users.find_one({'_id': user_id, 'orgId': self.org}))
+
+    def user_by_id_any(self, user_id):
+        """An account of any coaching (to find out who a session belongs to)."""
         return clean(self.users.find_one({'_id': user_id}))
 
     def user_by_email(self, email):
+        """Emails are unique over all coachings, so everybody signs in with the email only."""
         return clean(self.users.find_one({'email': email}))
 
     def user_by_student(self, student_id):
-        return clean(self.users.find_one({'studentId': student_id}))
+        return clean(self.users.find_one({'studentId': student_id, 'orgId': self.org}))
 
     def add_user(self, user):
+        user['orgId'] = self.org
         self.users.insert_one({**user, '_id': user['id']})
 
     def save_user(self, user):
         self.users.replace_one({'_id': user['id']}, {**user, '_id': user['id']})
 
     def remove_user(self, user_id):
-        self.users.delete_one({'_id': user_id})
+        self.users.delete_one({'_id': user_id, 'orgId': self.org})
 
     # ---------- sessions ----------
 
@@ -288,6 +379,11 @@ class Store:
         )
         return token
 
+    def photo_url(self, student_id, token):
+        """Address of a student photo. The address says which coaching it belongs to."""
+        base = f'/api/photos/{student_id}/{token}'
+        return base if self.org == DEFAULT_ORG else f'{base}?o={self.org}'
+
     def get_photo(self, student_id):
         return self.photos.find_one({'_id': student_id})
 
@@ -429,7 +525,7 @@ class Store:
             except Exception:  # a photo that cannot be read stays as it is
                 continue
             token = self.save_photo(doc['_id'], content_type, data)
-            col.update_one({'_id': doc['_id']}, {'$set': {'photoUrl': f"/api/photos/{doc['_id']}/{token}"}})
+            col.update_one({'_id': doc['_id']}, {'$set': {'photoUrl': self.photo_url(doc['_id'], token)}})
             moved += 1
         if moved:
             self.bump()

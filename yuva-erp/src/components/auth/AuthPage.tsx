@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../Context/AuthContext';
 import type { Portal } from '../../Context/AuthContext';
 import { requestPasswordReset } from '../utils/api';
+import { CoachingPicker, RegisterCoachingForm } from './CoachingForms';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { StudentSignupForm } from '../auth/StudentsignupForm';
 import {
@@ -167,6 +168,9 @@ export const AuthPage: React.FC = () => {
   const [teacherRequested, setTeacherRequested] = useState(false);
   // Students can register as new (roll number is automatic) or verify an existing admission
   const [studentMode, setStudentMode] = useState<'new' | 'existing'>('new');
+  // the coaching a student or teacher signs up to, and the 'register your coaching' form
+  const [orgId, setOrgId] = useState('');
+  const [registeringCoaching, setRegisteringCoaching] = useState(false);
 
   // Administration accounts are created by the principal, so there is no public sign-up for them
   const isSignup = !setupMode && mode === 'signup' && portal !== 'admin';
@@ -398,6 +402,8 @@ export const AuthPage: React.FC = () => {
                 </div>
               )}
 
+              {isSignup && <CoachingPicker onChange={setOrgId} />}
+
               {isSignup && portal === 'student' && (
                 <div className="mt-4 grid grid-cols-2 gap-1 bg-slate-100 p-1 rounded-lg">
                   {(
@@ -442,12 +448,12 @@ export const AuthPage: React.FC = () => {
                 </div>
               )}
 
-              {newStudentMode && <StudentSignupForm />}
+              {newStudentMode && orgId && <StudentSignupForm key={orgId} />}
 
               <form
                 onSubmit={handleSubmit}
                 noValidate
-                className={`mt-5 space-y-4 ${newStudentMode ? 'hidden' : ''}`}
+                className={`mt-5 space-y-4 ${newStudentMode || (isSignup && !orgId) ? 'hidden' : ''}`}
               >
                 {(setupMode || (isSignup && portal === 'teacher')) && (
                   <Field
@@ -617,16 +623,27 @@ export const AuthPage: React.FC = () => {
               )}
 
               {!setupMode && portal === 'admin' && (
-                <p className="mt-5 text-xs text-slate-500 text-center leading-relaxed">
-                  Principal and office-staff accounts are created by the principal inside the app under{' '}
-                  <strong className="text-slate-700">Team &amp; Access</strong>.
-                </p>
+                <div className="mt-5 text-xs text-slate-500 text-center leading-relaxed">
+                  <p>
+                    Office-staff accounts are created by the principal inside the app under{' '}
+                    <strong className="text-slate-700">Team &amp; Access</strong>.
+                  </p>
+                  {!registeringCoaching && (
+                    <button type="button" onClick={() => setRegisteringCoaching(true)} className="mt-3 font-semibold text-blue-600 hover:underline">
+                      Own a coaching? Register your coaching
+                    </button>
+                  )}
+                  {registeringCoaching && <RegisterCoachingForm onClose={() => setRegisteringCoaching(false)} />}
+                </div>
               )}
 
               {isSignin && <ForgotPassword initialEmail={email} />}
 
               <p className="mt-6 text-[11px] text-slate-400 text-center leading-relaxed">
-                Your account and data are stored on the institute's server.
+                Your account and data are stored on the institute's server.{' '}
+                <a href="/superadmin" className="text-slate-500 hover:text-blue-600 hover:underline">
+                  Super Admin
+                </a>
               </p>
             </>
           )}

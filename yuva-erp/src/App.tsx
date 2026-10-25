@@ -27,6 +27,7 @@ import { StudentPortalView } from './components/views/Studentportalview';
 import { TeacherHomeView } from './components/views/Teacherhomeview';
 
 // Auth + layout
+import { SuperAdminApp } from './components/super/SuperAdminApp';
 import { AuthPage } from './components/auth/AuthPage';
 import { Navbar } from './components/layout/Navbar';
 import { ConnectionScreen } from './components/layout/ConnectionScreen';
@@ -417,6 +418,8 @@ function AuthGate() {
 }
 
 export default function App() {
+  // /superadmin is the separate page of the super admin (its own sign in, never mixed with a coaching)
+  if (window.location.pathname.replace(/\/+$/, '') === '/superadmin') return <SuperAdminApp />;
   return (
     <AuthProvider>
       <AuthGate />

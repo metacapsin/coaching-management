@@ -640,5 +640,143 @@ class OldDataImport(unittest.TestCase):
         self.assertEqual(db.users.find_one({'email': 'old@x.com'})['alg'], 'scrypt')  # the hash was upgraded at sign in
 
 
+class Coachings(unittest.TestCase):
+    """Several coachings in one database: a super admin manages them, and none can see another's data."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.db = new_db()
+        cls.api = Api(create_app(db=cls.db, dist_dir='no-dist'))
+
+    @classmethod
+    def tearDownClass(cls):
+        drop_db(cls.db)
+
+    def call(self, *a, **kw):
+        return self.api.call(*a, **kw)
+
+    def login(self, email, password=PASSWORD, portal='admin'):
+        return self.call('POST', '/api/auth/login', {'email': email, 'password': password, 'portal': portal})
+
+    def coaching(self, name, email):
+        return {'coachingName': name, 'city': 'Bijainagar', 'adminName': f'{name} Admin', 'email': email, 'phone': '+91 98000 11111', 'password': PASSWORD}
+
+    def test_01_super_admin_setup_and_limits(self):
+        self.assertEqual(self.call('GET', '/api/super/status')[1]['hasSuper'], False)
+        status, data = self.call('POST', '/api/super/setup', {'name': 'Super', 'email': 'super@x.com', 'password': PASSWORD})
+        self.assertEqual(status, 200)
+        self.assertEqual(data['user']['role'], 'super')
+        self.__class__.sup = data['token']
+        self.assertEqual(self.call('POST', '/api/super/setup', {'name': 'Evil', 'email': 'e@x.com', 'password': PASSWORD})[0], 409)
+        # nobody can create a coaching principal through the first-run page, bypassing the approval
+        self.assertEqual(self.call('GET', '/api/auth/status')[1]['hasUsers'], True)
+        self.assertEqual(self.call('POST', '/api/auth/setup', {'name': 'Evil', 'email': 'e2@x.com', 'password': PASSWORD})[0], 409)
+        self.assertEqual(self.login('super@x.com', portal='super')[0], 200)
+        self.assertEqual(self.login('super@x.com', portal='admin')[0], 403)  # wrong login page
+        # the super admin cannot open the data of a coaching
+        self.assertEqual(self.call('GET', '/api/sync', token=self.sup)[0], 403)
+        self.assertEqual(self.call('GET', '/api/auth/me', token=self.sup)[0], 200)
+
+    def test_02_a_new_coaching_waits_for_approval(self):
+        self.assertEqual(self.call('POST', '/api/public/register-coaching', self.coaching('Alpha', 'a@x.com'))[0], 200)
+        self.assertEqual(self.call('POST', '/api/public/register-coaching', self.coaching('Dup', 'a@x.com'))[0], 409)
+        status, data = self.login('a@x.com')
+        self.assertEqual(status, 403)
+        self.assertIn('super admin', data['error'])
+        orgs = self.call('GET', '/api/super/orgs', token=self.sup)[1]['orgs']
+        alpha = next(o for o in orgs if o['name'] == 'Alpha')
+        self.assertEqual(alpha['status'], 'pending')
+        self.assertEqual(alpha['admin']['email'], 'a@x.com')
+        self.assertEqual(self.call('POST', f'/api/super/orgs/{alpha["id"]}/approve', token=self.sup)[0], 200)
+        status, data = self.login('a@x.com')
+        self.assertEqual(status, 200)
+        self.__class__.admin_a, self.__class__.org_a = data['token'], alpha['id']
+        self.assertEqual(self.call('GET', '/api/super/orgs', token=self.admin_a)[0], 403)  # a principal is not a super admin
+
+    def test_03_super_admin_adds_a_coaching_directly(self):
+        status, data = self.call('POST', '/api/super/orgs', self.coaching('Beta', 'b@x.com'), self.sup)
+        self.assertEqual(status, 200)
+        self.assertEqual(data['org']['status'], 'active')
+        self.__class__.org_b = data['org']['id']
+        status, data = self.login('b@x.com')
+        self.assertEqual(status, 200)
+        self.__class__.admin_b = data['token']
+        self.assertEqual(self.call('POST', '/api/super/orgs', self.coaching('Beta2', 'b@x.com'), self.sup)[0], 409)
+
+    def test_04_no_coaching_sees_the_data_of_another(self):
+        seed = {k: v for k, v in SEED.items() if k != 'profile'}
+        self.assertEqual(self.call('PUT', '/api/institute', {'changes': seed}, self.admin_a)[0], 200)
+        mine = self.call('GET', '/api/sync', token=self.admin_a)[1]
+        self.assertEqual(len(mine['institute']['students']), 3)
+        other = self.call('GET', '/api/sync', token=self.admin_b)[1]
+        self.assertEqual(other['institute'].get('students', []), [])
+        self.assertEqual({u['email'] for u in other['users']}, {'b@x.com'})  # only its own accounts
+        # the same record ids in two coachings do not clash
+        self.assertEqual(self.call('PUT', '/api/institute', {'changes': {'students': {'upsert': [{**STUDENTS[0], 'name': 'Zed'}]}}}, self.admin_b)[0], 200)
+        names = {x['id']: x['name'] for x in self.call('GET', '/api/sync', token=self.admin_a)[1]['institute']['students']}
+        self.assertEqual(names['s1'], 'Alice')
+        # an account of another coaching cannot be reached by its id
+        users_a = self.call('GET', '/api/sync', token=self.admin_a)[1]['users']
+        uid_a = next(u['id'] for u in users_a if u['email'] == 'a@x.com')
+        self.assertEqual(self.call('POST', f'/api/users/{uid_a}/reset-password', {'newPassword': 'Hacked12345'}, self.admin_b)[0], 404)
+        self.assertEqual(self.call('DELETE', f'/api/users/{uid_a}', token=self.admin_b)[0], 404)
+        self.assertEqual(self.login('a@x.com')[0], 200)
+        # backups and activity logs are separate too
+        self.assertEqual(self.call('POST', '/api/backups', {'label': 'x'}, self.admin_a)[0], 200)
+        self.assertEqual(self.call('GET', '/api/backups', token=self.admin_b)[1]['backups'], [])
+        self.assertFalse(any('Alice' in e['detail'] for e in self.call('GET', '/api/audit', token=self.admin_b)[1]['entries']))
+
+    def test_05_students_sign_up_to_the_chosen_coaching(self):
+        reg = {'rollNo': '01', 'phone': '+91 98000 00001', 'email': 'alice@x.com', 'password': PASSWORD}
+        self.assertEqual(self.call('POST', '/api/auth/register-student', reg)[0], 400)  # two coachings: choose one
+        coachings = self.call('GET', '/api/public/coachings')[1]['coachings']
+        self.assertEqual({c['name'] for c in coachings}, {'Alpha', 'Beta'})
+        # roll 01 with that phone is Alice of Alpha; Beta has another student with roll 01 and a different phone
+        self.assertEqual(self.call('POST', '/api/auth/register-student', {**reg, 'orgId': self.org_b, 'phone': '+91 90000 99999'})[0], 400)
+        status, data = self.call('POST', '/api/auth/register-student', {**reg, 'orgId': self.org_a})
+        self.assertEqual(status, 200)
+        self.assertEqual(data['user']['orgId'], self.org_a)
+        me = self.call('GET', '/api/sync', token=data['token'])[1]
+        self.assertEqual(me['institute']['students'][0]['name'], 'Alice')
+
+    def test_06_switching_a_coaching_off_and_on(self):
+        self.assertEqual(self.call('POST', f'/api/super/orgs/{self.org_b}/suspend', token=self.sup)[0], 200)
+        self.assertEqual(self.call('GET', '/api/sync', token=self.admin_b)[0], 401)  # signed out
+        status, data = self.login('b@x.com')
+        self.assertEqual(status, 403)
+        self.assertIn('switched off', data['error'])
+        self.assertEqual(len(self.call('GET', '/api/public/coachings')[1]['coachings']), 1)
+        self.assertEqual(self.call('POST', f'/api/super/orgs/{self.org_b}/activate', token=self.sup)[0], 200)
+        self.assertEqual(self.login('b@x.com')[0], 200)
+        self.assertIn(self.call('POST', '/api/super/orgs/default/suspend', token=self.sup)[0], (400, 404))
+
+    def test_07_reset_reject_and_delete(self):
+        self.assertEqual(self.call('POST', f'/api/super/orgs/{self.org_b}/reset-admin-password', {'newPassword': 'weak'}, self.sup)[0], 400)
+        self.assertEqual(self.call('POST', f'/api/super/orgs/{self.org_b}/reset-admin-password', {'newPassword': 'Fresh12345'}, self.sup)[0], 200)
+        self.assertEqual(self.login('b@x.com')[0], 401)
+        self.assertEqual(self.login('b@x.com', 'Fresh12345')[0], 200)
+
+        self.call('POST', '/api/public/register-coaching', self.coaching('Gamma', 'g@x.com'))
+        gamma = next(o for o in self.call('GET', '/api/super/orgs', token=self.sup)[1]['orgs'] if o['name'] == 'Gamma')
+        self.assertEqual(self.call('POST', f'/api/super/orgs/{self.org_b}/reject', token=self.sup)[0], 400)  # active, not pending
+        self.assertEqual(self.call('POST', f'/api/super/orgs/{gamma["id"]}/reject', token=self.sup)[0], 200)
+        self.assertEqual(self.login('g@x.com')[0], 401)  # the request and its account are gone
+
+        self.assertEqual(self.call('DELETE', f'/api/super/orgs/{self.org_b}', {'confirmName': 'wrong'}, self.sup)[0], 400)
+        self.assertEqual(self.call('DELETE', f'/api/super/orgs/{self.org_b}', {'confirmName': 'Beta'}, self.sup)[0], 200)
+        self.assertEqual(self.login('b@x.com', 'Fresh12345')[0], 401)
+        self.assertIn(self.call('DELETE', '/api/super/orgs/default', {'confirmName': 'x'}, self.sup)[0], (400, 404))
+
+    def test_08_the_first_coaching_keeps_the_old_data(self):
+        # accounts without a coaching (made before this feature) belong to the first one
+        db = new_db()
+        db.users.insert_one({'_id': 'u1', 'id': 'u1', 'name': 'Old', 'email': 'old@x.com', 'role': 'admin', 'status': 'active', 'createdAt': ''})
+        store = Store(db)
+        store.migrate_to_coachings()
+        self.assertEqual(store.user_by_id('u1')['orgId'], 'default')
+        self.assertEqual(store.org_get('default')['status'], 'active')
+        drop_db(db)
+
+
 if __name__ == '__main__':
     unittest.main()

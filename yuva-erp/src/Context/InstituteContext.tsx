@@ -265,6 +265,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [ready, setReady] = useState(false);
   // A brand-new institute: the principal chooses how to start before anything is saved
   const [onboarding, setOnboarding] = useState(false);
+  const [orgName, setOrgName] = useState('');
   const onboardingRef = useRef(false);
   onboardingRef.current = onboarding;
   const [saveState, setSaveState] = useState<SaveState>('saved');
@@ -383,6 +384,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         const data = payload.institute;
         // Nothing stored yet and this is the principal: a new institute
         if (roleRef.current === 'admin' && data.students === undefined && data.profile === undefined) {
+          setOrgName(payload.org?.name || '');
           setOnboarding(true);
           setReady(true);
           return;
@@ -884,7 +886,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   if (!ready) return <ConnectionScreen message="Loading your institute data..." />;
-  if (onboarding) return <OnboardingScreen onDone={finishOnboarding} />;
+  if (onboarding) return <OnboardingScreen onDone={finishOnboarding} initialName={orgName} />;
 
   return (
     <InstituteContext.Provider
