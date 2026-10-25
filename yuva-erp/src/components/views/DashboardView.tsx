@@ -30,6 +30,8 @@ interface DashboardViewProps {
   onViewReceipt: (transactionId: string) => void;
   // Optional: opens the payment modal with this student pre-selected
   onCollectPayment?: (studentId: string) => void;
+  // Optional (principal only): opens the Add Account window for a new teacher
+  onAddTeacher?: () => void;
 }
 
 // ---------- Settings ----------
@@ -161,7 +163,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenRecordPayment,
   onSelectStudent,
   onViewReceipt,
-  onCollectPayment
+  onCollectPayment,
+  onAddTeacher
 }) => {
   const {
     profile,
@@ -440,6 +443,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <Bell className="w-4 h-4 text-amber-600" />
             Broadcast Alert
           </button>
+          {onAddTeacher && (
+            <button
+              onClick={onAddTeacher}
+              className="px-3.5 py-2 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg transition-colors flex items-center gap-1.5"
+            >
+              <UserPlus className="w-4 h-4 text-emerald-600" />
+              Add Teacher
+            </button>
+          )}
         </div>
       </div>
 

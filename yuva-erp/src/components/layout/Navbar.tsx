@@ -10,7 +10,8 @@ import {
   X,
   MessageSquare,
   LogOut,
-  ShieldCheck
+  ShieldCheck,
+  GraduationCap
 } from 'lucide-react';
 import { useAuth, roleLabel } from '../../Context/AuthContext';
 import { ThemeToggle } from '../ui/ThemeToggle';
@@ -24,6 +25,7 @@ interface NavbarProps {
   activeTab: TabId;
   onNavigate: (tab: TabId) => void;
   onOpenAdmission: () => void;
+  onAddTeacher: () => void; // principal only
   onSelectStudent: (studentId: string) => void;
 }
 
@@ -64,6 +66,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   onNavigate,
   onOpenAdmission,
+  onAddTeacher,
   onSelectStudent
 }) => {
   const { profile, students, batches, notificationLogs, saveState } = useInstitute();
@@ -357,6 +360,19 @@ export const Navbar: React.FC<NavbarProps> = ({
             <UserPlus className="w-4 h-4" />
             <span className="hidden lg:inline">New Admission</span>
           </button>
+
+          {/* Quick add teacher (principal only: teachers get their login from the principal) */}
+          {user?.role === 'admin' && (
+            <button
+              type="button"
+              onClick={onAddTeacher}
+              className="px-3 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg transition-colors flex items-center gap-1.5"
+              title="Add a teacher account"
+            >
+              <GraduationCap className="w-4 h-4 text-emerald-600" />
+              <span className="hidden lg:inline">Add Teacher</span>
+            </button>
+          )}
 
           {/* Notifications bell */}
           <div ref={bellRef} className={`relative ${canManage ? '' : 'hidden'}`}>

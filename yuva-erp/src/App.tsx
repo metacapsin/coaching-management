@@ -70,6 +70,12 @@ function MainApp() {
 
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // each press on an "Add Teacher" button opens the Add Account window in Team & Access
+  const [addTeacherSignal, setAddTeacherSignal] = useState(0);
+  const openAddTeacher = () => {
+    setActiveTab('team');
+    setAddTeacherSignal(n => n + 1);
+  };
 
   // Modal states
   const [isAdmissionModalOpen, setIsAdmissionModalOpen] = useState(false);
@@ -151,6 +157,7 @@ function MainApp() {
             onSelectStudent={handleSelectStudent}
             onViewReceipt={handleViewReceipt}
             onCollectPayment={handleOpenPaymentForStudent}
+            onAddTeacher={role === 'admin' ? openAddTeacher : undefined}
           />
         );
       case 'students':
@@ -190,7 +197,7 @@ function MainApp() {
       case 'reports':
         return <ReportsView />;
       case 'team':
-        return <TeamView />;
+        return <TeamView addTeacherSignal={addTeacherSignal} />;
       case 'settings':
         return <SettingsView />;
       default:
@@ -350,6 +357,7 @@ function MainApp() {
           activeTab={activeTab}
           onNavigate={setActiveTab}
           onOpenAdmission={() => setIsAdmissionModalOpen(true)}
+          onAddTeacher={openAddTeacher}
           onSelectStudent={handleSelectStudent}
         />
 

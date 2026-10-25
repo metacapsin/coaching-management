@@ -769,6 +769,14 @@ class Coachings(unittest.TestCase):
         self.assertIn(self.call('POST', '/api/super/orgs/default/suspend', token=self.sup)[0], (400, 404))
 
     def test_07_reset_reject_and_delete(self):
+        # a principal can never delete, switch off, approve or edit any coaching, not even its own
+        for org in (self.org_a, self.org_b):
+            self.assertEqual(self.call('DELETE', f'/api/super/orgs/{org}', {'confirmName': 'Alpha'}, self.admin_a)[0], 403)
+            self.assertEqual(self.call('POST', f'/api/super/orgs/{org}/suspend', {}, self.admin_a)[0], 403)
+            self.assertEqual(self.call('POST', f'/api/super/orgs/{org}/approve', {}, self.admin_a)[0], 403)
+            self.assertEqual(self.call('PUT', f'/api/super/orgs/{org}', {'name': 'Hacked'}, self.admin_a)[0], 403)
+        names = {o['name'] for o in self.call('GET', '/api/super/orgs', token=self.sup)[1]['orgs']}
+        self.assertTrue({'Alpha', 'Beta'} <= names)
         self.assertEqual(self.call('POST', f'/api/super/orgs/{self.org_b}/reset-admin-password', {'newPassword': 'weak'}, self.sup)[0], 400)
         self.assertEqual(self.call('POST', f'/api/super/orgs/{self.org_b}/reset-admin-password', {'newPassword': 'Fresh12345'}, self.sup)[0], 200)
         self.assertEqual(self.login('b@x.com')[0], 401)

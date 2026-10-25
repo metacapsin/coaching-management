@@ -193,7 +193,8 @@ const MyDetails: React.FC<{ onDone: (type: 'success' | 'error', text: string) =>
   );
 };
 
-export const TeamView: React.FC = () => {
+// addTeacherSignal: each time it grows, the Add Account window opens for a new teacher (from the Dashboard / top bar)
+export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSignal = 0 }) => {
   const {
     user,
     users,
@@ -292,6 +293,14 @@ export const TeamView: React.FC = () => {
     setAError('');
     setShowAdd(true);
   };
+
+  useEffect(() => {
+    if (addTeacherSignal > 0 && isAdmin) {
+      openAdd();
+      setARole('teacher');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addTeacherSignal]);
 
   const handlePickStudent = (id: string) => {
     setAStudentId(id);
