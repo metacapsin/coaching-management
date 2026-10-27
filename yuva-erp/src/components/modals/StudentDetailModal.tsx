@@ -4,6 +4,7 @@ import { Student } from '../../types';
 import { X, MessageSquare, CreditCard, Printer, IdCard, UserPlus, CalendarX, Award, Bell, Ban } from 'lucide-react';
 import { formatDate } from '../utils/helpers';
 import { PrintableIdCardModal } from './PrintableIdCardModal';
+import { StudentLoginCard } from './StudentLoginCard';
 
 interface StudentDetailModalProps {
   student: Student | null;
@@ -234,6 +235,9 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         <div className="p-6 max-h-[70vh] overflow-y-auto">
           {activeTab === 'overview' && (
             <div className="space-y-6">
+              {/* The student's own login (the principal makes it) */}
+              <StudentLoginCard key={student.id} student={student} />
+
               {/* Quick Metrics */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="p-3 rounded-lg border border-slate-200 bg-slate-50/50">

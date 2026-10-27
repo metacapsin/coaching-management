@@ -645,6 +645,7 @@ def add_user():
         },
         'active',
     )
+    user['mustChangePassword'] = True  # the principal chose this password, so the person has to choose an own one
     add_user_or_conflict(user)
     s.bump()
     s.audit(g.user, 'user-add', f'{user["email"]} ({role_label(role)})')

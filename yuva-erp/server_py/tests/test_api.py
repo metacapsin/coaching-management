@@ -897,6 +897,14 @@ class Expenses(unittest.TestCase):
         self.assertIn('Coaching Admin', data['error'])
         self.assertEqual(login('t@x.com', 'admin')[0], 403)  # and a teacher is not an admin
 
+    def test_4_an_account_the_principal_made_has_to_change_its_password(self):
+        status, data = self.call('POST', '/api/auth/login', {'email': 't@x.com', 'password': PASSWORD, 'portal': 'member'})
+        self.assertEqual(status, 200)
+        self.assertTrue(data['user']['mustChangePassword'])  # the principal chose it, so the teacher chooses an own one
+        token = data['token']
+        self.assertEqual(self.call('POST', '/api/auth/change-password', {'currentPassword': PASSWORD, 'newPassword': 'Mine12345pw'}, token)[0], 200)
+        self.assertFalse(self.call('GET', '/api/auth/me', token=token)[1]['user'].get('mustChangePassword'))
+
 
 class SuperRecovery(unittest.TestCase):
     """The Super Admin forgot the password: it can be reset on the server computer only."""
@@ -993,6 +1001,7 @@ class SuperAdmins(unittest.TestCase):
         self.assertEqual(self.call('DELETE', f'/api/super/admins/{two}', token=self.principal)[0], 403)
         self.assertEqual(self.call('DELETE', f'/api/super/admins/{two}', token=self.one)[0], 200)
         self.assertEqual(self.login('two@x.com', 'Fresh12345pw')[0], 401)
+
 
 
 if __name__ == '__main__':

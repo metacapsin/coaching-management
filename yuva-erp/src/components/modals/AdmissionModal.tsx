@@ -5,6 +5,7 @@ import { resizeImageToDataUrl } from '../utils/Imageutils';
 import { normalizePhone, toLocalISODate } from '../utils/helpers';
 import { nextRollNumber } from '../utils/rollNo';
 import { X, UserPlus, Check, ImagePlus, Trash2 } from 'lucide-react';
+import { StudentLoginCard } from './StudentLoginCard';
 
 // Details that are already known (for example from an enquiry)
 export interface AdmissionPrefill {
@@ -27,6 +28,8 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
   const { batches, courses, students, addStudent, profile } = useInstitute();
 
   const startCourse = courses.find(c => c.id === prefill?.courseId) || courses[0];
+
+  const [created, setCreated] = useState<Student | null>(null);
 
   const [formData, setFormData] = useState({
     name: prefill?.name ?? '',
@@ -61,6 +64,33 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
   const [photoError, setPhotoError] = useState('');
 
   if (!isOpen) return null;
+
+  // The admission is saved: offer the student's login before closing
+  if (created) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+        <div className="relative w-full max-w-lg bg-white border border-slate-200 rounded-xl shadow-2xl my-8 overflow-hidden text-slate-900">
+          <div className="px-6 py-5 border-b border-slate-200 bg-emerald-50 flex items-center gap-3">
+            <span className="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center">
+              <Check className="w-5 h-5" />
+            </span>
+            <div>
+              <h2 className="text-lg font-semibold">{created.name} was admitted</h2>
+              <p className="text-xs text-slate-500">Roll no. {created.rollNo}</p>
+            </div>
+          </div>
+          <div className="p-6 space-y-4">
+            <StudentLoginCard student={created} />
+            <div className="flex justify-end">
+              <button onClick={onClose} className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg">
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const nextRoll = nextRollNumber(students);
   const courseBatches = batches.filter(b => b.courseId === formData.courseId);
@@ -162,7 +192,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
     }, initialPayment);
 
     if (onSuccess) onSuccess(newStudent.name, newStudent);
-    onClose();
+    setCreated(newStudent); // a last step: the student's login can be made right away
   };
 
   const netPayable = Math.max(0, formData.totalFees - (formData.discount || 0));
