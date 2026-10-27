@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Building2,
   Check,
@@ -64,19 +64,21 @@ const Shell: React.FC<{ children: React.ReactNode; right?: React.ReactNode }> = 
 
 // ---------- pop-ups ----------
 
-const AddCoachingModal: React.FC<{ onClose: () => void; onDone: (name: string) => void }> = ({ onClose, onDone }) => {
+const AddCoachingModal: React.FC<{ onClose: () => void; onDone: (name: string, waiting: boolean) => void }> = ({ onClose, onDone }) => {
+  const [asRequest, setAsRequest] = useState(false);
   const [f, setF] = useState<NewCoaching>({ coachingName: '', city: '', adminName: '', phone: '', email: '', password: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const set = (k: keyof NewCoaching) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
+  type TextField = Exclude<keyof NewCoaching, 'asRequest'>;
+  const set = (k: TextField) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setBusy(true);
     try {
-      await superApi.add({ ...f, coachingName: f.coachingName.trim(), adminName: f.adminName.trim(), email: f.email.trim() });
-      onDone(f.coachingName.trim());
+      await superApi.add({ ...f, coachingName: f.coachingName.trim(), adminName: f.adminName.trim(), email: f.email.trim(), asRequest });
+      onDone(f.coachingName.trim(), asRequest);
       onClose();
     } catch (err) {
       setError(errText(err));
@@ -85,7 +87,7 @@ const AddCoachingModal: React.FC<{ onClose: () => void; onDone: (name: string) =
     }
   };
 
-  const field = (label: string, key: keyof NewCoaching, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
+  const field = (label: string, key: TextField, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
     <div>
       <label className="block text-xs font-medium text-slate-700 mb-1">{label}</label>
       <input value={f[key]} onChange={set(key)} className={inputCls} {...props} />
@@ -103,6 +105,13 @@ const AddCoachingModal: React.FC<{ onClose: () => void; onDone: (name: string) =
           {field('Principal email *', 'email', { type: 'email', autoComplete: 'off' })}
           {field('Password for the principal *', 'password', { type: 'text', autoComplete: 'off', placeholder: 'At least 8 characters, letters and numbers' })}
         </div>
+        <label className="flex items-start gap-2 text-xs text-slate-700 cursor-pointer p-2.5 rounded-lg bg-amber-50 border border-amber-200">
+          <input type="checkbox" checked={asRequest} onChange={e => setAsRequest(e.target.checked)} className="mt-0.5" />
+          <span>
+            <strong>Keep it waiting for approval.</strong> It then shows in "Requests waiting for your approval" and its principal cannot
+            sign in until you press Approve. Leave this off to activate it at once.
+          </span>
+        </label>
         <p className="text-[11px] text-slate-500">Give this email and password to the principal. They can change it after signing in.</p>
         {error && <p className="text-xs text-rose-600">{error}</p>}
         <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
@@ -420,11 +429,42 @@ const Dashboard: React.FC<{ user: AuthUser; onSignOut: () => void }> = ({ user, 
   );
   const totalStudents = orgs.reduce((n, o) => n + o.students, 0);
 
-  const stat = (label: string, value: number | string, cls = 'text-slate-900') => (
-    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
+  const pendingRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const seenPending = useRef<number | null>(null);
+
+  // A request arrived while this page is open: say so, and show the number in the browser tab
+  useEffect(() => {
+    if (!loaded) return;
+    if (seenPending.current !== null && pending.length > seenPending.current) {
+      const newest = pending[pending.length - 1];
+      flash('ok', `New request: ${newest.name} is waiting for your approval.`);
+    }
+    seenPending.current = pending.length;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, pending.length]);
+
+  useEffect(() => {
+    const base = 'AcademiaOS - Coaching Institute Management SaaS';
+    document.title = pending.length ? `(${pending.length}) Approval waiting · ${base}` : base;
+    return () => {
+      document.title = base;
+    };
+  }, [pending.length]);
+
+  const stat = (label: string, value: number | string, cls = 'text-slate-900', onClick?: () => void, hot = false) => (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!onClick}
+      className={`text-left bg-white border rounded-xl p-4 shadow-xs transition-shadow ${
+        onClick ? 'hover:shadow-md cursor-pointer' : 'cursor-default'
+      } ${hot ? 'border-amber-400 ring-2 ring-amber-200 animate-pulse' : 'border-slate-200'}`}
+    >
       <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{label}</div>
       <div className={`text-2xl font-bold mt-1 ${cls}`}>{value}</div>
-    </div>
+      {onClick && <div className="text-[10px] text-slate-400 mt-1">Click to see</div>}
+    </button>
   );
 
   return (
@@ -469,12 +509,38 @@ const Dashboard: React.FC<{ user: AuthUser; onSignOut: () => void }> = ({ user, 
       {error && !loaded && <p className="mb-4 text-xs text-rose-600">{error}</p>}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {stat('Coachings', orgs.filter(o => o.status !== 'pending').length)}
-        {stat('Waiting for approval', pending.length, pending.length ? 'text-amber-700' : 'text-slate-900')}
-        {stat('Active', orgs.filter(o => o.status === 'active').length, 'text-emerald-700')}
+        {stat('Coachings', orgs.filter(o => o.status !== 'pending').length, 'text-slate-900', () => {
+          setFilter('all');
+          listRef.current?.scrollIntoView({ behavior: 'smooth' });
+        })}
+        {stat(
+          'Waiting for approval',
+          pending.length,
+          pending.length ? 'text-amber-700' : 'text-slate-900',
+          () => {
+            setFilter('pending');
+            pendingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          },
+          pending.length > 0
+        )}
+        {stat('Active', orgs.filter(o => o.status === 'active').length, 'text-emerald-700', () => {
+          setFilter('active');
+          listRef.current?.scrollIntoView({ behavior: 'smooth' });
+        })}
         {stat('Students in all', totalStudents)}
       </div>
 
+      <div ref={pendingRef}>
+      {pending.length === 0 && (
+        <section className="bg-white border border-slate-200 rounded-xl mb-6 shadow-xs p-5 text-xs text-slate-500">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-1">
+            <Clock className="w-4 h-4 text-slate-400" />
+            No coaching is waiting for approval
+          </div>
+          A coaching owner sends a request from the login page (Coaching Admin tab, "Register your coaching"). It appears here with Approve and
+          Reject. You can also press <strong>+ Add coaching</strong> and tick "Keep it waiting for approval" to try it.
+        </section>
+      )}
       {pending.length > 0 && (
         <section className="bg-white border border-amber-300 rounded-xl overflow-hidden mb-6 shadow-xs">
           <div className="px-5 py-3 bg-amber-50 border-b border-amber-200 text-sm font-semibold text-amber-900 flex items-center gap-2">
@@ -514,7 +580,9 @@ const Dashboard: React.FC<{ user: AuthUser; onSignOut: () => void }> = ({ user, 
         </section>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+      </div>
+
+      <div ref={listRef} className="flex flex-wrap items-center justify-between gap-3 mb-3">
         <h2 className="text-sm font-semibold">All coachings ({shown.length})</h2>
         <div className="relative flex-1 min-w-48 max-w-sm">
           <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
@@ -605,7 +673,24 @@ const Dashboard: React.FC<{ user: AuthUser; onSignOut: () => void }> = ({ user, 
                       Enter coaching →
                     </button>
                   ) : (
-                    <span className="text-[11px] text-slate-400">{o.status === 'pending' ? 'Approve it above first' : 'Switched on again to enter'}</span>
+                    o.status === 'pending' ? (
+                      <div className="flex gap-1.5">
+                        <button
+                          onClick={() => act(() => superApi.approve(o.id), `${o.name} was approved. Its principal can sign in now.`)}
+                          className="px-2.5 py-1 text-[11px] font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-md"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => window.confirm(`Reject the request of ${o.name}?`) && act(() => superApi.reject(o.id), `The request of ${o.name} was rejected.`)}
+                          className="px-2.5 py-1 text-[11px] font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-md"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-[11px] text-slate-400">Switch it on again to enter</span>
+                    )
                   )}
                   <div className="flex gap-1">
                     {o.status === 'active' && o.id !== 'default' && (
@@ -645,7 +730,7 @@ const Dashboard: React.FC<{ user: AuthUser; onSignOut: () => void }> = ({ user, 
 
       <ActivityPanel />
 
-      {modal?.kind === 'add' && <AddCoachingModal onClose={() => setModal(null)} onDone={name => { flash('ok', `${name} was added.`); reload(); }} />}
+      {modal?.kind === 'add' && <AddCoachingModal onClose={() => setModal(null)} onDone={(name, waiting) => { flash('ok', waiting ? `${name} was added and is waiting for your approval.` : `${name} was added.`); reload(); if (waiting) setFilter('pending'); }} />}
       {modal?.kind === 'edit' && <EditModal org={modal.org} onClose={() => setModal(null)} onDone={() => { flash('ok', 'Saved.'); reload(); }} />}
       {modal?.kind === 'password' && <PasswordModal org={modal.org} onClose={() => setModal(null)} onDone={msg => flash('ok', msg)} />}
       {modal?.kind === 'delete' && <DeleteModal org={modal.org} onClose={() => setModal(null)} onDone={msg => { flash('ok', msg); reload(); }} />}

@@ -938,9 +938,12 @@ def super_orgs():
 
 @route('/api/super/orgs', ['POST'], 'super')
 def super_add_org():
-    """The super admin adds a coaching and its principal directly (no approval needed)."""
-    org, user = _new_coaching(body(), 'active')
-    g.store.audit(g.user, 'coaching-add', f'{org["name"]} ({user["email"]})')
+    """The super admin adds a coaching and its principal directly. Active at once, or (asRequest) left waiting
+    for approval, like a coaching that asked to join."""
+    b = body()
+    waiting = b.get('asRequest') is True
+    org, user = _new_coaching(b, 'pending' if waiting else 'active')
+    g.store.audit(g.user, 'coaching-requested' if waiting else 'coaching-add', f'{org["name"]} ({user["email"]})')
     return {'org': _org_summary(org)}
 
 

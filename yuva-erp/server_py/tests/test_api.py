@@ -720,6 +720,11 @@ class Coachings(unittest.TestCase):
         self.assertEqual(status, 200)
         self.__class__.admin_b = data['token']
         self.assertEqual(self.call('POST', '/api/super/orgs', self.coaching('Beta2', 'b@x.com'), self.sup)[0], 409)
+        # added as a request: it waits for approval like a coaching that registered itself
+        status, data = self.call('POST', '/api/super/orgs', {**self.coaching('Waiting Co', 'w@x.com'), 'asRequest': True}, self.sup)
+        self.assertEqual((status, data['org']['status']), (200, 'pending'))
+        self.assertEqual(self.login('w@x.com')[0], 403)
+        self.assertEqual(self.call('POST', f"/api/super/orgs/{data['org']['id']}/reject", {}, self.sup)[0], 200)
 
     def test_04_no_coaching_sees_the_data_of_another(self):
         seed = {k: v for k, v in SEED.items() if k != 'profile'}

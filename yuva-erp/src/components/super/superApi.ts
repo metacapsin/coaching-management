@@ -33,6 +33,7 @@ export interface NewCoaching {
   phone: string;
   email: string;
   password: string;
+  asRequest?: boolean; // leave it waiting for approval instead of activating it
 }
 
 export const superApi = {
