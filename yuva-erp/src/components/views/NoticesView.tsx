@@ -5,7 +5,7 @@ import { canManageInstitute } from '../../Context/Access';
 import type { Announcement } from '../../types';
 import { NoticeModal } from '../modals/NoticeModal';
 import { formatDateTime } from '../utils/helpers';
-import { Megaphone, Plus, Pencil, Trash2, Pin, PinOff, Users } from 'lucide-react';
+import { Megaphone, Plus, Pencil, Trash2, Pin, PinOff, Users, Search } from 'lucide-react';
 
 export const NoticesView: React.FC = () => {
   const { announcements, updateAnnouncement, deleteAnnouncement } = useInstitute();
@@ -16,12 +16,14 @@ export const NoticesView: React.FC = () => {
 
   const [editing, setEditing] = useState<{ notice: Announcement | null } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Announcement | null>(null);
+  const [query, setQuery] = useState('');
 
-  const sorted = useMemo(
-    () =>
-      [...announcements].sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.createdAt.localeCompare(a.createdAt)),
-    [announcements]
-  );
+  const sorted = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return [...announcements]
+      .filter(n => !q || [n.title, n.body, n.batchName, n.authorName].some(v => (v || '').toLowerCase().includes(q)))
+      .sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.createdAt.localeCompare(a.createdAt));
+  }, [announcements, query]);
 
   // A teacher can change only what they wrote themselves
   const canChange = (n: Announcement) => office || (role === 'teacher' && n.authorId === user?.id);
@@ -52,6 +54,21 @@ export const NoticesView: React.FC = () => {
           </button>
         )}
       </div>
+
+      {announcements.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex">
+        <div className="relative flex-1 min-w-48">
+          <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
+          <input
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search notices by title, message, batch or writer..."
+            className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        </div>
+      )}
 
       {sorted.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 py-14 text-center shadow-xs">

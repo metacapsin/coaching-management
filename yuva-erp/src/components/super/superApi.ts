@@ -24,6 +24,16 @@ export interface OrgSummary {
   admin: { id: string; name: string; email: string; phone: string; resetRequestedAt?: string | null } | null;
   students: number;
   accounts: number;
+  // what the coaching pays the platform
+  monthlyFee: number;
+  paidUntil: string | null;
+  subscription: 'free' | 'paid' | 'due';
+  payments: { id: string; date: string; amount: number; months: number; note: string }[];
+}
+
+export interface Income {
+  thisMonth: number;
+  total: number;
 }
 
 export interface NewCoaching {
@@ -37,9 +47,11 @@ export interface NewCoaching {
 
 export const superApi = {
   audit: () => superRequest<{ entries: ActivityEntry[] }>('GET', '/super/audit?limit=100').then(r => r.entries),
-  orgs: () => superRequest<{ orgs: OrgSummary[] }>('GET', '/super/orgs').then(r => r.orgs),
+  orgs: () => superRequest<{ orgs: OrgSummary[]; income: Income }>('GET', '/super/orgs'),
   add: (input: NewCoaching) => superRequest<{ org: OrgSummary }>('POST', '/super/orgs', input),
-  edit: (id: string, input: { name: string; city: string }) => superRequest<{ org: OrgSummary }>('PUT', `/super/orgs/${id}`, input),
+  recordPayment: (id: string, input: { amount: number; months: number; note: string }) =>
+    superRequest<{ org: OrgSummary }>('POST', `/super/orgs/${id}/payments`, input),
+  edit: (id: string, input: { name: string; city: string; monthlyFee?: number }) => superRequest<{ org: OrgSummary }>('PUT', `/super/orgs/${id}`, input),
   approve: (id: string) => superRequest<unknown>('POST', `/super/orgs/${id}/approve`, {}),
   reject: (id: string) => superRequest<unknown>('POST', `/super/orgs/${id}/reject`, {}),
   suspend: (id: string) => superRequest<unknown>('POST', `/super/orgs/${id}/suspend`, {}),
@@ -54,6 +66,7 @@ export const superApi = {
 // The list of coachings, refreshed every 15 seconds
 export const useOrgs = (enabled: boolean) => {
   const [orgs, setOrgs] = useState<OrgSummary[]>([]);
+  const [income, setIncome] = useState<Income>({ thisMonth: 0, total: 0 });
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
   const [tick, setTick] = useState(0);
@@ -63,9 +76,10 @@ export const useOrgs = (enabled: boolean) => {
     let alive = true;
     const load = async () => {
       try {
-        const list = await superApi.orgs();
+        const res = await superApi.orgs();
         if (alive) {
-          setOrgs(list);
+          setOrgs(res.orgs);
+          setIncome(res.income);
           setError('');
           setLoaded(true);
         }
@@ -81,5 +95,5 @@ export const useOrgs = (enabled: boolean) => {
     };
   }, [enabled, tick]);
 
-  return { orgs, error, loaded, reload: () => setTick(t => t + 1) };
+  return { orgs, income, error, loaded, reload: () => setTick(t => t + 1) };
 };

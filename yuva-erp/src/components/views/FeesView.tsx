@@ -42,7 +42,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
   onSelectStudent,
   onCollectPayment
 }) => {
-  const { transactions, students, courses, batches, profile, sendNotification, templates, deleteCourse } = useInstitute();
+  const { transactions, students, courses, batches, profile, sendNotification, templates, deleteCourse, notificationLogs } = useInstitute();
 
   const [activeTab, setActiveTab] = useState<'transactions' | 'defaulters' | 'courses'>('transactions');
   const [searchQuery, setSearchQuery] = useState('');
@@ -56,7 +56,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
 
   const showNotice = (type: 'success' | 'error', text: string) => {
     setNotice({ type, text });
-    setTimeout(() => setNotice(null), 4000);
+    setTimeout(() => setNotice(null), 7000);
   };
 
   const today = toLocalISODate();
@@ -103,10 +103,10 @@ export const FeesView: React.FC<FeesViewProps> = ({
   const txPaged = usePaged(filteredTransactions, 20, `${searchQuery}|${methodFilter}`);
   const defaulterPaged = usePaged(shownDefaulters, 20, overdueOnly);
 
-  const handleSendFeeReminder = (item: DefaulterRow) => {
+  const reminderText = (item: DefaulterRow) => {
     const template = templates.find(t => t.type === 'fee_due') || templates[0];
-    if (!template) return;
-    const msg = fillTemplate(template.templateBody, {
+    if (!template) return null;
+    return fillTemplate(template.templateBody, {
       parent_name: item.student.parentName,
       student_name: item.student.name,
       currency: profile.currencySymbol,
@@ -114,6 +114,46 @@ export const FeesView: React.FC<FeesViewProps> = ({
       due_date: item.student.nextDueDate ? formatDate(item.student.nextDueDate) : 'at the earliest',
       batch_name: item.batchName || 'Class'
     });
+  };
+
+  // One click: a reminder for every account shown goes to the message queue ("Waiting to be sent"). Whoever
+  // already has a reminder waiting is skipped, so pressing it twice does not send twice.
+  const handleQueueAll = () => {
+    const waiting = new Set(notificationLogs.filter(l => l.type === 'fee_due' && l.status === 'pending').map(l => l.studentId));
+    let queued = 0;
+    let skipped = 0;
+    for (const item of shownDefaulters) {
+      const msg = reminderText(item);
+      if (!msg) break;
+      if (waiting.has(item.student.id)) {
+        skipped++;
+        continue;
+      }
+      sendNotification({
+        type: 'fee_due',
+        channel: 'whatsapp',
+        recipientName: item.student.parentName,
+        recipientPhone: item.student.parentPhone,
+        studentName: item.student.name,
+        studentId: item.student.id,
+        content: msg,
+        status: 'pending'
+      });
+      queued++;
+    }
+    showNotice(
+      queued > 0 ? 'success' : 'error',
+      queued > 0
+        ? `${queued} reminder${queued === 1 ? '' : 's'} added to the queue${skipped ? ` (${skipped} already waiting)` : ''}. Open Parent Broadcasts, then Message History, and press Send now on each.`
+        : skipped > 0
+        ? 'Every reminder is already waiting in the queue.'
+        : 'No account to remind.'
+    );
+  };
+
+  const handleSendFeeReminder = (item: DefaulterRow) => {
+    const msg = reminderText(item);
+    if (!msg) return;
 
     sendNotification({
       type: 'fee_due',
@@ -434,6 +474,14 @@ export const FeesView: React.FC<FeesViewProps> = ({
                 their due date come first.
               </p>
             </div>
+            <button
+              onClick={handleQueueAll}
+              disabled={shownDefaulters.length === 0}
+              className="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-lg flex items-center gap-1.5"
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              Queue reminders for all ({shownDefaulters.length})
+            </button>
             <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
               <input
                 type="checkbox"

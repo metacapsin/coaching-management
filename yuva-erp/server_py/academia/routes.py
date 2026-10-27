@@ -10,7 +10,7 @@ import functools
 import hmac
 import json
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, Response, current_app, g, request
 from pymongo.errors import DuplicateKeyError
@@ -302,8 +302,13 @@ def login():
         s.audit(found, 'login-failed', 'wrong coaching')
         raise invalid
 
-    # two logins: 'super' for the super admin, 'admin' for the principal and the office staff of a coaching
-    portal_ok = found['role'] in ('admin', 'staff') if portal == 'admin' else found['role'] == portal
+    # three logins: 'super' (super admin), 'admin' (principal and office staff of a coaching), 'member' (teacher, student)
+    if portal == 'admin':
+        portal_ok = found['role'] in ('admin', 'staff')
+    elif portal == 'member':  # the "Teacher / Student" tab: accounts the principal made for them
+        portal_ok = found['role'] in ('teacher', 'student')
+    else:
+        portal_ok = found['role'] == portal
     if not portal_ok:
         raise HttpError(
             403,
@@ -896,13 +901,43 @@ def super_setup():
     return start_session(user)
 
 
+def _plan(org):
+    """What a coaching pays the platform: the monthly fee, how long it is paid for, and the last payments."""
+    fee = org.get('monthlyFee') or 0
+    paid_until = org.get('paidUntil')
+    today = today_local()
+    if not fee:
+        state = 'free'
+    elif paid_until and paid_until >= today:
+        state = 'paid'
+    else:
+        state = 'due'
+    return {
+        'monthlyFee': fee,
+        'paidUntil': paid_until,
+        'subscription': state,
+        'payments': (org.get('payments') or [])[:6],
+    }
+
+
+def _add_months(iso, months):
+    """A date plus whole months (the day is kept, or the last day of a shorter month)."""
+    year, month, day = (int(x) for x in iso.split('-'))
+    total = year * 12 + (month - 1) + months
+    year, month = divmod(total, 12)
+    month += 1
+    last = (datetime(year + (month == 12), month % 12 + 1, 1) - timedelta(days=1)).day
+    return f'{year:04d}-{month:02d}-{min(day, last):02d}'
+
+
 def _org_summary(org):
     """What the super admin may see of a coaching: who runs it and how big it is. Never its data."""
     tenant = root().for_org(org['id'])
     admins = [u for u in tenant.users_all() if u['role'] == 'admin']
     admin = admins[0] if admins else None
     return {
-        **org,
+        **{k: v for k, v in org.items() if k not in ('payments',)},
+        **_plan(org),
         'admin': {
             'id': admin['id'],
             'name': admin['name'],
@@ -933,7 +968,14 @@ def super_audit():
 
 @route('/api/super/orgs', ['GET'], 'super')
 def super_orgs():
-    return {'orgs': [_org_summary(o) for o in root().org_list()]}
+    orgs = root().org_list()
+    month = today_local()[:7]
+    payments = [p for o in orgs for p in (o.get('payments') or [])]
+    income = {
+        'thisMonth': sum(p['amount'] for p in payments if str(p.get('date', ''))[:7] == month),
+        'total': sum(p['amount'] for p in payments),
+    }
+    return {'orgs': [_org_summary(o) for o in orgs], 'income': income}
 
 
 @route('/api/super/orgs', ['POST'], 'super')
@@ -954,6 +996,11 @@ def super_edit_org(org_id):
         raise HttpError(400, 'Please enter the name of the coaching.')
     org['name'] = name
     org['city'] = text(b.get('city'), 80)
+    if 'monthlyFee' in b:
+        fee = b.get('monthlyFee')
+        if isinstance(fee, bool) or not isinstance(fee, (int, float)) or fee < 0 or fee > 10_000_000:
+            raise HttpError(400, 'The monthly fee must be a number, 0 or more.')
+        org['monthlyFee'] = round(fee, 2)
     root().org_save(org)
     g.store.audit(g.user, 'coaching-edit', org['name'])
     return {'org': _org_summary(org)}
@@ -978,6 +1025,27 @@ def _set_org_status(org_id, status, only_from=None):
             auth.destroy_sessions_of(root(), u['id'])
     tenant.bump()
     return org
+
+
+@route('/api/super/orgs/<org_id>/payments', ['POST'], 'super')
+def super_record_payment(org_id):
+    """A coaching paid its subscription to the platform: the paid-until date moves on by the months paid for."""
+    org = _get_org(org_id)
+    b = body()
+    amount = b.get('amount')
+    months = b.get('months', 1)
+    if isinstance(amount, bool) or not isinstance(amount, (int, float)) or amount <= 0 or amount > 100_000_000:
+        raise HttpError(400, 'Enter the amount that was paid.')
+    if isinstance(months, bool) or not isinstance(months, int) or not 1 <= months <= 36:
+        raise HttpError(400, 'Months must be between 1 and 36.')
+    today = today_local()
+    start = max(org.get('paidUntil') or today, today)  # paying early adds to what is already paid
+    org['paidUntil'] = _add_months(start, months)
+    payment = {'id': new_id('pay'), 'date': today, 'amount': round(amount, 2), 'months': months, 'note': text(b.get('note'), 200)}
+    org['payments'] = [payment, *(org.get('payments') or [])][:60]
+    root().org_save(org)
+    g.store.audit(g.user, 'coaching-payment', f'{org["name"]}: {payment["amount"]} for {months} month(s)')
+    return {'org': _org_summary(org)}
 
 
 @route('/api/super/orgs/<org_id>/approve', ['POST'], 'super')

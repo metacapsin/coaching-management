@@ -5,7 +5,7 @@ import { canManageInstitute } from '../../Context/Access';
 import type { StudyMaterial } from '../../types';
 import { MaterialModal, TYPE_LABEL } from '../modals/MaterialModal';
 import { formatDate, toLocalISODate } from '../utils/helpers';
-import { BookOpen, Plus, Pencil, Trash2, ExternalLink, FileText, ClipboardList } from 'lucide-react';
+import { BookOpen, Plus, Pencil, Trash2, ExternalLink, FileText, ClipboardList, Search } from 'lucide-react';
 
 const TYPE_STYLE = {
   link: 'bg-blue-100 text-blue-700',
@@ -23,6 +23,7 @@ export const MaterialView: React.FC = () => {
   const [batchFilter, setBatchFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [editing, setEditing] = useState<{ material: StudyMaterial | null } | null>(null);
+  const [query, setQuery] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<StudyMaterial | null>(null);
 
   const today = toLocalISODate();
@@ -30,8 +31,12 @@ export const MaterialView: React.FC = () => {
     () =>
       materials
         .filter(m => (batchFilter === 'all' || m.batchId === batchFilter) && (typeFilter === 'all' || m.type === typeFilter))
+        .filter(m => {
+          const q = query.trim().toLowerCase();
+          return !q || [m.title, m.description, m.subject, m.batchName].some(v => (v || '').toLowerCase().includes(q));
+        })
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    [materials, batchFilter, typeFilter]
+    [materials, batchFilter, typeFilter, query]
   );
 
   const canChange = (m: StudyMaterial) => office || (role === 'teacher' && m.authorId === user?.id);
@@ -63,6 +68,16 @@ export const MaterialView: React.FC = () => {
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1 min-w-48">
+          <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
+          <input
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search by title, subject or batch..."
+            className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
         {batchOptions.length > 1 && (
           <select
             value={batchFilter}

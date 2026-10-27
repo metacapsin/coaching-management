@@ -8,6 +8,7 @@ import {
   GraduationCap,
   ShieldCheck,
   Crown,
+  Users,
   Mail,
   Lock,
   User,
@@ -78,16 +79,18 @@ const ForgotPassword: React.FC<{ initialEmail: string }> = ({ initialEmail }) =>
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Two logins on one page: the Super Admin (manages the coachings) and the coaching admin (principal).
-// Teachers and students get their accounts from the principal of their coaching, inside the app.
+// Three logins on one page: the Super Admin (manages the coachings), the coaching admin (principal) and the teachers and
+// students (their accounts are made by the principal of their coaching, inside the app: no sign-up here).
 const PORTALS: { id: Portal; label: string; icon: LucideIcon; blurb: string }[] = [
   { id: 'super', label: 'Super Admin', icon: Crown, blurb: 'Approves coachings and manages all of them.' },
-  { id: 'admin', label: 'Coaching Admin', icon: ShieldCheck, blurb: 'Principal of one coaching, with its own data.' }
+  { id: 'admin', label: 'Coaching Admin', icon: ShieldCheck, blurb: 'Principal of one coaching, with its own data.' },
+  { id: 'member', label: 'Teacher / Student', icon: Users, blurb: 'Your login is made by the principal of your coaching.' }
 ];
 
 const FEATURES = [
   'Super Admin: approves coachings and sees who runs each one',
   'Coaching Admin: complete control of one coaching only',
+  'Teachers and students: their own classes, marks and fees',
   'Every coaching has its own students, fees and exams',
   'No coaching can see the data of another coaching'
 ];
@@ -264,7 +267,7 @@ export const AuthPage: React.FC = () => {
 
       {/* Right: form */}
       <div className="flex items-center justify-center p-6 sm:p-10">
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-md min-w-0">
           <div className="lg:hidden flex items-center gap-2.5 mb-8">
             <div className="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center">
               <GraduationCap className="w-5 h-5" />
@@ -287,7 +290,7 @@ export const AuthPage: React.FC = () => {
           </p>
 
           {/* The two logins */}
-          <div className="mt-6 grid grid-cols-2 gap-1 bg-slate-100 p-1 rounded-lg">
+          <div className="mt-6 grid grid-cols-[repeat(3,minmax(0,1fr))] gap-1 bg-slate-100 p-1 rounded-lg">
             {PORTALS.map(p => {
               const Icon = p.icon;
               return (
@@ -295,7 +298,7 @@ export const AuthPage: React.FC = () => {
                   key={p.id}
                   type="button"
                   onClick={() => choosePortal(p.id)}
-                  className={`py-2 text-xs font-medium rounded-md transition-colors flex items-center justify-center gap-1.5 ${
+                  className={`py-2 px-1 text-[11px] sm:text-xs leading-tight text-center font-medium rounded-md transition-colors flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 ${
                     portal === p.id ? 'bg-white text-slate-900 shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
@@ -435,7 +438,7 @@ export const AuthPage: React.FC = () => {
             </div>
           )}
 
-          {portal === 'admin' && !registering && <ForgotPassword initialEmail={email} />}
+          {portal !== 'super' && !registering && <ForgotPassword initialEmail={email} />}
 
           <p className="mt-6 text-[11px] text-slate-400 text-center leading-relaxed">
             Your account and data are stored on the institute's server.

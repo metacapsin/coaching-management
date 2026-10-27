@@ -140,7 +140,7 @@ class Flow(unittest.TestCase):
         self.assertEqual(self.call('POST', '/api/auth/login', {'email': 'p@x.com', 'password': 'Wrong1234', 'portal': 'admin'})[0], 401)
         status, data = self.call('POST', '/api/auth/login', {'email': 'p@x.com', 'password': PASSWORD, 'portal': 'student'})
         self.assertEqual(status, 403)
-        self.assertIn('Administration', data['error'])
+        self.assertIn('Coaching Admin', data['error'])
         self.assertEqual(self.call('POST', '/api/auth/login', {'email': 'p@x.com', 'password': PASSWORD, 'portal': 'admin'})[0], 200)
 
         for _ in range(5):
@@ -731,6 +731,26 @@ class Coachings(unittest.TestCase):
         self.assertEqual(self.call('POST', f"/api/super/orgs/{data['org']['id']}/reject", {}, self.sup)[0], 200)
         self.assertEqual(self.login('w@x.com')[0], 401)
 
+    def test_03b_subscription_of_a_coaching(self):
+        # monthly fee, payments and the paid-until date (money between the platform and a coaching)
+        org = self.org_b
+        status, data = self.call('PUT', f'/api/super/orgs/{org}', {'name': 'Beta', 'city': 'Bijainagar', 'monthlyFee': 1500}, self.sup)
+        self.assertEqual((status, data['org']['monthlyFee'], data['org']['subscription']), (200, 1500, 'due'))
+        self.assertEqual(self.call('PUT', f'/api/super/orgs/{org}', {'name': 'Beta', 'monthlyFee': -5}, self.sup)[0], 400)
+        self.assertEqual(self.call('POST', f'/api/super/orgs/{org}/payments', {'amount': 0}, self.sup)[0], 400)
+        status, data = self.call('POST', f'/api/super/orgs/{org}/payments', {'amount': 3000, 'months': 2}, self.sup)
+        self.assertEqual((status, data['org']['subscription']), (200, 'paid'))
+        first = data['org']['paidUntil']
+        # paying again before the date adds on top of what is paid
+        data = self.call('POST', f'/api/super/orgs/{org}/payments', {'amount': 1500, 'months': 1}, self.sup)[1]
+        self.assertGreater(data['org']['paidUntil'], first)
+        self.assertEqual(len(data['org']['payments']), 2)
+        listing = self.call('GET', '/api/super/orgs', token=self.sup)[1]
+        self.assertEqual(listing['income']['total'], 4500)
+        self.assertEqual(listing['income']['thisMonth'], 4500)
+        # only the Super Admin deals with this money
+        self.assertEqual(self.call('POST', f'/api/super/orgs/{org}/payments', {'amount': 10}, self.admin_b)[0], 403)
+
     def test_04_no_coaching_sees_the_data_of_another(self):
         seed = {k: v for k, v in SEED.items() if k != 'profile'}
         self.assertEqual(self.call('PUT', '/api/institute', {'changes': seed}, self.admin_a)[0], 200)
@@ -867,6 +887,15 @@ class Expenses(unittest.TestCase):
         self.assertEqual(self.call('PUT', '/api/institute', change, self.teacher)[0], 403)
         still = self.call('GET', '/api/sync', token=self.admin)[1]['institute']['expenses']
         self.assertEqual(len(still), 1)
+
+
+    def test_3_the_teacher_student_tab_is_for_teachers_and_students_only(self):
+        login = lambda email, portal: self.call('POST', '/api/auth/login', {'email': email, 'password': PASSWORD, 'portal': portal})
+        self.assertEqual(login('t@x.com', 'member')[0], 200)  # a teacher on the Teacher / Student tab
+        status, data = login('p@x.com', 'member')  # the principal is not a member
+        self.assertEqual(status, 403)
+        self.assertIn('Coaching Admin', data['error'])
+        self.assertEqual(login('t@x.com', 'admin')[0], 403)  # and a teacher is not an admin
 
 
 if __name__ == '__main__':

@@ -176,7 +176,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     timetable,
     templates,
     sendNotification,
-    getStudentAttendanceStats
+    getStudentAttendanceStats,
+    enquiries
   } = useInstitute();
   // Cancelled receipts are not money received
   const transactions = allTransactions.filter(t => t.status !== 'cancelled');
@@ -186,6 +187,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const now = new Date();
   const todayStr = toLocalISODate(now);
+
+  // The strip "Today": what needs the principal's eyes right now
+  const collectedToday = transactions.filter(t => t.date === todayStr).reduce((n, t) => n + t.amount, 0);
+  const followUpsDue = enquiries.filter(e => e.status !== 'enrolled' && e.status !== 'lost' && !!e.followUpDate && e.followUpDate <= todayStr).length;
+  const overdueFees = students.filter(
+    s => s.status !== 'inactive' && !!s.nextDueDate && s.nextDueDate < todayStr && s.totalFees - s.discount - s.feePaid > 0
+  ).length;
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
   const dayName = now.toLocaleDateString('en-US', { weekday: 'short' });
 
@@ -453,6 +461,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
           )}
         </div>
+      </div>
+
+      {/* Today */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: "Collected today", value: `${profile.currencySymbol}${collectedToday.toLocaleString('en-IN')}`, tab: 'fees', tone: 'text-emerald-700' },
+          { label: 'Absent today', value: absentToday, tab: 'attendance', tone: absentToday > 0 ? 'text-rose-700' : 'text-slate-900' },
+          { label: 'Follow-ups due', value: followUpsDue, tab: 'enquiries', tone: followUpsDue > 0 ? 'text-amber-700' : 'text-slate-900' },
+          { label: 'Overdue fee accounts', value: overdueFees, tab: 'fees', tone: overdueFees > 0 ? 'text-rose-700' : 'text-slate-900' }
+        ].map(item => (
+          <button
+            key={item.label}
+            onClick={() => onNavigate(item.tab)}
+            className="text-left bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-xs hover:shadow-md transition-shadow"
+          >
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{item.label}</div>
+            <div className={`text-xl font-bold font-mono mt-0.5 ${item.tone}`}>{item.value}</div>
+          </button>
+        ))}
       </div>
 
       {/* KPI Cards Grid */}

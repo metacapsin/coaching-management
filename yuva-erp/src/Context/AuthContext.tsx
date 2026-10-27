@@ -21,7 +21,7 @@ import type { AuthUser } from '../components/utils/api';
 export type { UserRole } from './Access';
 export type { AuthUser, AccountStatus } from '../components/utils/api';
 
-export type Portal = 'super' | 'admin';
+export type Portal = 'super' | 'admin' | 'member';
 
 export type AuthResult = { ok: true } | { ok: false; error: string };
 
@@ -124,7 +124,7 @@ export const roleLabel = (role?: UserRole) => {
 
 // Which login tab a role belongs to
 export const portalLabel = (role: UserRole) =>
-  role === 'student' ? 'Student' : role === 'teacher' ? 'Teacher' : 'Administration';
+  role === 'super' ? 'Super Admin' : role === 'student' || role === 'teacher' ? 'Teacher / Student' : 'Coaching Admin';
 
 // The Super Admin entered a coaching and that sign-in ended (sign out, expired, removed): take the Super Admin
 // sign-in back, if this tab has one. Returns the Super Admin account, or null.

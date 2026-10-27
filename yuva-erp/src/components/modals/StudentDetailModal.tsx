@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import { Student } from '../../types';
-import { X, MessageSquare, CreditCard, Printer, IdCard } from 'lucide-react';
+import { X, MessageSquare, CreditCard, Printer, IdCard, UserPlus, CalendarX, Award, Bell, Ban } from 'lucide-react';
+import { formatDate } from '../utils/helpers';
 import { PrintableIdCardModal } from './PrintableIdCardModal';
 
 interface StudentDetailModalProps {
@@ -22,12 +23,14 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     courses, 
     transactions, 
     exams, 
+    attendance,
+    notificationLogs,
     getStudentAttendanceStats, 
     profile, 
     sendNotification 
   } = useInstitute();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'fees' | 'attendance' | 'exams'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'fees' | 'attendance' | 'exams' | 'timeline'>('overview');
   const [showIdCard, setShowIdCard] = useState(false);
 
   if (!student) return null;
@@ -36,6 +39,56 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   const course = courses.find(c => c.id === student.courseId);
   const studentTxs = transactions.filter(t => t.studentId === student.id);
   const attStats = getStudentAttendanceStats(student.id);
+
+  // Everything that happened with this student, newest first
+  type TimelineEvent = { date: string; icon: React.ReactNode; title: string; detail?: string; tone: string };
+  const timeline: TimelineEvent[] = [
+    {
+      date: student.dateOfAdmission,
+      icon: <UserPlus className="w-3.5 h-3.5" />,
+      title: 'Admitted',
+      detail: `Roll no. ${student.rollNo}${batch ? ` · ${batch.name}` : ''}`,
+      tone: 'bg-blue-100 text-blue-700'
+    },
+    ...studentTxs.map(t => ({
+      date: t.date,
+      icon: t.status === 'cancelled' ? <Ban className="w-3.5 h-3.5" /> : <CreditCard className="w-3.5 h-3.5" />,
+      title: t.status === 'cancelled' ? `Receipt ${t.receiptNo} cancelled` : `Paid ${profile.currencySymbol}${t.amount.toLocaleString('en-IN')}`,
+      detail: `${t.receiptNo} · ${t.paymentMethod}${t.status === 'cancelled' && t.cancelReason ? ` · ${t.cancelReason}` : ''}`,
+      tone: t.status === 'cancelled' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
+    })),
+    ...attendance.flatMap(a => {
+      const status = a.records[student.id];
+      return status === 'absent' || status === 'late'
+        ? [{ date: a.date, icon: <CalendarX className="w-3.5 h-3.5" />, title: status === 'absent' ? 'Absent' : 'Late', detail: undefined, tone: status === 'absent' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-800' }]
+        : [];
+    }),
+    ...exams.flatMap(e => {
+      const r = e.results[student.id];
+      return r
+        ? [
+            {
+              date: e.date,
+              icon: <Award className="w-3.5 h-3.5" />,
+              title: e.title,
+              detail: r.absent ? 'Absent' : `${r.marksObtained} / ${e.maxMarks} marks`,
+              tone: 'bg-violet-100 text-violet-700'
+            }
+          ]
+        : [];
+    }),
+    ...notificationLogs
+      .filter(l => l.studentId === student.id)
+      .map(l => ({
+        date: (l.timestamp || '').slice(0, 10),
+        icon: <Bell className="w-3.5 h-3.5" />,
+        title: `Message to parent (${l.type.replace(/_/g, ' ')})`,
+        detail: l.status === 'pending' ? 'Waiting to be sent' : 'Sent',
+        tone: 'bg-slate-100 text-slate-700'
+      }))
+  ]
+    .filter(e => !!e.date)
+    .sort((a, b) => b.date.localeCompare(a.date));
 
   const netPayable = Math.max(0, student.totalFees - student.discount);
   const outstanding = Math.max(0, netPayable - student.feePaid);
@@ -166,6 +219,14 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             }`}
           >
             Test Performance ({studentExams.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('timeline')}
+            className={`py-3 border-b-2 transition-colors ${
+              activeTab === 'timeline' ? 'border-blue-600 text-blue-600 font-semibold' : 'border-transparent hover:text-slate-900'
+            }`}
+          >
+            Timeline
           </button>
         </div>
 
@@ -369,6 +430,24 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                   Parents receive automated WhatsApp and SMS alerts for any unexcused absences.
                 </p>
               </div>
+            </div>
+          )}
+
+          {activeTab === 'timeline' && (
+            <div>
+              <h4 className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-3">Everything about {student.name}, newest first</h4>
+              <ol className="relative border-l border-slate-200 ml-3 space-y-4">
+                {timeline.map((e, i) => (
+                  <li key={i} className="ml-5">
+                    <span className={`absolute -left-3.5 w-7 h-7 rounded-full flex items-center justify-center ${e.tone}`}>{e.icon}</span>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="text-xs font-semibold text-slate-900">{e.title}</span>
+                      <span className="text-[11px] text-slate-400 shrink-0">{formatDate(e.date)}</span>
+                    </div>
+                    {e.detail && <p className="text-[11px] text-slate-500 mt-0.5">{e.detail}</p>}
+                  </li>
+                ))}
+              </ol>
             </div>
           )}
 

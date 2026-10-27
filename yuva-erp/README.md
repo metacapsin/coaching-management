@@ -51,15 +51,13 @@ npm test
 Runs the Python tests (in-memory MongoDB, nothing real is touched). Set `ACADEMIA_TEST_REAL=1` to run
 them on a temporary database in your real cluster (it is dropped afterwards).
 
-## How people sign in (one page, two tabs)
+## How people sign in (one page, three tabs)
 
 | Tab | Who | What |
 | --- | --- | --- |
 | **Super Admin** | The person who manages all coachings | First time: create the account (only on the server computer, only once). Then sign in. |
 | **Coaching Admin** | The principal (and office staff) of one coaching | Sign in. A new coaching clicks "Register your coaching" and waits for the Super Admin's approval. |
-
-Teachers and students get their accounts from the principal of their coaching (Team & Access, or the
-"Add Teacher" button on the dashboard). Their login tabs are not on the page yet; the server side is ready.
+| **Teacher / Student** | People of a coaching | Sign in only. Their account is made by the principal (Team & Access, or the "Add Teacher" button on the dashboard). |
 
 ### The Super Admin
 
@@ -67,6 +65,8 @@ Teachers and students get their accounts from the principal of their coaching (T
 - **Approves or rejects** coachings that registered themselves. A coaching can add itself only through this approval.
 - "+ Add coaching" only sends a request too: the coaching waits in "Requests waiting for your approval" and works only after
   the Super Admin presses **Approve**. Nothing becomes active without that Approve.
+- Keeps the **subscription** of every coaching: the monthly fee, payments ("Record a payment" moves the paid-until date on)
+  and a Paid / Payment due badge; the top shows the income of this month.
 - Switch a coaching off or on, edit it, delete it (the name must be typed), set a new password for its principal
   (the principal then has to choose an own password at the next sign in), and read the platform activity log.
 - Never sees a coaching's data (students, fees, exams...). To enter a coaching the Super Admin needs the
@@ -86,13 +86,13 @@ Teachers and students get their accounts from the principal of their coaching (T
 
 | Screen | Who | What |
 | --- | --- | --- |
-| Dashboard | Principal, staff | Numbers, fee chart, follow-ups due, notices, quick buttons (Add Teacher, New Admission) |
+| Dashboard | Principal, staff | A "Today" strip (collected, absent, follow-ups, overdue), numbers, fee chart, notices, quick buttons (Add Teacher, New Admission) |
 | Enquiries | Principal, staff | Leads, follow-up dates, WhatsApp, one-click "Admit" (open enquiries are shown first) |
-| Admissions & Students | Principal, staff | Admission, search, edit, ID card, receipts, archive |
-| Fees & Invoicing | Principal, staff | Receipts, cancel receipt, overdue accounts, programs and standard fees |
+| Admissions & Students | Principal, staff | Admission, search, edit, ID card, receipts, archive, and a **Timeline** of everything about a student |
+| Fees & Invoicing | Principal, staff | Receipts, cancel receipt, overdue accounts ("Queue reminders for all" in one click), programs and standard fees |
 | **Expenses & Profit** | Principal only | Write down salary, rent and bills; profit = fees collected minus expenses, per month |
 | Attendance | Principal, staff, teacher | Roll call per batch, absent alerts |
-| Exams | Principal, staff, teacher | Tests, marks, ranks, report cards, admit cards |
+| Exams | Principal, staff, teacher | Tests, marks (press Enter to go to the next student), ranks, report cards, admit cards |
 | Notice Board, Study Material | Everybody | Notices and homework per batch |
 | Reports | Principal, staff | Fees, attendance, exam results, admissions (profit and loss for the principal); CSV and print |
 | Parent Broadcasts | Principal, staff | Templates and a message queue |

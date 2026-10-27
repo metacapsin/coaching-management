@@ -66,4 +66,4 @@ def portal_label(role):
     """Which login tab a role belongs to."""
     if role == 'super':
         return 'Super Admin'
-    return 'Student' if role == 'student' else 'Teacher' if role == 'teacher' else 'Administration'
+    return 'Teacher / Student' if role in ('student', 'teacher') else 'Coaching Admin'

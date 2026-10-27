@@ -162,6 +162,18 @@ const MarksForm: React.FC<{ exam: Exam; onClose: () => void; onPublished?: (exam
                           disabled={row.absent}
                           placeholder="—"
                           onChange={e => update(student.id, { score: e.target.value })}
+                          data-marks="1"
+                          onKeyDown={e => {
+                            // Enter: on to the next student's marks (fast entry without the mouse)
+                            if (e.key !== 'Enter') return;
+                            e.preventDefault();
+                            const boxes = [...document.querySelectorAll<HTMLInputElement>('input[data-marks]:not(:disabled)')];
+                            const next = boxes[boxes.indexOf(e.currentTarget) + 1];
+                            if (next) {
+                              next.focus();
+                              next.select();
+                            }
+                          }}
                           className="w-24 px-2.5 py-1.5 text-sm font-semibold font-mono border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100"
                         />
                       </td>
