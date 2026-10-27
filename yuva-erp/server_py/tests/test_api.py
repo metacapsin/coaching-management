@@ -667,7 +667,7 @@ class Coachings(unittest.TestCase):
         return self.call('POST', '/api/auth/login', {'email': email, 'password': password, 'portal': 'admin', 'orgId': org_id})
 
     def coaching(self, name, email):
-        return {'coachingName': name, 'city': 'Bijainagar', 'adminName': f'{name} Admin', 'email': email, 'phone': '+91 98000 11111', 'password': PASSWORD, 'approved': True}
+        return {'coachingName': name, 'city': 'Bijainagar', 'adminName': f'{name} Admin', 'email': email, 'phone': '+91 98000 11111', 'password': PASSWORD}
 
     def test_01_super_admin_setup_and_limits(self):
         self.assertEqual(self.call('GET', '/api/super/status')[1]['hasSuper'], False)
@@ -711,27 +711,25 @@ class Coachings(unittest.TestCase):
         self.assertIn('coaching-approve', actions)
         self.assertIn('coaching-requested', actions)
 
-    def test_03_super_admin_adds_a_coaching_directly(self):
-        # without the approval tick nothing is added
-        untick = {**self.coaching('Untick', 'u@x.com'), 'approved': False}
-        status, data = self.call('POST', '/api/super/orgs', untick, self.sup)
-        self.assertEqual(status, 400)
-        self.assertIn('approve', data['error'])
-        self.assertEqual(self.call('POST', '/api/super/orgs', {k: v for k, v in untick.items() if k != 'approved'}, self.sup)[0], 400)
-        self.assertNotIn('Untick', {o['name'] for o in self.call('GET', '/api/super/orgs', token=self.sup)[1]['orgs']})
+    def test_03_an_added_coaching_waits_for_the_approval(self):
+        # "Add coaching" only sends a request: nobody can sign in before the Approve
         status, data = self.call('POST', '/api/super/orgs', self.coaching('Beta', 'b@x.com'), self.sup)
-        self.assertEqual(status, 200)
-        self.assertEqual(data['org']['status'], 'active')
+        self.assertEqual((status, data['org']['status']), (200, 'pending'))
         self.__class__.org_b = data['org']['id']
+        status, err = self.login('b@x.com')
+        self.assertEqual(status, 403)
+        self.assertIn('approval', err['error'])
+        self.assertEqual(self.call('POST', '/api/super/orgs', self.coaching('Beta2', 'b@x.com'), self.sup)[0], 409)
+        # a principal cannot approve anything, only the Super Admin can
+        self.assertEqual(self.call('POST', f'/api/super/orgs/{self.org_b}/approve', {}, self.admin_a)[0], 403)
+        self.assertEqual(self.call('POST', f'/api/super/orgs/{self.org_b}/approve', {}, self.sup)[0], 200)
         status, data = self.login('b@x.com')
         self.assertEqual(status, 200)
         self.__class__.admin_b = data['token']
-        self.assertEqual(self.call('POST', '/api/super/orgs', self.coaching('Beta2', 'b@x.com'), self.sup)[0], 409)
-        # added as a request: it waits for approval like a coaching that registered itself
-        status, data = self.call('POST', '/api/super/orgs', {**self.coaching('Waiting Co', 'w@x.com'), 'asRequest': True}, self.sup)
-        self.assertEqual((status, data['org']['status']), (200, 'pending'))
-        self.assertEqual(self.login('w@x.com')[0], 403)
+        # a request that is turned down is gone
+        status, data = self.call('POST', '/api/super/orgs', self.coaching('Waiting Co', 'w@x.com'), self.sup)
         self.assertEqual(self.call('POST', f"/api/super/orgs/{data['org']['id']}/reject", {}, self.sup)[0], 200)
+        self.assertEqual(self.login('w@x.com')[0], 401)
 
     def test_04_no_coaching_sees_the_data_of_another(self):
         seed = {k: v for k, v in SEED.items() if k != 'profile'}

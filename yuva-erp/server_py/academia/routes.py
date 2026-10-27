@@ -938,14 +938,10 @@ def super_orgs():
 
 @route('/api/super/orgs', ['POST'], 'super')
 def super_add_org():
-    """The super admin adds a coaching and its principal directly. Active at once, or (asRequest) left waiting
-    for approval, like a coaching that asked to join."""
-    b = body()
-    waiting = b.get('asRequest') is True
-    if not waiting and b.get('approved') is not True:
-        raise HttpError(400, 'Tick the box to approve this coaching first.')
-    org, user = _new_coaching(b, 'pending' if waiting else 'active')
-    g.store.audit(g.user, 'coaching-requested' if waiting else 'coaching-add', f'{org["name"]} ({user["email"]})')
+    """The Super Admin adds a coaching. It never becomes active by itself: it goes to the requests that wait for
+    approval, and only the Approve of the Super Admin makes it work (like a coaching that asked to join)."""
+    org, user = _new_coaching(body(), 'pending')
+    g.store.audit(g.user, 'coaching-requested', f'{org["name"]} ({user["email"]}) added by the Super Admin')
     return {'org': _org_summary(org)}
 
 

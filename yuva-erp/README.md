@@ -65,7 +65,8 @@ Teachers and students get their accounts from the principal of their coaching (T
 
 - Sees each coaching as a card: principal, number of students and accounts, status.
 - **Approves or rejects** coachings that registered themselves. A coaching can add itself only through this approval.
-- "+ Add coaching" adds a coaching directly (the Super Admin is the approver, so it is active at once).
+- "+ Add coaching" only sends a request too: the coaching waits in "Requests waiting for your approval" and works only after
+  the Super Admin presses **Approve**. Nothing becomes active without that Approve.
 - Switch a coaching off or on, edit it, delete it (the name must be typed), set a new password for its principal
   (the principal then has to choose an own password at the next sign in), and read the platform activity log.
 - Never sees a coaching's data (students, fees, exams...). To enter a coaching the Super Admin needs the
