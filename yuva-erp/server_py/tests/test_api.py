@@ -973,6 +973,63 @@ class Homework(unittest.TestCase):
         self.assertEqual(self.call('PUT', '/api/institute', {'changes': {'submissions': {'upsert': [fake]}}}, self.student)[0], 403)
 
 
+class Facilities(unittest.TestCase):
+    """Library, transport and hostel: office work (principal and front desk), nothing for teachers and students."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.db = new_db()
+        cls.api = Api(create_app(db=cls.db, dist_dir='no-dist'))
+        call = cls.api.call
+        cls.admin = call('POST', '/api/auth/setup', {'name': 'P', 'email': 'p@x.com', 'password': PASSWORD})[1]['token']
+        call('PUT', '/api/institute', {'changes': {'batches': {'upsert': BATCHES}, 'students': {'upsert': STUDENTS}}}, cls.admin)
+        for role, email in (('staff', 's@x.com'), ('teacher', 't@x.com')):
+            call('POST', '/api/users', {'name': role, 'email': email, 'password': PASSWORD, 'role': role, 'batchIds': ['b1']}, cls.admin)
+        call('POST', '/api/users', {'name': 'Alice', 'email': 'alice@x.com', 'password': PASSWORD, 'role': 'student', 'studentId': 's1'}, cls.admin)
+        login = lambda e, portal: call('POST', '/api/auth/login', {'email': e, 'password': PASSWORD, 'portal': portal})[1]['token']
+        cls.staff = login('s@x.com', 'admin')
+        cls.teacher = login('t@x.com', 'member')
+        cls.student = login('alice@x.com', 'member')
+
+    @classmethod
+    def tearDownClass(cls):
+        drop_db(cls.db)
+
+    def call(self, *a, **kw):
+        return self.api.call(*a, **kw)
+
+    def test_1_the_office_keeps_books_routes_and_rooms(self):
+        book = {'id': 'bk1', 'title': 'Physics', 'author': 'A', 'category': 'Physics', 'copies': 2, 'issues': [{'id': 'i1', 'studentId': 's1', 'issuedOn': '2026-10-01', 'dueOn': '2026-10-15'}]}
+        route = {'id': 'rt1', 'name': 'Route 1', 'vehicleNo': 'X', 'driverName': 'D', 'driverPhone': '1', 'stops': 'A, B', 'capacity': 20, 'monthlyFee': 1000, 'studentIds': ['s1']}
+        room = {'id': 'rm1', 'name': 'A-1', 'block': 'Boys', 'capacity': 3, 'monthlyRent': 4000, 'studentIds': ['s1']}
+        changes = {'books': {'upsert': [book]}, 'transportRoutes': {'upsert': [route]}, 'hostelRooms': {'upsert': [room]}}
+        self.assertEqual(self.call('PUT', '/api/institute', {'changes': changes}, self.admin)[0], 200)
+        seen = self.call('GET', '/api/sync', token=self.admin)[1]['institute']
+        self.assertEqual(seen['books'][0]['issues'][0]['studentId'], 's1')  # the loans stay inside the book
+        self.assertEqual(seen['transportRoutes'][0]['studentIds'], ['s1'])
+        self.assertEqual(seen['hostelRooms'][0]['capacity'], 3)
+        # the front desk sees and changes them as well
+        staff_view = self.call('GET', '/api/sync', token=self.staff)[1]['institute']
+        self.assertEqual(len(staff_view['books']), 1)
+        returned = {**book, 'issues': [{**book['issues'][0], 'returnedOn': '2026-10-10'}]}
+        self.assertEqual(self.call('PUT', '/api/institute', {'changes': {'books': {'upsert': [returned]}}}, self.staff)[0], 200)
+        after = self.call('GET', '/api/sync', token=self.admin)[1]['institute']['books']
+        self.assertEqual(after[0]['issues'][0]['returnedOn'], '2026-10-10')
+
+    def test_2_teachers_and_students_neither_see_nor_change_them(self):
+        for token in (self.teacher, self.student):
+            view = self.call('GET', '/api/sync', token=token)[1]['institute']
+            self.assertEqual((view['books'], view['transportRoutes'], view['hostelRooms']), ([], [], []))
+            for name in ('books', 'transportRoutes', 'hostelRooms'):
+                status = self.call('PUT', '/api/institute', {'changes': {name: {'remove': ['bk1', 'rt1', 'rm1']}}}, token)[0]
+                self.assertEqual(status, 403)
+        self.assertEqual(len(self.call('GET', '/api/sync', token=self.admin)[1]['institute']['books']), 1)
+
+    def test_3_a_record_can_be_deleted(self):
+        self.assertEqual(self.call('PUT', '/api/institute', {'changes': {'hostelRooms': {'remove': ['rm1']}}}, self.admin)[0], 200)
+        self.assertEqual(self.call('GET', '/api/sync', token=self.admin)[1]['institute']['hostelRooms'], [])
+
+
 class SuperRecovery(unittest.TestCase):
     """The Super Admin forgot the password: it can be reset on the server computer only."""
 

@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { KeyRound, Copy, Check, Loader2 } from 'lucide-react';
 import { useAuth } from '../../Context/AuthContext';
 import { flushPending } from '../utils/api';
 import type { Student } from '../../types';
 
 // A temporary password that is easy to read out: letters and digits, no look-alike characters
-const generatePassword = () => {
+export const generatePassword = () => {
   const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz';
   const all = `${letters}23456789`;
   const pick = (chars: string) => {
@@ -22,39 +22,48 @@ const inputCls = 'w-full px-3 py-2 text-sm border border-slate-300 rounded-lg fo
 
 // The login of one student: the principal makes it (email + a temporary password). The student signs in on the
 // "Teacher / Student" tab and chooses an own password at the first sign in.
-export const StudentLoginCard: React.FC<{ student: Student }> = ({ student }) => {
+// `auto`: the login is made at once with these values (used right after the admission form)
+export const StudentLoginCard: React.FC<{ student: Student; auto?: { email: string; password: string } }> = ({ student, auto }) => {
   const { users, addUser, isAdmin } = useAuth();
   const existing = users.find(u => u.studentId === student.id);
 
-  const [email, setEmail] = useState(student.email || '');
-  const [password, setPassword] = useState(generatePassword);
+  const [email, setEmail] = useState(auto?.email || student.email || '');
+  const [password, setPassword] = useState(auto?.password || generatePassword);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [created, setCreated] = useState<{ email: string; password: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (auto && isAdmin && !existing && !autoStarted.current) {
+      autoStarted.current = true;
+      void create();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (!isAdmin) return null; // only the principal makes accounts
 
-  const create = async () => {
+  async function create() {
     setError('');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       setError('Enter the email the student will sign in with.');
       return;
     }
     setBusy(true);
-    await flushPending(); // the student record has to be on the server before the account can point to it
-    const result = await addUser({
-      name: student.name,
-      email: email.trim(),
-      password,
-      role: 'student',
-      phone: student.phone,
-      studentId: student.id
-    });
+    // The student record has to be on the server before the account can point to it: send it first and,
+    // if the server does not have it yet, wait a little and try again
+    let result = await addUser({ name: student.name, email: email.trim(), password, role: 'student', phone: student.phone, studentId: student.id });
+    for (let i = 0; i < 6 && !result.ok && /student record does not exist/i.test(result.error); i++) {
+      await flushPending();
+      await new Promise(r => setTimeout(r, 500));
+      result = await addUser({ name: student.name, email: email.trim(), password, role: 'student', phone: student.phone, studentId: student.id });
+    }
     setBusy(false);
     if (!result.ok) setError(result.error);
     else setCreated({ email: email.trim(), password });
-  };
+  }
 
   const copy = async () => {
     if (!created) return;

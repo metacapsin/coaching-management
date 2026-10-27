@@ -1,5 +1,5 @@
 import { toLocalISODate } from '../components/utils/helpers';
-import type { Enquiry, Announcement, StudyMaterial, Expense, Salary } from '../types';
+import type { Enquiry, Announcement, StudyMaterial, Expense, Salary, Book, TransportRoute, HostelRoom } from '../types';
 
 // Dates in the sample data are relative to today, so the sample always looks current
 const inDays = (n: number) => toLocalISODate(new Date(Date.now() + n * 86400000));
@@ -935,4 +935,22 @@ export const initialSalaries: Salary[] = [
   { id: 'sal-2', name: 'Prof. Rakesh Verma', role: 'teacher', monthlySalary: 40000, active: true, notes: 'Physics' },
   { id: 'sal-3', name: 'Neha Gupta', role: 'teacher', monthlySalary: 20000, active: true, notes: 'Chemistry' },
   { id: 'sal-4', name: 'Front desk (Ramesh)', role: 'staff', monthlySalary: 12000, active: true }
+];
+
+export const initialBooks: Book[] = [
+  { id: 'book-1', title: 'Concepts of Physics (Vol. 1)', author: 'H. C. Verma', category: 'Physics', copies: 3, issues: [{ id: 'bi-1', studentId: 's1', issuedOn: inDays(-7), dueOn: inDays(7) }] },
+  { id: 'book-2', title: 'Organic Chemistry', author: 'Morrison and Boyd', category: 'Chemistry', copies: 2, issues: [] },
+  { id: 'book-3', title: "Trueman's Biology (Vol. 1)", author: 'M. P. Tyagi', category: 'Biology', copies: 2, issues: [{ id: 'bi-2', studentId: 's2', issuedOn: inDays(-22), dueOn: inDays(-8) }] },
+  { id: 'book-4', title: 'Mathematics for Class 12', author: 'R. D. Sharma', category: 'Mathematics', copies: 4, issues: [] }
+];
+
+export const initialTransportRoutes: TransportRoute[] = [
+  { id: 'route-1', name: 'Route 1: Railway Station to Institute', vehicleNo: 'MH 12 AB 1234', driverName: 'Suresh Patil', driverPhone: '+91 98220 11122', stops: 'Railway Station, Gandhi Chowk, Model Colony, Institute', capacity: 30, monthlyFee: 1200, studentIds: ['s1', 's3'] },
+  { id: 'route-2', name: 'Route 2: Old City to Institute', vehicleNo: 'MH 12 CD 5678', driverName: 'Mahesh Jadhav', driverPhone: '+91 98220 33344', stops: 'Old City, Market Yard, Bus Stand, Institute', capacity: 25, monthlyFee: 1000, studentIds: ['s4'] }
+];
+
+export const initialHostelRooms: HostelRoom[] = [
+  { id: 'room-1', name: 'A-101', block: 'Boys Block A', capacity: 3, monthlyRent: 4500, studentIds: ['s5', 's7'] },
+  { id: 'room-2', name: 'A-102', block: 'Boys Block A', capacity: 3, monthlyRent: 4500, studentIds: [] },
+  { id: 'room-3', name: 'B-201', block: 'Girls Block B', capacity: 2, monthlyRent: 5000, studentIds: ['s2'] }
 ];

@@ -5,7 +5,7 @@ import { resizeImageToDataUrl } from '../utils/Imageutils';
 import { normalizePhone, toLocalISODate } from '../utils/helpers';
 import { nextRollNumber } from '../utils/rollNo';
 import { X, UserPlus, Check, ImagePlus, Trash2 } from 'lucide-react';
-import { StudentLoginCard } from './StudentLoginCard';
+import { StudentLoginCard, generatePassword } from './StudentLoginCard';
 
 // Details that are already known (for example from an enquiry)
 export interface AdmissionPrefill {
@@ -30,6 +30,10 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
   const startCourse = courses.find(c => c.id === prefill?.courseId) || courses[0];
 
   const [created, setCreated] = useState<Student | null>(null);
+  // The student's login is made together with the admission (the principal can switch it off)
+  const [makeLogin, setMakeLogin] = useState(true);
+  const [loginPassword, setLoginPassword] = useState(generatePassword);
+  const [loginAuto, setLoginAuto] = useState<{ email: string; password: string } | null>(null);
 
   const [formData, setFormData] = useState({
     name: prefill?.name ?? '',
@@ -80,7 +84,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
             </div>
           </div>
           <div className="p-6 space-y-4">
-            <StudentLoginCard student={created} />
+            <StudentLoginCard student={created} auto={loginAuto ?? undefined} />
             <div className="flex justify-end">
               <button onClick={onClose} className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg">
                 Done
@@ -142,6 +146,11 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
     if (formData.totalFees <= 0) errs.totalFees = 'Total fee must be positive';
     if (formData.phone.replace(/\D/g, '').length < 10) errs.phone = 'Enter a valid 10-digit mobile number';
     if (formData.parentPhone.replace(/\D/g, '').length < 10) errs.parentPhone = 'Enter a valid 10-digit mobile number';
+    if (makeLogin) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) errs.email = 'Enter the email the student will sign in with';
+      else if (students.some(st => st.email.toLowerCase() === formData.email.trim().toLowerCase())) errs.email = 'Another student already uses this email';
+      if (loginPassword.length < 8) errs.loginPassword = 'The password needs at least 8 characters';
+    }
     if (formData.discount < 0 || formData.discount > formData.totalFees) {
       errs.discount = 'Concession must be between 0 and the total fee';
     }
@@ -192,7 +201,8 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
     }, initialPayment);
 
     if (onSuccess) onSuccess(newStudent.name, newStudent);
-    setCreated(newStudent); // a last step: the student's login can be made right away
+    setLoginAuto(makeLogin ? { email: formData.email.trim(), password: loginPassword } : null);
+    setCreated(newStudent); // the last screen makes the login (or offers it) and shows the password
   };
 
   const netPayable = Math.max(0, formData.totalFees - (formData.discount || 0));
@@ -317,14 +327,32 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Student Email</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Student Email {makeLogin && <span className="text-rose-500">*</span>}</label>
                 <input
                   type="email"
                   placeholder="student@example.com"
                   value={formData.email}
                   onChange={e => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.email ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300'}`}
                 />
+                {errors.email && <p className="text-xs text-rose-600 mt-1">{errors.email}</p>}
+              </div>
+
+              <div className="md:col-span-2 p-3 rounded-lg bg-blue-50/60 border border-blue-100">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={makeLogin} onChange={e => setMakeLogin(e.target.checked)} className="rounded border-slate-300 text-blue-600 w-4 h-4" />
+                  <span className="text-xs font-medium text-slate-800">Create the student's login now (email above + this temporary password)</span>
+                </label>
+                {makeLogin && (
+                  <div className="mt-2 max-w-sm">
+                    <div className="flex gap-2">
+                      <input value={loginPassword} onChange={e => setLoginPassword(e.target.value)} className="w-full px-3 py-2 text-sm font-mono border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
+                      <button type="button" onClick={() => setLoginPassword(generatePassword())} className="px-2.5 text-[11px] font-medium text-blue-600 hover:bg-blue-100 rounded-lg">New</button>
+                    </div>
+                    {errors.loginPassword && <p className="text-xs text-rose-600 mt-1">{errors.loginPassword}</p>}
+                    <p className="text-[11px] text-slate-500 mt-1">The student chooses an own password at the first sign in. The password is shown once after the admission.</p>
+                  </div>
+                )}
               </div>
 
               <div>

@@ -101,6 +101,7 @@ them on a temporary database in your real cluster (it is dropped afterwards).
 | Reports | Principal, staff | Fees, attendance, exam results, admissions (profit and loss for the principal); CSV and print |
 | Parent Broadcasts | Principal, staff | Templates and a message queue |
 | Team & Access | Principal | Teacher, staff and student accounts, batches, password reset |
+| **Library, Transport, Hostel** | Principal and front desk | Books with loans (issue, return, overdue), bus routes with the students who ride, hostel rooms with the students who stay |
 | Institute Profile | Principal | Letterhead with a **logo** (side menu, receipts, report cards), "queue fee reminders by itself once a day", backup and restore, clean start |
 
 A new coaching opens with sample data so every screen can be seen at once (`AUTO_DEMO_FOR_NEW_COACHING` in

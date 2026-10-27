@@ -236,3 +236,43 @@ export interface Salary {
   lastPaidMonth?: string; // YYYY-MM
   notes?: string;
 }
+
+// ---------- library, transport, hostel ----------
+
+export interface BookIssue {
+  id: string;
+  studentId: string;
+  issuedOn: string; // YYYY-MM-DD
+  dueOn: string;
+  returnedOn?: string;
+}
+
+export interface Book {
+  id: string;
+  title: string;
+  author: string;
+  category: string;
+  copies: number; // how many copies the library owns
+  issues: BookIssue[]; // every loan, returned or not
+}
+
+export interface TransportRoute {
+  id: string;
+  name: string; // e.g. "Route 1: Station to Institute"
+  vehicleNo: string;
+  driverName: string;
+  driverPhone: string;
+  stops: string; // the stops, written one after another
+  capacity: number;
+  monthlyFee: number;
+  studentIds: string[];
+}
+
+export interface HostelRoom {
+  id: string;
+  name: string; // room number or name
+  block: string;
+  capacity: number; // beds
+  monthlyRent: number; // per bed
+  studentIds: string[];
+}

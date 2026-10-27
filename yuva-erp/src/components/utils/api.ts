@@ -3,11 +3,13 @@ import type {
   Announcement,
   AttendanceRecord,
   Batch,
+  Book,
   Course,
   Enquiry,
   Exam,
   Expense,
   FeeTransaction,
+  HostelRoom,
   InstituteProfile,
   NotificationLog,
   NotificationTemplate,
@@ -15,7 +17,8 @@ import type {
   Student,
   StudyMaterial,
   Submission,
-  TimetableSlot
+  TimetableSlot,
+  TransportRoute
 } from '../../types';
 import type { UserRole } from '../../Context/Access';
 
@@ -57,6 +60,9 @@ export interface InstituteData {
   enquiries?: Enquiry[];
   expenses?: Expense[];
   salaries?: Salary[];
+  books?: Book[];
+  transportRoutes?: TransportRoute[];
+  hostelRooms?: HostelRoom[];
   submissions?: Submission[];
   announcements?: Announcement[];
   materials?: StudyMaterial[];
