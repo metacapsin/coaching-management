@@ -31,6 +31,7 @@ import { TeacherHomeView } from './components/views/Teacherhomeview';
 import { SuperAdminApp } from './components/super/SuperAdminApp';
 import { AuthPage } from './components/auth/AuthPage';
 import { ForcePasswordChange } from './components/auth/ForcePasswordChange';
+import { OrgLogo } from './components/ui/OrgLogo';
 import { Navbar } from './components/layout/Navbar';
 import { ConnectionScreen } from './components/layout/ConnectionScreen';
 
@@ -216,9 +217,7 @@ function MainApp() {
       {/* Mobile Top Header (hidden on print) */}
       <div className="theme-keep md:hidden bg-slate-900 text-white px-4 py-3 flex items-center justify-between border-b border-slate-800 print:hidden">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-blue-600 text-white font-bold flex items-center justify-center text-xs">
-            {profile.name.slice(0, 1)}
-          </div>
+          <OrgLogo className="w-7 h-7 rounded-lg" fallbackClass="bg-blue-600 text-white font-bold text-xs" />
           <div>
             <div className="text-sm font-bold truncate max-w-48 leading-tight">{profile.name}</div>
             <div className="text-[10px] text-slate-400">Session {profile.academicYear}</div>
@@ -243,9 +242,7 @@ function MainApp() {
           {/* Brand Header */}
           <div className="p-5 border-b border-slate-800/80">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-blue-600 text-white font-black flex items-center justify-center text-sm shadow-sm">
-                {profile.name.slice(0, 1)}
-              </div>
+              <OrgLogo className="w-8 h-8 rounded-lg shadow-sm" fallbackClass="bg-blue-600 text-white font-black text-sm" />
               <div className="overflow-hidden">
                 <h1 className="text-sm font-bold text-white tracking-tight truncate leading-tight">
                   {profile.name}

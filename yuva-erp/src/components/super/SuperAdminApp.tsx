@@ -22,6 +22,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { ThemeToggle } from '../ui/ThemeToggle';
+import { ChangeEmailForm } from '../auth/ChangeEmailForm';
 import { ModalShell } from '../ui/ModalShell';
 import { formatDate, formatDateTime } from '../utils/helpers';
 import { ApiError } from '../utils/api';
@@ -262,8 +263,13 @@ const MyPasswordModal: React.FC<{ onClose: () => void; onDone: (msg: string) => 
     }
   };
   return (
-    <ModalShell title="Change my password" icon={KeyRound} iconClass="bg-slate-700" width="sm" onClose={onClose}>
-      <form onSubmit={submit} className="p-6 space-y-4">
+    <ModalShell title="My account" icon={KeyRound} iconClass="bg-slate-700" width="sm" onClose={onClose}>
+      <div className="px-6 pt-6">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Login email</h3>
+        <ChangeEmailForm onDone={msg => { onDone(msg); onClose(); }} />
+      </div>
+      <form onSubmit={submit} className="p-6 space-y-4 border-t border-slate-100 mt-5">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Password</h3>
         <input type="password" placeholder="Current password" value={current} onChange={e => setCurrent(e.target.value)} className={inputCls} autoComplete="current-password" />
         <input type="password" placeholder="New password" value={next} onChange={e => setNext(e.target.value)} className={inputCls} autoComplete="new-password" />
         {error && <p className="text-xs text-rose-600">{error}</p>}

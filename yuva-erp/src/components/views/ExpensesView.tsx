@@ -3,6 +3,7 @@ import { useInstitute } from '../../Context/InstituteContext';
 import type { Expense, ExpenseCategory } from '../../types';
 import { ExpenseModal, CATEGORY_LABEL } from '../modals/ExpenseModal';
 import { Pager } from '../ui/Pager';
+import { SalariesPanel } from './SalariesPanel';
 import { usePaged } from '../utils/usePaged';
 import { downloadCsv, formatDate, formatINR, toLocalISODate } from '../utils/helpers';
 import { Wallet, Plus, Download, Pencil, Trash2, TrendingUp, TrendingDown } from 'lucide-react';
@@ -23,7 +24,7 @@ const BAR_COLOR: Record<ExpenseCategory, string> = {
   other: 'bg-slate-400'
 };
 
-export const ExpensesView: React.FC = () => {
+const ExpensesPanel: React.FC = () => {
   const { expenses, transactions, profile, deleteExpense } = useInstitute();
   const cur = profile.currencySymbol;
 
@@ -259,6 +260,32 @@ export const ExpensesView: React.FC = () => {
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+// Two tabs: what the coaching spends, and the salaries (paying one writes an expense)
+export const ExpensesView: React.FC = () => {
+  const [tab, setTab] = useState<'expenses' | 'salaries'>('expenses');
+  return (
+    <div className="space-y-6">
+      <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit print:hidden">
+        {([
+          { id: 'expenses', label: 'Expenses and profit' },
+          { id: 'salaries', label: 'Salaries' }
+        ] as const).map(t => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+              tab === t.id ? 'bg-white text-blue-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {tab === 'expenses' ? <ExpensesPanel /> : <SalariesPanel />}
     </div>
   );
 };

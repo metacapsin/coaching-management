@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { ApiError, pushInstitute, refreshNow, registerFlusher, subscribeSync, useSyncStatus } from '../components/utils/api';
+import { ApiError, pushInstitute, refreshNow, registerFlusher, request, subscribeSync, useSyncStatus } from '../components/utils/api';
 import type { InstituteChanges, InstituteData } from '../components/utils/api';
 import { useAuth } from './AuthContext';
 import { ConnectionScreen } from '../components/layout/ConnectionScreen';
@@ -21,8 +21,10 @@ import type {
   PaymentMethod,
   Enquiry,
   Expense,
+  Salary,
   Announcement,
-  StudyMaterial
+  StudyMaterial,
+  Submission
 } from '../types';
 import {
   initialInstituteProfile,
@@ -37,11 +39,12 @@ import {
   initialNotificationLogs,
   initialEnquiries,
   initialExpenses,
+  initialSalaries,
   initialAnnouncements,
   initialMaterials
 } from '../data/mockData';
 import { nextRollNumber } from '../components/utils/rollNo';
-import { toLocalISODate, toLocalDateTime, uid } from '../components/utils/helpers';
+import { toLocalISODate, toLocalDateTime, uid, fillTemplate, formatDate } from '../components/utils/helpers';
 
 export const DEFAULT_PHOTO = '/avatar.svg';
 
@@ -76,6 +79,7 @@ type ListKey =
   | 'notificationLogs'
   | 'enquiries'
   | 'expenses'
+  | 'salaries'
   | 'announcements'
   | 'materials';
 
@@ -91,6 +95,7 @@ const LIST_KEYS: ListKey[] = [
   'notificationLogs',
   'enquiries',
   'expenses',
+  'salaries',
   'announcements',
   'materials'
 ];
@@ -98,7 +103,7 @@ const LIST_KEYS: ListKey[] = [
 // What each kind of account may send (the server checks this again)
 const writableKeys = (role?: string): string[] => {
   if (role === 'admin') return ['profile', ...LIST_KEYS];
-  if (role === 'staff') return LIST_KEYS.filter(key => key !== 'expenses'); // the expenses are for the principal only
+  if (role === 'staff') return LIST_KEYS.filter(key => key !== 'expenses' && key !== 'salaries'); // money lists are for the principal only
   if (role === 'teacher') return ['attendance', 'exams', 'notificationLogs', 'materials', 'announcements'];
   return [];
 };
@@ -118,6 +123,7 @@ interface Values {
   notificationLogs: NotificationLog[];
   enquiries: Enquiry[];
   expenses: Expense[];
+  salaries: Salary[];
   announcements: Announcement[];
   materials: StudyMaterial[];
 }
@@ -173,8 +179,10 @@ interface InstituteContextType {
   notificationLogs: NotificationLog[];
   enquiries: Enquiry[];
   expenses: Expense[];
+  salaries: Salary[];
   announcements: Announcement[];
   materials: StudyMaterial[];
+  submissions: Submission[]; // homework marked as done (read only here; a student marks it with markHomework)
 
   // Are the changes saved on the server?
   saveState: SaveState;
@@ -234,6 +242,16 @@ interface InstituteContextType {
   addExpense: (expense: Omit<Expense, 'id' | 'createdAt' | 'createdBy'>) => Expense;
   updateExpense: (id: string, updated: Partial<Omit<Expense, 'id'>>) => void;
   deleteExpense: (id: string) => void;
+
+  // Homework (a student marks it as done)
+  markHomework: (materialId: string, done: boolean) => Promise<void>;
+
+  // Salary actions (principal only)
+  addSalary: (salary: Omit<Salary, 'id'>) => Salary;
+  updateSalary: (id: string, updated: Partial<Omit<Salary, 'id'>>) => void;
+  deleteSalary: (id: string) => void;
+  // Pays one person for a month: writes the expense and remembers the month
+  paySalary: (id: string, month: string) => void;
 
   // Notice actions
   addAnnouncement: (notice: Omit<Announcement, 'id' | 'createdAt' | 'authorId' | 'authorName'>) => Announcement;
@@ -298,8 +316,10 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [notificationLogs, setNotificationLogs] = useState<NotificationLog[]>(initialNotificationLogs);
   const [enquiries, setEnquiries] = useState<Enquiry[]>(initialEnquiries);
   const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
+  const [salaries, setSalaries] = useState<Salary[]>(initialSalaries);
   const [announcements, setAnnouncements] = useState<Announcement[]>(initialAnnouncements);
   const [materials, setMaterials] = useState<StudyMaterial[]>(initialMaterials);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
 
   const values: Values = {
     profile,
@@ -314,6 +334,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     notificationLogs,
     enquiries,
     expenses,
+    salaries,
     announcements,
     materials
   };
@@ -341,8 +362,10 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (data.notificationLogs !== undefined) { setNotificationLogs(data.notificationLogs); mark('notificationLogs', data.notificationLogs); }
     if (data.enquiries !== undefined) { setEnquiries(data.enquiries); mark('enquiries', data.enquiries); }
     if (data.expenses !== undefined) { setExpenses(data.expenses); mark('expenses', data.expenses); }
+    if (data.salaries !== undefined) { setSalaries(data.salaries); mark('salaries', data.salaries); }
     if (data.announcements !== undefined) { setAnnouncements(data.announcements); mark('announcements', data.announcements); }
     if (data.materials !== undefined) { setMaterials(data.materials); mark('materials', data.materials); }
+    if (data.submissions !== undefined) setSubmissions(data.submissions); // never pushed back: the server owns it
   };
 
   const takeSkippedData = () => {
@@ -430,7 +453,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (pushTimer.current) clearTimeout(pushTimer.current);
     pushTimer.current = setTimeout(flush, 300);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, onboarding, profile, courses, batches, students, attendance, transactions, exams, timetable, templates, notificationLogs, enquiries, expenses, announcements, materials]);
+  }, [ready, onboarding, profile, courses, batches, students, attendance, transactions, exams, timetable, templates, notificationLogs, enquiries, expenses, salaries, announcements, materials]);
 
   // Signing out sends changes that are still waiting
   useEffect(
@@ -781,6 +804,45 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setEnquiries(prev => prev.filter(e => e.id !== id));
   };
 
+  // ----- salaries (principal only) -----
+
+  const addSalary = (data: Omit<Salary, 'id'>) => {
+    const salary: Salary = { ...data, id: uid('sal') };
+    setSalaries(prev => [salary, ...prev]);
+    return salary;
+  };
+
+  const updateSalary = (id: string, updated: Partial<Omit<Salary, 'id'>>) => {
+    setSalaries(prev => prev.map(s => (s.id === id ? { ...s, ...updated } : s)));
+  };
+
+  const deleteSalary = (id: string) => {
+    setSalaries(prev => prev.filter(s => s.id !== id));
+  };
+
+  // Paying a salary is an expense too (so the profit is right) and the month is remembered
+  const paySalary = (id: string, month: string) => {
+    const person = salaries.find(s => s.id === id);
+    if (!person || person.lastPaidMonth === month) return;
+    const [y, m] = month.split('-').map(Number);
+    const label = new Date(y, m - 1, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+    addExpense({
+      date: toLocalISODate(),
+      title: `Salary of ${person.name} (${label})`,
+      category: 'salary',
+      amount: person.monthlySalary,
+      paymentMethod: 'Bank Transfer'
+    });
+    updateSalary(id, { lastPaidMonth: month });
+  };
+
+  // ----- homework done (the student's mark goes to its own route, not through the data sync) -----
+
+  const markHomework = async (materialId: string, done: boolean) => {
+    await request('PUT', `/homework/${materialId}`, { done });
+    await refreshNow(true);
+  };
+
   // ----- expenses -----
 
   const addExpense = (data: Omit<Expense, 'id' | 'createdAt' | 'createdBy'>) => {
@@ -892,6 +954,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setNotificationLogs(initialNotificationLogs);
     setEnquiries(initialEnquiries);
     setExpenses(initialExpenses);
+    setSalaries(initialSalaries);
     setAnnouncements(initialAnnouncements);
     setMaterials(initialMaterials);
   };
@@ -908,6 +971,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setNotificationLogs([]);
     setEnquiries([]);
     setExpenses([]);
+    setSalaries([]);
     setAnnouncements([]);
     setMaterials([]);
   };
@@ -928,6 +992,42 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setOnboarding(false);
   };
 
+  // Once a day, when the principal has opened the app: a reminder for every overdue fee goes to the message queue
+  // ("Waiting to be sent"), if the principal switched this on in the Institute Profile.
+  useEffect(() => {
+    if (!ready || onboarding || user?.role !== 'admin' || !profile.autoFeeReminders) return;
+    const today = toLocalISODate();
+    if (profile.lastAutoReminderDate === today) return;
+    const template = templates.find(t => t.type === 'fee_due');
+    const waiting = new Set(notificationLogs.filter(l => l.type === 'fee_due' && l.status === 'pending').map(l => l.studentId));
+    if (template) {
+      for (const st of students) {
+        const due = Math.max(0, st.totalFees - st.discount) - st.feePaid;
+        if (st.status === 'inactive' || due <= 0 || !st.nextDueDate || st.nextDueDate >= today || waiting.has(st.id)) continue;
+        const batchName = batches.find(b => b.id === st.batchId)?.name || 'Class';
+        sendNotification({
+          type: 'fee_due',
+          channel: 'whatsapp',
+          recipientName: st.parentName,
+          recipientPhone: st.parentPhone,
+          studentName: st.name,
+          studentId: st.id,
+          content: fillTemplate(template.templateBody, {
+            parent_name: st.parentName,
+            student_name: st.name,
+            currency: profile.currencySymbol,
+            due_amount: due.toLocaleString('en-IN'),
+            due_date: formatDate(st.nextDueDate),
+            batch_name: batchName
+          }),
+          status: 'pending'
+        });
+      }
+    }
+    updateProfile({ lastAutoReminderDate: today });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, onboarding, user?.role, profile.autoFeeReminders, profile.lastAutoReminderDate, students.length, templates.length]);
+
   if (!ready) return <ConnectionScreen message="Loading your institute data..." />;
   if (onboarding) return <OnboardingScreen onDone={finishOnboarding} initialName={orgName} />;
 
@@ -946,8 +1046,10 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         notificationLogs,
         enquiries,
         expenses,
+        salaries,
         announcements,
         materials,
+        submissions,
         saveState: linkStatus === 'offline' ? 'offline' : saveState,
         updateProfile,
         addStudent,
@@ -977,6 +1079,11 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         addExpense,
         updateExpense,
         deleteExpense,
+        addSalary,
+        updateSalary,
+        deleteSalary,
+        paySalary,
+        markHomework,
         addAnnouncement,
         updateAnnouncement,
         deleteAnnouncement,

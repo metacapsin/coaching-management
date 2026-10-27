@@ -1,4 +1,5 @@
-import React from 'react';
+import { PrintableMyResultsModal } from '../modals/PrintableMyResultsModal';
+import React, { useState } from 'react';
 import { NoticesCard, MaterialCard } from '../ui/HomeCards';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { ScopedResult } from '../layout/Rolescope';
@@ -10,7 +11,8 @@ import {
   Bell,
   CheckCircle2,
   AlertTriangle,
-  GraduationCap
+  GraduationCap,
+  Printer
 } from 'lucide-react';
 
 import { formatINR, toLocalISODate, timeToMinutes } from '../utils/helpers';
@@ -45,6 +47,8 @@ export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }>
   } = useInstitute();
   // Cancelled receipts are not money received
   const transactions = allTransactions.filter(t => t.status !== 'cancelled');
+
+  const [showResults, setShowResults] = useState(false);
 
   const student = students[0];
 
@@ -242,6 +246,15 @@ export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }>
             <div className="p-4 border-b border-slate-200 flex items-center gap-2 bg-slate-50/50">
               <Award className="w-4 h-4 text-amber-600" />
               <h3 className="text-sm font-semibold text-slate-900">My Test Results</h3>
+              {results.length > 0 && (
+                <button
+                  onClick={() => setShowResults(true)}
+                  className="ml-auto px-3 py-1.5 text-[11px] font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg flex items-center gap-1.5"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  Print my results
+                </button>
+              )}
             </div>
             {results.length === 0 ? (
               <div className="py-8 text-center text-xs text-slate-400">No published results yet.</div>
@@ -486,6 +499,15 @@ export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }>
         <NoticesCard onNavigate={onNavigate} />
         <MaterialCard onNavigate={onNavigate} />
       </div>
+
+      {showResults && (
+        <PrintableMyResultsModal
+          student={student}
+          batchName={batches.find(b => b.id === student.batchId)?.name || ''}
+          rows={results}
+          onClose={() => setShowResults(false)}
+        />
+      )}
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import React from 'react';
+import { OrgLogo } from '../ui/OrgLogo';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { Exam, Student } from '../../types';
 import { openWhatsApp, rankOf } from '../utils/helpers';
@@ -97,9 +98,7 @@ export const PrintableReportCardModal: React.FC<PrintableReportCardModalProps> =
           <div className="border-b-2 border-slate-900 pb-5 mb-5 flex justify-between items-start">
             <div>
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-blue-700 text-white font-bold flex items-center justify-center text-sm">
-                  {profile.name.slice(0, 1)}
-                </div>
+                <OrgLogo className="w-8 h-8 rounded-lg" fallbackClass="bg-blue-700 text-white font-bold text-sm" />
                 <div>
                   <h1 className="text-xl font-bold tracking-tight text-slate-900 uppercase">
                     {profile.name}

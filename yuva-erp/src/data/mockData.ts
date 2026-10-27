@@ -1,5 +1,5 @@
 import { toLocalISODate } from '../components/utils/helpers';
-import type { Enquiry, Announcement, StudyMaterial, Expense } from '../types';
+import type { Enquiry, Announcement, StudyMaterial, Expense, Salary } from '../types';
 
 // Dates in the sample data are relative to today, so the sample always looks current
 const inDays = (n: number) => toLocalISODate(new Date(Date.now() + n * 86400000));
@@ -928,4 +928,11 @@ export const initialExpenses: Expense[] = [
   { id: 'exp-10', date: '2025-05-20', title: 'Social media advertising', category: 'marketing', amount: 8000, paymentMethod: 'UPI', createdAt: '2025-05-20T09:00:00.000Z', createdBy: 'Principal' },
   { id: 'exp-11', date: '2025-04-03', title: 'Teachers salary', category: 'salary', amount: 85000, paymentMethod: 'Bank Transfer', createdAt: '2025-04-03T09:00:00.000Z', createdBy: 'Principal' },
   { id: 'exp-12', date: '2025-04-05', title: 'Building rent', category: 'rent', amount: 40000, paymentMethod: 'Bank Transfer', createdAt: '2025-04-05T09:00:00.000Z', createdBy: 'Principal' }
+];
+
+export const initialSalaries: Salary[] = [
+  { id: 'sal-1', name: 'Dr. Shalini Sharma', role: 'teacher', monthlySalary: 35000, active: true, notes: 'Biology' },
+  { id: 'sal-2', name: 'Prof. Rakesh Verma', role: 'teacher', monthlySalary: 40000, active: true, notes: 'Physics' },
+  { id: 'sal-3', name: 'Neha Gupta', role: 'teacher', monthlySalary: 20000, active: true, notes: 'Chemistry' },
+  { id: 'sal-4', name: 'Front desk (Ramesh)', role: 'staff', monthlySalary: 12000, active: true }
 ];

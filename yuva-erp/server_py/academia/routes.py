@@ -764,6 +764,49 @@ def audit_log():
     return {'entries': store().audit_recent(limit)}
 
 
+@route('/api/homework/<material_id>', ['PUT'], 'user')
+def mark_homework(material_id):
+    """A student marks a homework of the own batch as done (or takes the mark back). Only the student can do it."""
+    if g.user['role'] != 'student':
+        raise HttpError(403, 'Only a student marks homework as done.')
+    s = store()
+    me = s.get_item('students', g.user.get('studentId')) if g.user.get('studentId') else None
+    material = s.get_item('materials', material_id)
+    if not me or not material or material.get('batchId') != me.get('batchId') or material.get('type') != 'homework':
+        raise HttpError(404, 'Homework not found.')
+    sub_id = f'{material_id}:{me["id"]}'
+    if body().get('done') is False:
+        s.apply_list('submissions', [], [sub_id])
+    else:
+        s.apply_list('submissions', [{'id': sub_id, 'materialId': material_id, 'studentId': me['id'], 'doneAt': _now_iso()}], [])
+    s.bump()
+    return ok()
+
+
+@route('/api/auth/change-email', ['POST'], 'any')
+def change_email():
+    """Everybody can change the email they sign in with. The current password has to be typed (somebody who finds a
+    signed-in screen cannot take the account over). One email, one account, over all coachings."""
+    b = body()
+    current = b.get('currentPassword') if isinstance(b.get('currentPassword'), str) else ''
+    new = text(b.get('newEmail')).lower()
+    if not auth.verify_password(g.user, current):
+        raise HttpError(400, 'Current password is incorrect.')
+    check_email(new)
+    if new == g.user['email']:
+        raise HttpError(400, 'This is already your email.')
+    if email_taken(new):
+        raise HttpError(409, 'An account with this email already exists.')
+    old = g.user['email']
+    g.user['email'] = new
+    try:
+        store().save_user(g.user)
+    except DuplicateKeyError:
+        raise HttpError(409, 'An account with this email already exists.')
+    store().audit(g.user, 'change-email', f'{old} -> {new}')
+    return {'user': auth.public_user(g.user)}
+
+
 @route('/api/auth/profile', ['PUT'], 'user')
 def update_profile():
     """Everybody can change their own phone number; everybody except students also their name

@@ -103,6 +103,7 @@ interface AuthContextType {
 
   // Any signed-in user
   changeOwnPassword: (currentPassword: string, newPassword: string) => Promise<AuthResult>;
+  changeOwnEmail: (currentPassword: string, newEmail: string) => Promise<AuthResult>;
 }
 
 export const roleLabel = (role?: UserRole) => {
@@ -347,6 +348,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   // ----- Own account -----
+  const changeOwnEmail = useCallback(
+    (currentPassword: string, newEmail: string) =>
+      attempt(async () => {
+        const res = await request<{ user: AuthUser }>('POST', '/auth/change-email', { currentPassword, newEmail });
+        setUser(res.user);
+      }),
+    []
+  );
+
   const changeOwnPassword = useCallback(
     (currentPassword: string, newPassword: string) =>
       attempt(async () => {
@@ -386,7 +396,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         removeUser,
         setUserRole,
         resetUserPassword,
-        changeOwnPassword
+        changeOwnPassword,
+        changeOwnEmail
       }}
     >
       {children}

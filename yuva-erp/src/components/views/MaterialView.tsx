@@ -5,7 +5,7 @@ import { canManageInstitute } from '../../Context/Access';
 import type { StudyMaterial } from '../../types';
 import { MaterialModal, TYPE_LABEL } from '../modals/MaterialModal';
 import { formatDate, toLocalISODate } from '../utils/helpers';
-import { BookOpen, Plus, Pencil, Trash2, ExternalLink, FileText, ClipboardList, Search } from 'lucide-react';
+import { BookOpen, Plus, Pencil, Trash2, ExternalLink, FileText, ClipboardList, Search, CheckCircle2, Circle } from 'lucide-react';
 
 const TYPE_STYLE = {
   link: 'bg-blue-100 text-blue-700',
@@ -14,7 +14,7 @@ const TYPE_STYLE = {
 } as const;
 
 export const MaterialView: React.FC = () => {
-  const { materials, batches, deleteMaterial } = useInstitute();
+  const { materials, batches, students, submissions, deleteMaterial, markHomework } = useInstitute();
   const { user } = useAuth();
   const role = user?.role;
   const office = canManageInstitute(role);
@@ -24,6 +24,17 @@ export const MaterialView: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState('all');
   const [editing, setEditing] = useState<{ material: StudyMaterial | null } | null>(null);
   const [query, setQuery] = useState('');
+  const [busyId, setBusyId] = useState('');
+  const isStudent = role === 'student';
+  const doneIds = new Set(submissions.map(x => x.materialId + ':' + x.studentId));
+  const toggle = async (id: string, done: boolean) => {
+    setBusyId(id);
+    try {
+      await markHomework(id, done);
+    } finally {
+      setBusyId('');
+    }
+  };
   const [deleteTarget, setDeleteTarget] = useState<StudyMaterial | null>(null);
 
   const today = toLocalISODate();
@@ -148,6 +159,30 @@ export const MaterialView: React.FC = () => {
                     {late && ' (date is over)'}
                   </p>
                 )}
+                {m.type === 'homework' && isStudent && (
+                  <button
+                    onClick={() => void toggle(m.id, !submissions.some(x => x.materialId === m.id))}
+                    disabled={busyId === m.id}
+                    className={`mt-3 px-3 py-1.5 text-xs font-semibold rounded-lg flex items-center gap-1.5 self-start disabled:opacity-60 ${
+                      submissions.some(x => x.materialId === m.id)
+                        ? 'text-emerald-700 bg-emerald-50 border border-emerald-200'
+                        : 'text-slate-700 bg-slate-50 border border-slate-300 hover:bg-slate-100'
+                    }`}
+                  >
+                    {submissions.some(x => x.materialId === m.id) ? <CheckCircle2 className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
+                    {submissions.some(x => x.materialId === m.id) ? 'Done (tap to undo)' : 'Mark as done'}
+                  </button>
+                )}
+                {m.type === 'homework' && !isStudent && (() => {
+                  const batchStudents = students.filter(x => x.batchId === m.batchId && x.status !== 'inactive');
+                  const done = batchStudents.filter(x => doneIds.has(m.id + ':' + x.id)).length;
+                  return (
+                    <p className="mt-3 text-[11px] font-semibold text-slate-600 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      {done} of {batchStudents.length} students marked it done
+                    </p>
+                  );
+                })()}
                 <div className="mt-auto pt-3 flex items-center justify-between gap-2">
                   <span className="text-[11px] text-slate-400">
                     {m.authorName} · {formatDate(m.createdAt)}

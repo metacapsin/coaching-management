@@ -877,10 +877,16 @@ class Expenses(unittest.TestCase):
         self.assertEqual(self.call('PUT', '/api/institute', {'changes': {'expenses': {'upsert': [rent]}}}, self.admin)[0], 200)
         seen = self.call('GET', '/api/sync', token=self.admin)[1]['institute']
         self.assertEqual([e['title'] for e in seen['expenses']], ['Rent'])
+        pay = {'id': 'sal1', 'name': 'Teacher One', 'role': 'teacher', 'monthlySalary': 30000, 'active': True}
+        self.assertEqual(self.call('PUT', '/api/institute', {'changes': {'salaries': {'upsert': [pay]}}}, self.admin)[0], 200)
+        self.assertEqual(len(self.call('GET', '/api/sync', token=self.admin)[1]['institute']['salaries']), 1)
 
     def test_2_staff_and_teachers_neither_see_nor_change_them(self):
         staff_view = self.call('GET', '/api/sync', token=self.staff)[1]['institute']
         self.assertNotIn('expenses', staff_view)
+        self.assertNotIn('salaries', staff_view)
+        self.assertEqual(self.call('GET', '/api/sync', token=self.teacher)[1]['institute']['salaries'], [])
+        self.assertEqual(self.call('PUT', '/api/institute', {'changes': {'salaries': {'remove': ['sal1']}}}, self.staff)[0], 403)
         self.assertEqual(self.call('GET', '/api/sync', token=self.teacher)[1]['institute']['expenses'], [])
         change = {'changes': {'expenses': {'remove': ['x1']}}}
         self.assertEqual(self.call('PUT', '/api/institute', change, self.staff)[0], 403)
@@ -897,6 +903,22 @@ class Expenses(unittest.TestCase):
         self.assertIn('Coaching Admin', data['error'])
         self.assertEqual(login('t@x.com', 'admin')[0], 403)  # and a teacher is not an admin
 
+    def test_3b_everybody_can_change_the_own_login_email(self):
+        login = lambda email, portal='member', pw=PASSWORD: self.call('POST', '/api/auth/login', {'email': email, 'password': pw, 'portal': portal})
+        token = login('t@x.com')[1]['token']
+        change = lambda body, tok=token: self.call('POST', '/api/auth/change-email', body, tok)
+        self.assertEqual(change({'currentPassword': 'wrong', 'newEmail': 'new@x.com'})[0], 400)  # the password is asked
+        self.assertEqual(change({'currentPassword': PASSWORD, 'newEmail': 'not-an-email'})[0], 400)
+        self.assertEqual(change({'currentPassword': PASSWORD, 'newEmail': 's@x.com'})[0], 409)  # taken by the staff account
+        self.assertEqual(change({'currentPassword': PASSWORD, 'newEmail': 'T@x.com'})[0], 400)  # the same
+        status, data = change({'currentPassword': PASSWORD, 'newEmail': 'Teacher.New@X.com'})
+        self.assertEqual((status, data['user']['email']), (200, 'teacher.new@x.com'))
+        self.assertEqual(login('t@x.com')[0], 401)  # the old email does not work anymore
+        self.assertEqual(login('teacher.new@x.com')[0], 200)
+        # and back, for the next tests
+        back = login('teacher.new@x.com')[1]['token']
+        self.assertEqual(change({'currentPassword': PASSWORD, 'newEmail': 't@x.com'}, back)[0], 200)
+
     def test_4_an_account_the_principal_made_has_to_change_its_password(self):
         status, data = self.call('POST', '/api/auth/login', {'email': 't@x.com', 'password': PASSWORD, 'portal': 'member'})
         self.assertEqual(status, 200)
@@ -904,6 +926,51 @@ class Expenses(unittest.TestCase):
         token = data['token']
         self.assertEqual(self.call('POST', '/api/auth/change-password', {'currentPassword': PASSWORD, 'newPassword': 'Mine12345pw'}, token)[0], 200)
         self.assertFalse(self.call('GET', '/api/auth/me', token=token)[1]['user'].get('mustChangePassword'))
+
+
+class Homework(unittest.TestCase):
+    """A student marks homework as done; the teacher sees it; nobody can fake it."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.db = new_db()
+        cls.api = Api(create_app(db=cls.db, dist_dir='no-dist'))
+        call = cls.api.call
+        cls.admin = call('POST', '/api/auth/setup', {'name': 'P', 'email': 'p@x.com', 'password': PASSWORD})[1]['token']
+        cls.hw = {'id': 'hw1', 'title': 'Chapter 3', 'description': '', 'type': 'homework', 'batchId': 'b1', 'batchName': 'Batch A', 'subject': 'Maths', 'createdAt': '', 'authorId': 'x', 'authorName': 'P'}
+        other = {**cls.hw, 'id': 'hw2', 'batchId': 'b2'}
+        call('PUT', '/api/institute', {'changes': {'batches': {'upsert': BATCHES}, 'students': {'upsert': STUDENTS}, 'materials': {'upsert': [cls.hw, other]}}}, cls.admin)
+        call('POST', '/api/users', {'name': 'Alice', 'email': 'alice@x.com', 'password': PASSWORD, 'role': 'student', 'studentId': 's1'}, cls.admin)
+        call('POST', '/api/users', {'name': 'T', 'email': 't@x.com', 'password': PASSWORD, 'role': 'teacher', 'batchIds': ['b1']}, cls.admin)
+        login = lambda e, portal: call('POST', '/api/auth/login', {'email': e, 'password': PASSWORD, 'portal': portal})[1]['token']
+        cls.student = login('alice@x.com', 'member')
+        cls.teacher = login('t@x.com', 'member')
+
+    @classmethod
+    def tearDownClass(cls):
+        drop_db(cls.db)
+
+    def call(self, *a, **kw):
+        return self.api.call(*a, **kw)
+
+    def test_1_the_student_marks_and_unmarks(self):
+        self.assertEqual(self.call('PUT', '/api/homework/hw1', {'done': True}, self.student)[0], 200)
+        mine = self.call('GET', '/api/sync', token=self.student)[1]['institute']['submissions']
+        self.assertEqual([(x['materialId'], x['studentId']) for x in mine], [('hw1', 's1')])
+        # the teacher of the batch sees who did it
+        seen = self.call('GET', '/api/sync', token=self.teacher)[1]['institute']['submissions']
+        self.assertEqual(len(seen), 1)
+        self.assertEqual(self.call('PUT', '/api/homework/hw1', {'done': False}, self.student)[0], 200)
+        self.assertEqual(self.call('GET', '/api/sync', token=self.student)[1]['institute']['submissions'], [])
+
+    def test_2_nobody_can_fake_it(self):
+        self.assertEqual(self.call('PUT', '/api/homework/hw2', {'done': True}, self.student)[0], 404)  # another batch
+        self.assertEqual(self.call('PUT', '/api/homework/nope', {'done': True}, self.student)[0], 404)
+        self.assertEqual(self.call('PUT', '/api/homework/hw1', {'done': True}, self.teacher)[0], 403)  # only a student
+        self.assertEqual(self.call('PUT', '/api/homework/hw1', {'done': True}, self.admin)[0], 403)
+        fake = {'id': 'x', 'materialId': 'hw1', 'studentId': 's2', 'doneAt': ''}
+        self.assertEqual(self.call('PUT', '/api/institute', {'changes': {'submissions': {'upsert': [fake]}}}, self.admin)[0], 403)
+        self.assertEqual(self.call('PUT', '/api/institute', {'changes': {'submissions': {'upsert': [fake]}}}, self.student)[0], 403)
 
 
 class SuperRecovery(unittest.TestCase):

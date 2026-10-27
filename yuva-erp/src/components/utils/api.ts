@@ -11,8 +11,10 @@ import type {
   InstituteProfile,
   NotificationLog,
   NotificationTemplate,
+  Salary,
   Student,
   StudyMaterial,
+  Submission,
   TimetableSlot
 } from '../../types';
 import type { UserRole } from '../../Context/Access';
@@ -54,6 +56,8 @@ export interface InstituteData {
   notificationLogs?: NotificationLog[];
   enquiries?: Enquiry[];
   expenses?: Expense[];
+  salaries?: Salary[];
+  submissions?: Submission[];
   announcements?: Announcement[];
   materials?: StudyMaterial[];
 }

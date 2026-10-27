@@ -43,6 +43,8 @@ LISTS = [
     'announcements',
     'materials',
     'expenses',
+    'salaries',  # who gets how much every month (principal only)
+    'submissions',  # homework marked as done: written only by the students themselves
 ]
 
 # The app shows the newest first for these lists
@@ -56,6 +58,7 @@ NEWEST_FIRST = {
     'announcements',
     'materials',
     'expenses',
+    'salaries',
 }
 
 DEFAULT_ORG = 'default'  # the coaching whose data lives in the plain collection names

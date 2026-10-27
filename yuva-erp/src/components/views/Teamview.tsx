@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { request, updateOwnDetails, refreshNow, ApiError } from '../utils/api';
+import { ChangeEmailForm } from '../auth/ChangeEmailForm';
 import { useAuth, roleLabel } from '../../Context/AuthContext';
 import type { AuthUser, UserRole } from '../../Context/AuthContext';
 import { useInstitute } from '../../Context/InstituteContext';
@@ -189,6 +190,12 @@ const MyDetails: React.FC<{ onDone: (type: 'success' | 'error', text: string) =>
           {busy ? 'Saving...' : 'Save my details'}
         </button>
       </div>
+      <details className="mt-4 border-t border-slate-100 pt-3">
+        <summary className="text-xs font-semibold text-slate-600 cursor-pointer">Change the email I sign in with</summary>
+        <div className="mt-3 max-w-sm">
+          <ChangeEmailForm onDone={msg => onDone('success', msg)} />
+        </div>
+      </details>
     </form>
   );
 };

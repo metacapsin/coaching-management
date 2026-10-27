@@ -20,7 +20,7 @@ from .store import LISTS
 MAX_ITEMS_PER_REQUEST = 200000
 
 # Lists only the principal may see and change
-PRINCIPAL_ONLY = {'expenses'}
+PRINCIPAL_ONLY = {'expenses', 'salaries'}
 
 
 def rank_of(score, scores):
@@ -67,8 +67,13 @@ def scope_institute(user, store):
             'notificationLogs': [],
             'enquiries': [],
             'expenses': [],
+            'salaries': [],
             'announcements': store.find('announcements', {'$or': [{'audience': 'all'}, {'batchId': {'$in': ids}}]}),
             'materials': store.find('materials', {'batchId': {'$in': ids}}),
+            'submissions': store.find(
+                'submissions',
+                {'materialId': {'$in': [m['id'] for m in store.find('materials', {'batchId': {'$in': ids}})]}},
+            ),
         }
 
     # student
@@ -85,8 +90,10 @@ def scope_institute(user, store):
         'notificationLogs': [],
         'enquiries': [],
         'expenses': [],
+        'salaries': [],
         'announcements': [],
         'materials': [],
+        'submissions': [],
     }
     me = store.get_item('students', user.get('studentId')) if user.get('studentId') else None
     if not me:
@@ -138,6 +145,7 @@ def scope_institute(user, store):
         'notificationLogs': logs,
         'announcements': store.find('announcements', {'$or': [{'audience': 'all'}, {'batchId': me.get('batchId')}]}),
         'materials': store.find('materials', {'batchId': me.get('batchId')}),
+        'submissions': store.find('submissions', {'studentId': me['id']}),
     }
 
 
@@ -361,6 +369,8 @@ def apply_changes(user, store, changes):
             profile = change
             continue
         parsed = _parse_change(name, change)
+        if name == 'submissions':
+            raise HttpError(403, 'Homework is marked as done by the students themselves.')
         if name in PRINCIPAL_ONLY and user['role'] != 'admin':
             raise HttpError(403, 'Only the principal can change the expenses.')
         if user['role'] == 'teacher':

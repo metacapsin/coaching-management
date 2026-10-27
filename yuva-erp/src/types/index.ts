@@ -150,6 +150,9 @@ export interface InstituteProfile {
   currencySymbol: string;
   academicYear: string;
   signatoryTitle: string;
+  logo?: string; // a small picture (data URL) for the letterhead
+  autoFeeReminders?: boolean; // queue the reminders of the overdue fees once a day
+  lastAutoReminderDate?: string; // the day it was done (YYYY-MM-DD)
 }
 
 // A person who asked about admission but is not a student yet
@@ -213,4 +216,23 @@ export interface Expense {
   notes?: string;
   createdAt: string;
   createdBy?: string;
+}
+
+// A student marked a homework as done (written by the server only)
+export interface Submission {
+  id: string;
+  materialId: string;
+  studentId: string;
+  doneAt: string;
+}
+
+// Somebody who is paid every month (a teacher or other staff). Only the principal sees it.
+export interface Salary {
+  id: string;
+  name: string;
+  role: 'teacher' | 'staff' | 'other';
+  monthlySalary: number;
+  active: boolean;
+  lastPaidMonth?: string; // YYYY-MM
+  notes?: string;
 }

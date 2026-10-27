@@ -45,7 +45,9 @@ changes the IP often; "Allow access from anywhere" is the easy way for a demo, r
 ### Tests
 
 ```bash
-npm test
+npm test         # the server (Python)
+npm run test:ui  # the screens and helpers (Vitest)
+npm run test:all # both
 ```
 
 Runs the Python tests (in-memory MongoDB, nothing real is touched). Set `ACADEMIA_TEST_REAL=1` to run
@@ -65,6 +67,7 @@ them on a temporary database in your real cluster (it is dropped afterwards).
 - **Approves or rejects** coachings that registered themselves. A coaching can add itself only through this approval.
 - "+ Add coaching" only sends a request too: the coaching waits in "Requests waiting for your approval" and works only after
   the Super Admin presses **Approve**. Nothing becomes active without that Approve.
+- Everybody can change the **email they sign in with** (the current password is asked): Super Admin in "My account", the others in Team & Access.
 - Can add **another Super Admin** (so two people can help each other when one forgets the password: "Set new password" for the other, who then chooses an own one) and remove one. Nobody of a coaching can. A Super Admin who is alone can reset the password on the server computer ("Forgot your password?").
 - Keeps the **subscription** of every coaching: the monthly fee, payments ("Record a payment" moves the paid-until date on)
   and a Paid / Payment due badge; the top shows the income of this month.
@@ -91,14 +94,14 @@ them on a temporary database in your real cluster (it is dropped afterwards).
 | Enquiries | Principal, staff | Leads, follow-up dates, WhatsApp, one-click "Admit" (open enquiries are shown first) |
 | Admissions & Students | Principal, staff | Admission, search, edit, ID card, receipts, archive, and a **Timeline** of everything about a student |
 | Fees & Invoicing | Principal, staff | Receipts, cancel receipt, overdue accounts ("Queue reminders for all" in one click), programs and standard fees |
-| **Expenses & Profit** | Principal only | Write down salary, rent and bills; profit = fees collected minus expenses, per month |
+| **Expenses & Profit** | Principal only | Write down salary, rent and bills; profit = fees collected minus expenses, per month. A **Salaries** tab lists teachers and staff with the monthly salary: "Pay" writes the expense for the month |
 | Attendance | Principal, staff, teacher | Roll call per batch, absent alerts |
 | Exams | Principal, staff, teacher | Tests, marks (press Enter to go to the next student), ranks, report cards, admit cards |
-| Notice Board, Study Material | Everybody | Notices and homework per batch |
+| Notice Board, Study Material | Everybody | Notices and homework per batch. A student marks homework as done; the teacher sees "7 of 30 done" |
 | Reports | Principal, staff | Fees, attendance, exam results, admissions (profit and loss for the principal); CSV and print |
 | Parent Broadcasts | Principal, staff | Templates and a message queue |
 | Team & Access | Principal | Teacher, staff and student accounts, batches, password reset |
-| Institute Profile | Principal | Letterhead, backup and restore, clean start |
+| Institute Profile | Principal | Letterhead with a **logo** (side menu, receipts, report cards), "queue fee reminders by itself once a day", backup and restore, clean start |
 
 A new coaching opens with sample data so every screen can be seen at once (`AUTO_DEMO_FOR_NEW_COACHING` in
 `src/Context/InstituteContext.tsx`; "Delete all data" in the Institute Profile clears it for real use).
