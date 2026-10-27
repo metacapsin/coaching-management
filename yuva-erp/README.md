@@ -57,7 +57,7 @@ them on a temporary database in your real cluster (it is dropped afterwards).
 | --- | --- | --- |
 | **Super Admin** | The person who manages all coachings | First time: create the account (only on the server computer, only once). Then sign in. |
 | **Coaching Admin** | The principal (and office staff) of one coaching | Sign in. A new coaching clicks "Register your coaching" and waits for the Super Admin's approval. |
-| **Teacher / Student** | People of a coaching | Sign in only. Their account is made by the principal (Team & Access, or the "Add Teacher" button on the dashboard). |
+| **Teacher / Student** | People of a coaching | Sign in, or "Create an account" (choose the coaching first): a **teacher** sends a request the principal approves; a **student** registers new (roll number is automatic) or proves an admission with the roll number and mobile. The principal can also make accounts (Team & Access, or the "Add Teacher" button). |
 
 ### The Super Admin
 
@@ -65,6 +65,7 @@ them on a temporary database in your real cluster (it is dropped afterwards).
 - **Approves or rejects** coachings that registered themselves. A coaching can add itself only through this approval.
 - "+ Add coaching" only sends a request too: the coaching waits in "Requests waiting for your approval" and works only after
   the Super Admin presses **Approve**. Nothing becomes active without that Approve.
+- Can add **another Super Admin** (so two people can help each other when one forgets the password: "Set new password" for the other, who then chooses an own one) and remove one. Nobody of a coaching can. A Super Admin who is alone can reset the password on the server computer ("Forgot your password?").
 - Keeps the **subscription** of every coaching: the monthly fee, payments ("Record a payment" moves the paid-until date on)
   and a Paid / Payment due badge; the top shows the income of this month.
 - Switch a coaching off or on, edit it, delete it (the name must be typed), set a new password for its principal

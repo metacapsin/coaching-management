@@ -366,6 +366,10 @@ export const restoreBackupFile = (backup: unknown) =>
 export const updateOwnDetails = (details: { name?: string; phone?: string; subject?: string }) =>
   request<{ user: AuthUser }>('PUT', '/auth/profile', details);
 
+// The Super Admin forgot the password: works only on the server computer itself
+export const resetSuperPassword = (email: string, newPassword: string) =>
+  request<{ ok: true }>('POST', '/super/forgot-password', { email, newPassword }, { auth: false });
+
 // Tells the principal that somebody forgot the password (the answer is always the same)
 export const requestPasswordReset = (email: string) =>
   request<{ ok: true }>('POST', '/auth/forgot-password', { email }, { auth: false });

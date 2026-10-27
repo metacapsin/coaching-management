@@ -930,6 +930,97 @@ def _add_months(iso, months):
     return f'{year:04d}-{month:02d}-{min(day, last):02d}'
 
 
+@route('/api/super/forgot-password', ['POST'])
+def super_forgot_password():
+    """The Super Admin forgot the password. Nobody is above the Super Admin to reset it, so this works only on the
+    server computer itself (like creating the Super Admin): somebody who sits at the server may set a new password."""
+    limit_registrations()
+    if not _loopback():
+        raise HttpError(403, 'The Super Admin password can only be reset on the server computer itself.')
+    b = body()
+    email = text(b.get('email')).lower()
+    new = b.get('newPassword')
+    check_password(new)
+    platform = root().for_org(PLATFORM_ORG)
+    target = root().user_by_email(email) if email else None
+    if not target or target.get('role') != 'super':
+        raise HttpError(404, 'There is no Super Admin with this email. Check the spelling of the email.')
+    auth.set_password(target, new)
+    target.pop('mustChangePassword', None)
+    platform.save_user(target)
+    auth.destroy_sessions_of(root(), target['id'])
+    platform.audit(target, 'super-password-reset', 'On the server computer')
+    return ok()
+
+
+# ---------- the Super Admins themselves ----------
+# More than one Super Admin can exist, so they can help each other (for example when one forgot the password).
+# Only a Super Admin can add, reset or remove another; nobody of a coaching can.
+
+
+@route('/api/super/admins', ['GET'], 'super')
+def super_admins():
+    return {
+        'admins': [
+            {'id': u['id'], 'name': u['name'], 'email': u['email'], 'createdAt': u.get('createdAt'), 'you': u['id'] == g.user['id']}
+            for u in g.store.users_all()
+        ]
+    }
+
+
+@route('/api/super/admins', ['POST'], 'super')
+def super_add_admin():
+    b = body()
+    name = text(b.get('name'))
+    email = text(b.get('email')).lower()
+    if not name:
+        raise HttpError(400, 'Please enter the full name.')
+    check_email(email)
+    check_password(b.get('password'))
+    if email_taken(email):
+        raise HttpError(409, 'An account with this email already exists.')
+    # the new Super Admin has to choose an own password at the first sign in
+    user = auth.build_user({'name': name, 'email': email, 'password': b['password'], 'role': 'super'}, 'active')
+    user['mustChangePassword'] = True
+    try:
+        g.store.add_user(user)
+    except DuplicateKeyError:
+        raise HttpError(409, 'An account with this email already exists.')
+    g.store.audit(g.user, 'super-admin-add', email)
+    return {'admin': {'id': user['id'], 'name': name, 'email': email}}
+
+
+@route('/api/super/admins/<admin_id>/reset-password', ['POST'], 'super')
+def super_reset_admin(admin_id):
+    """A Super Admin sets a new password for ANOTHER Super Admin (the own password is changed with "change password")."""
+    target = g.store.user_by_id(admin_id)
+    if not target:
+        raise HttpError(404, 'Super Admin not found.')
+    if target['id'] == g.user['id']:
+        raise HttpError(400, 'Use "Change my password" for your own password.')
+    new = body().get('newPassword')
+    check_password(new)
+    auth.set_password(target, new)
+    target['mustChangePassword'] = True
+    g.store.save_user(target)
+    auth.destroy_sessions_of(root(), target['id'])
+    g.store.audit(g.user, 'super-admin-password', target['email'])
+    return ok()
+
+
+@route('/api/super/admins/<admin_id>', ['DELETE'], 'super')
+def super_remove_admin(admin_id):
+    target = g.store.user_by_id(admin_id)
+    if not target:
+        raise HttpError(404, 'Super Admin not found.')
+    if target['id'] == g.user['id']:
+        raise HttpError(400, 'You cannot remove yourself.')
+    g.store.remove_user(target['id'])
+    auth.destroy_sessions_of(root(), target['id'])
+    g.store.audit(g.user, 'super-admin-remove', target['email'])
+    return ok()
+
+
 def _org_summary(org):
     """What the super admin may see of a coaching: who runs it and how big it is. Never its data."""
     tenant = root().for_org(org['id'])

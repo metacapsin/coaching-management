@@ -898,5 +898,102 @@ class Expenses(unittest.TestCase):
         self.assertEqual(login('t@x.com', 'admin')[0], 403)  # and a teacher is not an admin
 
 
+class SuperRecovery(unittest.TestCase):
+    """The Super Admin forgot the password: it can be reset on the server computer only."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.db = new_db()
+        cls.api = Api(create_app(db=cls.db, dist_dir='no-dist'))
+        cls.token = cls.api.call('POST', '/api/super/setup', {'name': 'S', 'email': 's@x.com', 'password': PASSWORD})[1]['token']
+
+    @classmethod
+    def tearDownClass(cls):
+        drop_db(cls.db)
+
+    def reset(self, email, password='NewPass12345', headers=None):
+        return self.api.call('POST', '/api/super/forgot-password', {'email': email, 'newPassword': password}, headers=headers)
+
+    def test_1_not_from_another_computer(self):
+        # a request that comes through a proxy from somewhere else is refused
+        status, data = self.reset('s@x.com', headers={'X-Forwarded-For': '8.8.8.8'})
+        self.assertEqual(status, 403)
+        self.assertIn('server computer', data['error'])
+        self.assertEqual(self.api.call('GET', '/api/auth/me', token=self.token)[0], 200)  # nothing changed
+
+    def test_2_a_wrong_email_or_a_weak_password_changes_nothing(self):
+        self.assertEqual(self.reset('nobody@x.com')[0], 404)
+        self.assertEqual(self.reset('s@x.com', 'weak')[0], 400)
+
+    def test_3_on_the_server_computer_it_works(self):
+        self.assertEqual(self.reset('S@X.com')[0], 200)
+        self.assertEqual(self.api.call('GET', '/api/auth/me', token=self.token)[0], 401)  # signed out everywhere
+        login = lambda pw: self.api.call('POST', '/api/auth/login', {'email': 's@x.com', 'password': pw, 'portal': 'super'})
+        self.assertEqual(login(PASSWORD)[0], 401)
+        self.assertEqual(login('NewPass12345')[0], 200)
+
+
+class SuperAdmins(unittest.TestCase):
+    """Two Super Admins can help each other; nobody else can touch them."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.db = new_db()
+        cls.api = Api(create_app(db=cls.db, dist_dir='no-dist'))
+        call = cls.api.call
+        cls.one = call('POST', '/api/super/setup', {'name': 'One', 'email': 'one@x.com', 'password': PASSWORD})[1]['token']
+        org = call('POST', '/api/super/orgs', {'coachingName': 'Alpha', 'city': 'T', 'adminName': 'Principal', 'phone': '+91 98000 11111', 'email': 'p@x.com', 'password': PASSWORD}, cls.one)[1]['org']
+        call('POST', f"/api/super/orgs/{org['id']}/approve", {}, cls.one)
+        cls.principal = call('POST', '/api/auth/login', {'email': 'p@x.com', 'password': PASSWORD, 'portal': 'admin'})[1]['token']
+
+    @classmethod
+    def tearDownClass(cls):
+        drop_db(cls.db)
+
+    def call(self, *a, **kw):
+        return self.api.call(*a, **kw)
+
+    def login(self, email, password):
+        return self.call('POST', '/api/auth/login', {'email': email, 'password': password, 'portal': 'super'})
+
+    def test_1_only_a_super_admin_adds_one(self):
+        new = {'name': 'Two', 'email': 'two@x.com', 'password': 'Temp12345pw'}
+        self.assertEqual(self.call('POST', '/api/super/admins', new, self.principal)[0], 403)  # a principal cannot
+        self.assertEqual(self.call('POST', '/api/super/admins', new)[0], 401)  # nobody signed in cannot
+        self.assertEqual(self.call('POST', '/api/super/admins', {**new, 'password': 'weak'}, self.one)[0], 400)
+        self.assertEqual(self.call('POST', '/api/super/admins', {**new, 'email': 'p@x.com'}, self.one)[0], 409)
+        self.assertEqual(self.call('POST', '/api/super/admins', new, self.one)[0], 200)
+        status, data = self.login('two@x.com', 'Temp12345pw')
+        self.assertEqual(status, 200)
+        self.assertTrue(data['user']['mustChangePassword'])  # chooses an own password first
+        self.__class__.two = data['token']
+        names = [a['name'] for a in self.call('GET', '/api/super/admins', token=self.one)[1]['admins']]
+        self.assertEqual(sorted(names), ['One', 'Two'])
+        self.assertEqual(self.call('GET', '/api/super/admins', token=self.principal)[0], 403)
+
+    def test_2_they_help_each_other_with_a_forgotten_password(self):
+        admins = self.call('GET', '/api/super/admins', token=self.one)[1]['admins']
+        one = next(a for a in admins if a['name'] == 'One')['id']
+        two = next(a for a in admins if a['name'] == 'Two')['id']
+        # Two forgot the password: One sets a new one
+        self.assertEqual(self.call('POST', f'/api/super/admins/{two}/reset-password', {'newPassword': 'Fresh12345pw'}, self.principal)[0], 403)
+        self.assertEqual(self.call('POST', f'/api/super/admins/{two}/reset-password', {'newPassword': 'weak'}, self.one)[0], 400)
+        self.assertEqual(self.call('POST', f'/api/super/admins/{two}/reset-password', {'newPassword': 'Fresh12345pw'}, self.one)[0], 200)
+        self.assertEqual(self.call('GET', '/api/auth/me', token=self.two)[0], 401)  # signed out
+        self.assertEqual(self.login('two@x.com', 'Temp12345pw')[0], 401)
+        self.assertTrue(self.login('two@x.com', 'Fresh12345pw')[1]['user']['mustChangePassword'])
+        # the own password has its own button
+        self.assertEqual(self.call('POST', f'/api/super/admins/{one}/reset-password', {'newPassword': 'Other12345pw'}, self.one)[0], 400)
+
+    def test_3_removing(self):
+        admins = self.call('GET', '/api/super/admins', token=self.one)[1]['admins']
+        one = next(a for a in admins if a['name'] == 'One')['id']
+        two = next(a for a in admins if a['name'] == 'Two')['id']
+        self.assertEqual(self.call('DELETE', f'/api/super/admins/{one}', token=self.one)[0], 400)  # not yourself
+        self.assertEqual(self.call('DELETE', f'/api/super/admins/{two}', token=self.principal)[0], 403)
+        self.assertEqual(self.call('DELETE', f'/api/super/admins/{two}', token=self.one)[0], 200)
+        self.assertEqual(self.login('two@x.com', 'Fresh12345pw')[0], 401)
+
+
 if __name__ == '__main__':
     unittest.main()

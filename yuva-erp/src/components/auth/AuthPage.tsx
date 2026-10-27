@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../Context/AuthContext';
 import type { Portal } from '../../Context/AuthContext';
-import { requestPasswordReset } from '../utils/api';
+import { ApiError, requestPasswordReset, resetSuperPassword } from '../utils/api';
 import { RegisterCoachingForm } from './CoachingForms';
+import { MemberSignup } from './MemberSignup';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import {
   GraduationCap,
@@ -79,12 +80,81 @@ const ForgotPassword: React.FC<{ initialEmail: string }> = ({ initialEmail }) =>
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// "Forgot your password?" of the Super Admin. Nobody is above the Super Admin, so the new password is set right here,
+// and the server accepts it only from the server computer itself (like creating the Super Admin).
+const SuperForgotPassword: React.FC<{ initialEmail: string }> = ({ initialEmail }) => {
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState(initialEmail);
+  const [password, setPassword] = useState('');
+  const [again, setAgain] = useState('');
+  const [state, setState] = useState<'idle' | 'sending' | 'done'>('idle');
+  const [error, setError] = useState('');
+
+  const send = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!EMAIL_REGEX.test(email.trim())) return setError('Enter the email of the Super Admin.');
+    if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+      return setError('The new password needs at least 8 characters, with letters and numbers.');
+    }
+    if (password !== again) return setError('The two passwords do not match.');
+    setState('sending');
+    try {
+      await resetSuperPassword(email.trim(), password);
+      setState('done');
+    } catch (err) {
+      setState('idle');
+      setError(err instanceof ApiError ? err.message : 'Could not change the password. Please try again.');
+    }
+  };
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className="mt-4 w-full text-xs font-medium text-blue-600 hover:underline">
+        Forgot your password?
+      </button>
+    );
+  }
+
+  const cls = 'w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500';
+  return (
+    <form onSubmit={send} className="mt-4 p-3 rounded-lg border border-slate-200 bg-slate-50 space-y-2">
+      {state === 'done' ? (
+        <>
+          <p className="text-xs text-emerald-700">Password changed. Sign in above with the new password.</p>
+          <button type="button" onClick={() => setOpen(false)} className="text-xs font-semibold text-blue-600 hover:underline">
+            Close
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="text-xs text-slate-600">
+            Choose a new password for the Super Admin. This works only on the computer where the server runs.
+          </p>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Super Admin email" className={cls} />
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="New password" autoComplete="new-password" className={cls} />
+          <input type="password" value={again} onChange={e => setAgain(e.target.value)} placeholder="New password again" autoComplete="new-password" className={cls} />
+          {error && <p className="text-xs text-rose-600">{error}</p>}
+          <div className="flex gap-2 justify-end">
+            <button type="button" onClick={() => setOpen(false)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">
+              Cancel
+            </button>
+            <button type="submit" disabled={state === 'sending'} className="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-lg">
+              {state === 'sending' ? 'Saving...' : 'Set new password'}
+            </button>
+          </div>
+        </>
+      )}
+    </form>
+  );
+};
+
 // Three logins on one page: the Super Admin (manages the coachings), the coaching admin (principal) and the teachers and
 // students (their accounts are made by the principal of their coaching, inside the app: no sign-up here).
 const PORTALS: { id: Portal; label: string; icon: LucideIcon; blurb: string }[] = [
   { id: 'super', label: 'Super Admin', icon: Crown, blurb: 'Approves coachings and manages all of them.' },
   { id: 'admin', label: 'Coaching Admin', icon: ShieldCheck, blurb: 'Principal of one coaching, with its own data.' },
-  { id: 'member', label: 'Teacher / Student', icon: Users, blurb: 'Your login is made by the principal of your coaching.' }
+  { id: 'member', label: 'Teacher / Student', icon: Users, blurb: 'Sign in, or create your account (choose your coaching).' }
 ];
 
 const FEATURES = [
@@ -148,6 +218,8 @@ export const AuthPage: React.FC = () => {
   const [portal, setPortal] = useState<Portal>(hasSuper ? 'admin' : 'super');
   // the principal of a new coaching registers here (and waits for the Super Admin's approval)
   const [registering, setRegistering] = useState(false);
+  // a teacher or student creating an own account (Teacher / Student tab)
+  const [memberSignup, setMemberSignup] = useState(false);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -176,6 +248,7 @@ export const AuthPage: React.FC = () => {
   const choosePortal = (next: Portal) => {
     setPortal(next);
     setRegistering(false);
+    setMemberSignup(false);
     resetForm();
   };
 
@@ -279,13 +352,15 @@ export const AuthPage: React.FC = () => {
           </div>
 
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            {createSuper ? 'Create the Super Admin' : registering ? 'Register your coaching' : 'Welcome back'}
+            {createSuper ? 'Create the Super Admin' : registering ? 'Register your coaching' : memberSignup ? 'Create your account' : 'Welcome back'}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
             {createSuper
               ? 'The Super Admin approves coachings. Create this account first (only once).'
               : registering
               ? 'The Super Admin checks your request. After approval you sign in here as Coaching Admin.'
+              : memberSignup
+              ? 'For teachers and students. Choose your coaching first.'
               : `Sign in as ${activePortal.label} to continue.`}
           </p>
 
@@ -329,6 +404,8 @@ export const AuthPage: React.FC = () => {
 
           {registering ? (
             <RegisterCoachingForm onClose={() => setRegistering(false)} />
+          ) : memberSignup ? (
+            <MemberSignup onClose={() => setMemberSignup(false)} />
           ) : (
             <form onSubmit={handleSubmit} noValidate className="mt-5 space-y-4">
               {createSuper && (
@@ -438,7 +515,17 @@ export const AuthPage: React.FC = () => {
             </div>
           )}
 
-          {portal !== 'super' && !registering && <ForgotPassword initialEmail={email} />}
+          {portal === 'member' && !memberSignup && (
+            <div className="mt-5 text-sm text-slate-600 text-center">
+              New teacher or student?{' '}
+              <button type="button" onClick={() => setMemberSignup(true)} className="font-semibold text-blue-600 hover:underline">
+                Create an account
+              </button>
+            </div>
+          )}
+
+          {portal === 'super' && !createSuper && <SuperForgotPassword initialEmail={email} />}
+          {portal !== 'super' && !registering && !memberSignup && <ForgotPassword initialEmail={email} />}
 
           <p className="mt-6 text-[11px] text-slate-400 text-center leading-relaxed">
             Your account and data are stored on the institute's server.
