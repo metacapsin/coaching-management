@@ -667,7 +667,7 @@ class Coachings(unittest.TestCase):
         return self.call('POST', '/api/auth/login', {'email': email, 'password': password, 'portal': 'admin', 'orgId': org_id})
 
     def coaching(self, name, email):
-        return {'coachingName': name, 'city': 'Bijainagar', 'adminName': f'{name} Admin', 'email': email, 'phone': '+91 98000 11111', 'password': PASSWORD}
+        return {'coachingName': name, 'city': 'Bijainagar', 'adminName': f'{name} Admin', 'email': email, 'phone': '+91 98000 11111', 'password': PASSWORD, 'approved': True}
 
     def test_01_super_admin_setup_and_limits(self):
         self.assertEqual(self.call('GET', '/api/super/status')[1]['hasSuper'], False)
@@ -712,6 +712,13 @@ class Coachings(unittest.TestCase):
         self.assertIn('coaching-requested', actions)
 
     def test_03_super_admin_adds_a_coaching_directly(self):
+        # without the approval tick nothing is added
+        untick = {**self.coaching('Untick', 'u@x.com'), 'approved': False}
+        status, data = self.call('POST', '/api/super/orgs', untick, self.sup)
+        self.assertEqual(status, 400)
+        self.assertIn('approve', data['error'])
+        self.assertEqual(self.call('POST', '/api/super/orgs', {k: v for k, v in untick.items() if k != 'approved'}, self.sup)[0], 400)
+        self.assertNotIn('Untick', {o['name'] for o in self.call('GET', '/api/super/orgs', token=self.sup)[1]['orgs']})
         status, data = self.call('POST', '/api/super/orgs', self.coaching('Beta', 'b@x.com'), self.sup)
         self.assertEqual(status, 200)
         self.assertEqual(data['org']['status'], 'active')

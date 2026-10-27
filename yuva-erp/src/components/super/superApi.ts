@@ -33,7 +33,8 @@ export interface NewCoaching {
   phone: string;
   email: string;
   password: string;
-  asRequest?: boolean; // leave it waiting for approval instead of activating it
+  approved?: boolean; // the Super Admin ticked the approval box (the server refuses without it)
+  asRequest?: boolean; // (API only) leave it waiting for approval instead of activating it
 }
 
 export const superApi = {

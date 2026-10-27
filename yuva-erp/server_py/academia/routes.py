@@ -942,6 +942,8 @@ def super_add_org():
     for approval, like a coaching that asked to join."""
     b = body()
     waiting = b.get('asRequest') is True
+    if not waiting and b.get('approved') is not True:
+        raise HttpError(400, 'Tick the box to approve this coaching first.')
     org, user = _new_coaching(b, 'pending' if waiting else 'active')
     g.store.audit(g.user, 'coaching-requested' if waiting else 'coaching-add', f'{org["name"]} ({user["email"]})')
     return {'org': _org_summary(org)}

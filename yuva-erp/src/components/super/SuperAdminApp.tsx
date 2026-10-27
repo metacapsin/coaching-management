@@ -64,21 +64,29 @@ const Shell: React.FC<{ children: React.ReactNode; right?: React.ReactNode }> = 
 
 // ---------- pop-ups ----------
 
-const AddCoachingModal: React.FC<{ onClose: () => void; onDone: (name: string, waiting: boolean) => void }> = ({ onClose, onDone }) => {
-  const [asRequest, setAsRequest] = useState(false);
+const AddCoachingModal: React.FC<{ onClose: () => void; onDone: (name: string) => void }> = ({ onClose, onDone }) => {
+  // the Super Admin has to tick this to add a coaching: it is the approval
+  const [approved, setApproved] = useState(false);
+  const [blink, setBlink] = useState(0);
   const [f, setF] = useState<NewCoaching>({ coachingName: '', city: '', adminName: '', phone: '', email: '', password: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  type TextField = Exclude<keyof NewCoaching, 'asRequest'>;
+  type TextField = Exclude<keyof NewCoaching, 'asRequest' | 'approved'>;
   const set = (k: TextField) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (!approved) {
+      // no tick, no coaching: the box blinks and nothing is sent
+      setBlink(n => n + 1);
+      setError('Tick the box below to approve this coaching. Without your approval it is not added.');
+      return;
+    }
     setBusy(true);
     try {
-      await superApi.add({ ...f, coachingName: f.coachingName.trim(), adminName: f.adminName.trim(), email: f.email.trim(), asRequest });
-      onDone(f.coachingName.trim(), asRequest);
+      await superApi.add({ ...f, coachingName: f.coachingName.trim(), adminName: f.adminName.trim(), email: f.email.trim(), approved: true });
+      onDone(f.coachingName.trim());
       onClose();
     } catch (err) {
       setError(errText(err));
@@ -105,14 +113,27 @@ const AddCoachingModal: React.FC<{ onClose: () => void; onDone: (name: string, w
           {field('Principal email *', 'email', { type: 'email', autoComplete: 'off' })}
           {field('Password for the principal *', 'password', { type: 'text', autoComplete: 'off', placeholder: 'At least 8 characters, letters and numbers' })}
         </div>
-        <label className="flex items-start gap-2 text-xs text-slate-700 cursor-pointer p-2.5 rounded-lg bg-amber-50 border border-amber-200">
-          <input type="checkbox" checked={asRequest} onChange={e => setAsRequest(e.target.checked)} className="mt-0.5" />
+        <label
+          key={blink}
+          className={`flex items-start gap-2 text-xs text-slate-700 cursor-pointer p-3 rounded-lg border-2 ${
+            blink > 0 && !approved ? 'blink-attn border-rose-500 bg-rose-50' : approved ? 'border-emerald-400 bg-emerald-50' : 'border-amber-300 bg-amber-50'
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={approved}
+            onChange={e => {
+              setApproved(e.target.checked);
+              if (e.target.checked) setError('');
+            }}
+            className="mt-0.5 w-4 h-4"
+          />
           <span>
-            <strong>Keep it waiting for approval.</strong> It then shows in "Requests waiting for your approval" and its principal cannot
-            sign in until you press Approve. Leave this off to activate it at once.
+            <strong>I approve this coaching.</strong> I have checked the details and I am sure I want to add it. Its principal can sign in as soon
+            as it is added. Without this tick the coaching is not added.
           </span>
         </label>
-        <p className="text-[11px] text-slate-500">Give this email and password to the principal. They can change it after signing in.</p>
+        <p className="text-[11px] text-slate-500">Give this email and password to the principal. They choose an own password at the first sign in.</p>
         {error && <p className="text-xs text-rose-600">{error}</p>}
         <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
           <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg">
@@ -538,7 +559,7 @@ const Dashboard: React.FC<{ user: AuthUser; onSignOut: () => void }> = ({ user, 
             No coaching is waiting for approval
           </div>
           A coaching owner sends a request from the login page (Coaching Admin tab, "Register your coaching"). It appears here with Approve and
-          Reject. You can also press <strong>+ Add coaching</strong> and tick "Keep it waiting for approval" to try it.
+          Reject. When you press <strong>+ Add coaching</strong> yourself, you approve it with the tick in the form.
         </section>
       )}
       {pending.length > 0 && (
@@ -730,7 +751,7 @@ const Dashboard: React.FC<{ user: AuthUser; onSignOut: () => void }> = ({ user, 
 
       <ActivityPanel />
 
-      {modal?.kind === 'add' && <AddCoachingModal onClose={() => setModal(null)} onDone={(name, waiting) => { flash('ok', waiting ? `${name} was added and is waiting for your approval.` : `${name} was added.`); reload(); if (waiting) setFilter('pending'); }} />}
+      {modal?.kind === 'add' && <AddCoachingModal onClose={() => setModal(null)} onDone={name => { flash('ok', `${name} was added.`); reload(); }} />}
       {modal?.kind === 'edit' && <EditModal org={modal.org} onClose={() => setModal(null)} onDone={() => { flash('ok', 'Saved.'); reload(); }} />}
       {modal?.kind === 'password' && <PasswordModal org={modal.org} onClose={() => setModal(null)} onDone={msg => flash('ok', msg)} />}
       {modal?.kind === 'delete' && <DeleteModal org={modal.org} onClose={() => setModal(null)} onDone={msg => { flash('ok', msg); reload(); }} />}
