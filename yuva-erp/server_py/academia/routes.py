@@ -9,6 +9,7 @@
 import functools
 import hmac
 import json
+import os
 import re
 from datetime import datetime, timedelta, timezone
 
@@ -111,6 +112,12 @@ def client_ip():
     """Address of the caller. Behind a proxy on this same computer the proxy's own address would be the
     same for everybody, so the address it forwards is used (only trusted when the proxy is local)."""
     peer = (request.remote_addr or 'unknown').replace('::ffff:', '')
+    # On a hosting service (TRUST_PROXY=1) every call comes through its proxy. The proxy adds the real address at the
+    # END of X-Forwarded-For; the first entries can be written by the caller, so only the last one is believed.
+    if os.environ.get('TRUST_PROXY') == '1':
+        forwarded = request.headers.get('X-Forwarded-For', '').split(',')[-1].strip()
+        if forwarded:
+            return forwarded.replace('::ffff:', '')[:64]
     if peer in ('127.0.0.1', '::1'):
         forwarded = request.headers.get('X-Forwarded-For', '').split(',')[0].strip()
         if forwarded:

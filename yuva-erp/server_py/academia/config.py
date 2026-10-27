@@ -27,7 +27,8 @@ def settings():
         'mongodb_uri': os.environ.get('MONGODB_URI', ''),
         'mongodb_db': os.environ.get('MONGODB_DB', 'academiaos'),
         'host': os.environ.get('DB_HOST', '0.0.0.0'),
-        'port': int(os.environ.get('DB_PORT', '3001')),
+        # hosting services (Render...) tell the program its port in PORT
+        'port': int(os.environ.get('DB_PORT') or os.environ.get('PORT') or '3001'),
         'dist_dir': Path(os.environ.get('DIST_DIR', PROJECT / 'dist')),
         'legacy_file': PROJECT / 'server' / 'data' / 'db.json',
     }
