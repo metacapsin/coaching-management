@@ -36,6 +36,16 @@ export interface Income {
   total: number;
 }
 
+export interface DemoLead {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  coaching: string;
+  message: string;
+  createdAt: string;
+}
+
 export interface NewCoaching {
   coachingName: string;
   city: string;
@@ -59,6 +69,8 @@ export const superApi = {
   resetAdmin: (id: string, newPassword: string) => superRequest<unknown>('POST', `/super/admins/${id}/reset-password`, { newPassword }),
   removeAdmin: (id: string) => superRequest<unknown>('DELETE', `/super/admins/${id}`),
   audit: () => superRequest<{ entries: ActivityEntry[] }>('GET', '/super/audit?limit=100').then(r => r.entries),
+  leads: () => superRequest<{ leads: DemoLead[] }>('GET', '/super/leads').then(r => r.leads),
+  removeLead: (id: string) => superRequest<unknown>('DELETE', `/super/leads/${id}`),
   orgs: () => superRequest<{ orgs: OrgSummary[]; income: Income }>('GET', '/super/orgs'),
   add: (input: NewCoaching) => superRequest<{ org: OrgSummary }>('POST', '/super/orgs', input),
   recordPayment: (id: string, input: { amount: number; months: number; note: string }) =>

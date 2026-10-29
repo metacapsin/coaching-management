@@ -31,7 +31,7 @@ import { ApiError } from '../utils/api';
 import type { AuthUser } from '../utils/api';
 import { useAuth } from '../../Context/AuthContext';
 import { superApi, useOrgs } from './superApi';
-import type { ActivityEntry, NewCoaching, OrgStatus, OrgSummary, SuperAdminRow } from './superApi';
+import type { ActivityEntry, DemoLead, NewCoaching, OrgStatus, OrgSummary, SuperAdminRow } from './superApi';
 
 const inputCls = 'w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500';
 
@@ -566,6 +566,7 @@ const SuperAdminsPanel: React.FC<{ onNotice: (type: 'ok' | 'error', text: string
 };
 
 const ACTION_TEXT: Record<string, string> = {
+  'demo-requested': 'Demo requested on the website',
   'super-admin-add': 'Super Admin added',
   'super-admin-password': 'Super Admin password set',
   'super-admin-remove': 'Super Admin removed',
@@ -586,6 +587,88 @@ const ACTION_TEXT: Record<string, string> = {
 };
 
 // What happened on the platform (newest first)
+// The "Book a demo" requests of the public website
+const LeadsPanel: React.FC = () => {
+  const [open, setOpen] = useState(false);
+  const [leads, setLeads] = useState<DemoLead[] | null>(null);
+  const [error, setError] = useState('');
+
+  const load = async () => {
+    try {
+      setLeads(await superApi.leads());
+      setError('');
+    } catch (err) {
+      setError(errText(err));
+    }
+  };
+
+  const remove = async (id: string) => {
+    try {
+      await superApi.removeLead(id);
+      setLeads(prev => (prev ? prev.filter(l => l.id !== id) : prev));
+    } catch (err) {
+      setError(errText(err));
+    }
+  };
+
+  return (
+    <section className="mt-8 bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
+      <button
+        onClick={() => {
+          const next = !open;
+          setOpen(next);
+          if (next) void load();
+        }}
+        className="w-full px-5 py-3 flex items-center justify-between text-sm font-semibold hover:bg-slate-50"
+      >
+        <span className="flex items-center gap-2">
+          <UserPlus className="w-4 h-4 text-indigo-600" />
+          Demo requests from the website
+          {leads && leads.length > 0 && <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded">{leads.length}</span>}
+        </span>
+        <span className="text-xs text-slate-400">{open ? 'Hide' : 'Show'}</span>
+      </button>
+      {open && (
+        <div className="border-t border-slate-100">
+          {error && <p className="p-4 text-xs text-rose-600">{error}</p>}
+          {!leads && !error && <p className="p-4 text-xs text-slate-400">Loading...</p>}
+          {leads && leads.length === 0 && <p className="p-4 text-xs text-slate-400">No request yet. Visitors send one with "Book a demo" on the website.</p>}
+          {leads && leads.length > 0 && (
+            <ul className="divide-y divide-slate-100 max-h-96 overflow-y-auto">
+              {leads.map(l => (
+                <li key={l.id} className="px-5 py-3 text-xs flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-semibold text-slate-800">
+                      {l.name}
+                      {l.coaching && <span className="font-normal text-slate-500"> · {l.coaching}</span>}
+                    </div>
+                    <div className="text-slate-500 mt-0.5 break-words">
+                      <a href={`mailto:${l.email}`} className="text-indigo-600 hover:underline">
+                        {l.email}
+                      </a>
+                      {' · '}
+                      <a href={`tel:${l.phone}`} className="text-indigo-600 hover:underline">
+                        {l.phone}
+                      </a>
+                    </div>
+                    {l.message && <p className="text-slate-600 mt-1 whitespace-pre-line break-words">{l.message}</p>}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[11px] text-slate-400">{formatDateTime(l.createdAt)}</span>
+                    <button title="Delete this request" aria-label="Delete this request" onClick={() => void remove(l.id)} className="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </section>
+  );
+};
+
 const ActivityPanel: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [entries, setEntries] = useState<ActivityEntry[] | null>(null);
@@ -1028,6 +1111,7 @@ const Dashboard: React.FC<{ user: AuthUser; onSignOut: () => void }> = ({ user, 
 
       <SuperAdminsPanel onNotice={flash} />
 
+      <LeadsPanel />
       <ActivityPanel />
 
       {modal?.kind === 'add' && <AddCoachingModal onClose={() => setModal(null)} onDone={name => {

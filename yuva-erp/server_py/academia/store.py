@@ -105,6 +105,7 @@ class Store:
         self.users = db['users']
         self.sessions = db['sessions']
         self.orgs = db['orgs']
+        self.leads = db['leads']  # "Book a demo" requests from the public website
         # the data of this coaching
         self.meta = db[prefix + 'meta']
         self.audit_col = db[prefix + 'audit']
@@ -131,6 +132,20 @@ class Store:
 
     def org_remove(self, org_id):
         self.orgs.delete_one({'_id': org_id})
+
+    # ---------- demo requests (the public website) ----------
+
+    def lead_add(self, lead):
+        self.leads.insert_one({**lead, '_id': lead['id']})
+        if self.leads.count_documents({}) > 2000:  # keep the list small
+            old = [d['_id'] for d in self.leads.find({}, {'_id': 1}).sort('createdAt', ASCENDING).limit(200)]
+            self.leads.delete_many({'_id': {'$in': old}})
+
+    def lead_list(self, limit=200):
+        return [clean(d) for d in self.leads.find({}).sort('createdAt', -1).limit(limit)]
+
+    def lead_remove(self, lead_id):
+        return self.leads.delete_one({'_id': lead_id}).deleted_count
 
     def org_active_list(self):
         return [o for o in self.org_list() if o.get('status') == 'active']

@@ -915,6 +915,33 @@ def register_coaching():
     return ok()
 
 
+@route('/api/public/demo-request', ['POST'])
+def demo_request():
+    """A visitor of the website asks for a demo. The Super Admin sees the request on the platform page."""
+    limit_registrations()
+    b = body()
+    name = text(b.get('name'), 100)
+    email = text(b.get('email'), 150).lower()
+    if not name:
+        raise HttpError(400, 'Please write your name.')
+    check_email(email)
+    if len(last10(b.get('phone'))) < 10:
+        raise HttpError(400, 'Please write a 10-digit mobile number.')
+    lead = {
+        'id': new_id('lead'),
+        'name': name,
+        'email': email,
+        'phone': text(b.get('phone'), 30),
+        'coaching': text(b.get('coaching'), 120),
+        'message': text(b.get('message'), 1000),
+        'createdAt': _now_iso(),
+    }
+    r = root()
+    r.lead_add(lead)
+    r.for_org(PLATFORM_ORG).audit(None, 'demo-requested', f'{name} ({email})')
+    return ok()
+
+
 # ---------- the super admin ----------
 
 
@@ -1108,6 +1135,19 @@ def super_audit():
     """What happened on the platform: coachings requested, approved, switched off, passwords reset..."""
     limit = min(500, max(1, request.args.get('limit', default=100, type=int) or 100))
     return {'entries': g.store.audit_recent(limit)}
+
+
+@route('/api/super/leads', ['GET'], 'super')
+def super_leads():
+    """The demo requests of the public website."""
+    return {'leads': root().lead_list()}
+
+
+@route('/api/super/leads/<lead_id>', ['DELETE'], 'super')
+def super_lead_delete(lead_id):
+    if not root().lead_remove(lead_id):
+        raise HttpError(404, 'Request not found.')
+    return ok()
 
 
 @route('/api/super/orgs', ['GET'], 'super')

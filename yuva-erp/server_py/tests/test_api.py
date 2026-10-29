@@ -1091,6 +1091,50 @@ class Parents(unittest.TestCase):
         self.assertEqual([x['studentId'] for x in seen], ['s1'])
 
 
+class Website(unittest.TestCase):
+    """"Book a demo" on the public website: anybody can send it, only the Super Admin reads it."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.db = new_db()
+        cls.api = Api(create_app(db=cls.db, dist_dir='no-dist'))
+        call = cls.api.call
+        cls.super = call('POST', '/api/super/setup', {'name': 'S', 'email': 's@x.com', 'password': PASSWORD})[1]['token']
+        org = call('POST', '/api/super/orgs', {'coachingName': 'Star', 'adminName': 'P', 'email': 'p@x.com', 'password': PASSWORD, 'phone': '9876543210'}, cls.super)[1]['org']
+        call('POST', f"/api/super/orgs/{org['id']}/approve", {}, cls.super)
+        cls.admin = call('POST', '/api/auth/login', {'email': 'p@x.com', 'password': PASSWORD, 'portal': 'admin'})[1]['token']
+
+    @classmethod
+    def tearDownClass(cls):
+        drop_db(cls.db)
+
+    def call(self, *a, **kw):
+        return self.api.call(*a, **kw)
+
+    def test_1_a_visitor_sends_a_request_and_wrong_ones_are_refused(self):
+        good = {'name': 'Ravi Kumar', 'email': 'Ravi@Example.com', 'phone': '9876543210', 'coaching': 'Star Classes', 'message': 'Show me the fees part'}
+        self.assertEqual(self.call('POST', '/api/public/demo-request', good)[0], 200)
+        for bad in ({**good, 'name': ''}, {**good, 'email': 'nope'}, {**good, 'phone': '123'}):
+            self.assertEqual(self.call('POST', '/api/public/demo-request', bad)[0], 400)
+
+    def test_2_only_the_super_admin_reads_and_deletes_them(self):
+        status, data = self.call('GET', '/api/super/leads', token=self.super)
+        self.assertEqual(status, 200)
+        self.assertEqual([(l['name'], l['email'], l['coaching']) for l in data['leads']], [('Ravi Kumar', 'ravi@example.com', 'Star Classes')])
+        self.assertIn(self.call('GET', '/api/super/leads', token=self.admin)[0], (401, 403))  # a principal cannot
+        self.assertEqual(self.call('GET', '/api/super/leads')[0], 401)  # nor a visitor
+        lead_id = data['leads'][0]['id']
+        self.assertIn(self.call('DELETE', f'/api/super/leads/{lead_id}', token=self.admin)[0], (401, 403))
+        self.assertEqual(self.call('DELETE', f'/api/super/leads/{lead_id}', token=self.super)[0], 200)
+        self.assertEqual(self.call('GET', '/api/super/leads', token=self.super)[1]['leads'], [])
+        self.assertEqual(self.call('DELETE', f'/api/super/leads/{lead_id}', token=self.super)[0], 404)
+
+    def test_3_the_request_shows_in_the_activity_log(self):
+        self.call('POST', '/api/public/demo-request', {'name': 'Mina', 'email': 'm@example.com', 'phone': '9876543211'})
+        entries = self.call('GET', '/api/super/audit', token=self.super)[1]['entries']
+        self.assertTrue(any(e['action'] == 'demo-requested' for e in entries))
+
+
 class SuperRecovery(unittest.TestCase):
     """The Super Admin forgot the password: it can be reset on the server computer only."""
 

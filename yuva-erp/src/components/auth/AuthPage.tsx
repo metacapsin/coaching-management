@@ -352,6 +352,12 @@ export const AuthPage: React.FC = () => {
             </div>
           </div>
 
+          {!createSuper && (
+            <a href="#" className="inline-flex items-center text-xs font-medium text-slate-500 hover:text-slate-800 mb-5">
+              ← Back to the website
+            </a>
+          )}
+
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             {createSuper ? 'Create the Super Admin' : registering ? 'Register your coaching' : memberSignup ? 'Create your account' : 'Welcome back'}
           </h1>

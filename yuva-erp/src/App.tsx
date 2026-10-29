@@ -31,6 +31,8 @@ import { TeacherHomeView } from './components/views/Teacherhomeview';
 // Auth + layout
 import { SuperAdminApp } from './components/super/SuperAdminApp';
 import { AuthPage } from './components/auth/AuthPage';
+import { LandingPage } from './components/landing/LandingPage';
+import { useHashRoute } from './components/utils/useHashRoute';
 import { ForcePasswordChange } from './components/auth/ForcePasswordChange';
 import { OrgLogo } from './components/ui/OrgLogo';
 import { Navbar } from './components/layout/Navbar';
@@ -433,11 +435,15 @@ function MainApp() {
 
 // Shows the login page until a user is signed in. The server sends each role only its own data.
 function AuthGate() {
-  const { user, ready, serverError, retryConnection } = useAuth();
+  const { user, ready, serverError, retryConnection, hasSuper } = useAuth();
+  const route = useHashRoute();
 
   if (serverError) return <ConnectionScreen error={serverError} onRetry={retryConnection} />;
   if (!ready) return <ConnectionScreen />;
-  if (!user) return <AuthPage />;
+  if (!user) {
+    // The website is the first page. The sign in page opens with "#/login" (and straight away when the Super Admin has to be created)
+    return route.startsWith('#/login') || !hasSuper ? <AuthPage /> : <LandingPage />;
+  }
   // somebody else set this password: choose an own one before anything else
   if (user.mustChangePassword) return <ForcePasswordChange />;
   // the Super Admin signed in on the same login page: the list of coachings instead of a coaching
