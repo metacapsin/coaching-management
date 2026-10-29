@@ -3,12 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { InstituteProvider, useInstitute } from './Context/InstituteContext';
 import { AuthProvider, useAuth, roleLabel, accountLabel } from './Context/AuthContext';
 import { canAccessTab, canManageInstitute } from './Context/Access';
 import type { TabId } from './Context/Access';
 import { hasSuperSession, useSyncStatus } from './components/utils/api';
+import { tabPath, useTabRoute } from './components/utils/useTabRoute';
 
 import { DashboardView } from './components/views/DashboardView';
 import { AdmissionsView } from './components/views/AdmissionsView';
@@ -74,7 +75,8 @@ function MainApp() {
   const syncStatus = useSyncStatus();
   const isManager = canManageInstitute(role);
 
-  const [activeTab, setActiveTab] = useState<TabId>('dashboard');
+  // each page has its own address (/fees, /attendance...): a reload stays on it and the Back button works
+  const [activeTab, setActiveTab] = useTabRoute(tab => canAccessTab(role, tab));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   // each press on an "Add Teacher" button opens the Add Account window in Team & Access
   const [addTeacherSignal, setAddTeacherSignal] = useState(0);
@@ -136,6 +138,15 @@ function MainApp() {
 
   // Each role sees only the pages it is allowed to open
   const visibleNavItems = navItems.filter(item => canAccessTab(role, item.id));
+
+  // the name of the open page is in the title of the browser tab
+  const pageName = navItems.find(item => item.id === activeTab)?.label ?? 'Dashboard';
+  useEffect(() => {
+    document.title = `${pageName} · ${profile.name}`;
+    return () => {
+      document.title = 'AcademiaOS - Coaching Institute Management SaaS';
+    };
+  }, [pageName, profile.name]);
 
   const renderTab = () => {
     if (!canAccessTab(role, activeTab)) {
@@ -282,9 +293,14 @@ function MainApp() {
               const isActive = activeTab === item.id;
 
               return (
-                <button
+                <a
                   key={item.id}
-                  onClick={() => {
+                  href={tabPath(item.id)}
+                  aria-current={isActive ? 'page' : undefined}
+                  onClick={e => {
+                    // a normal click opens the page here; Ctrl / Shift / middle click open it the browser's way (a new tab)
+                    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                    e.preventDefault();
                     setActiveTab(item.id);
                     setMobileMenuOpen(false);
                   }}
@@ -304,7 +320,7 @@ function MainApp() {
                       {item.badge}
                     </span>
                   )}
-                </button>
+                </a>
               );
             })}
           </nav>
@@ -434,6 +450,11 @@ function MainApp() {
 // Shows the login page until a user is signed in. The server sends each role only its own data.
 function AuthGate() {
   const { user, ready, serverError, retryConnection } = useAuth();
+
+  // signed out: the address of a page of the app is no more (the website is at "/")
+  useEffect(() => {
+    if (ready && !user && window.location.pathname !== '/') window.history.replaceState(null, '', '/');
+  }, [ready, user]);
 
   if (serverError) return <ConnectionScreen error={serverError} onRetry={retryConnection} />;
   if (!ready) return <ConnectionScreen />;
