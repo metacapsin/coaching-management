@@ -35,7 +35,7 @@ export const AttendanceAbsentAlertModal: React.FC<AttendanceAbsentAlertModalProp
         parent_name: student.parentName,
         student_name: student.name,
         roll_no: student.rollNo,
-        batch_name: batch?.name || 'Class',
+        batch_name: batches.find(b => b.id === student.batchId)?.name || batch?.name || 'Class',
         date
       }
     );
@@ -87,7 +87,7 @@ export const AttendanceAbsentAlertModal: React.FC<AttendanceAbsentAlertModalProp
                 Dispatch Absent Alerts to Parents
               </h2>
               <p className="text-xs text-slate-500">
-                Batch: {batch?.name} · Date: {date} ({absentStudents.length} Absent Students)
+                Batch: {batch?.name ?? 'All batches'} · Date: {date} ({absentStudents.length} Absent Students)
               </p>
             </div>
           </div>

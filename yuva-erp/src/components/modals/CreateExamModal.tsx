@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { NeedFirst } from '../ui/NeedFirst';
 import { useInstitute } from '../../Context/InstituteContext';
 import { toLocalISODate } from '../utils/helpers';
 import { X, Award, Check } from 'lucide-react';
@@ -103,6 +104,9 @@ export const CreateExamModal: React.FC<CreateExamModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {batches.length === 0 && (
+            <NeedFirst title="A test needs a batch.">Create a batch first (Batches &amp; Timetable, Create New Batch, or add a program in Fees &amp; Invoicing: it comes with Batch 1).</NeedFirst>
+          )}
           {error && (
             <div className="p-2.5 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg">
               {error}

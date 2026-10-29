@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { NeedFirst } from '../ui/NeedFirst';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { TimetableSlot } from '../../types';
 import { TIME_REGEX, normalizeTime, timeToMinutes, timesOverlap } from '../utils/helpers';
@@ -111,6 +112,9 @@ export const CreateTimetableModal: React.FC<CreateTimetableModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {batches.length === 0 && (
+            <NeedFirst title="A class time needs a batch.">Create a batch first (Create New Batch above, or add a program in Fees &amp; Invoicing: it comes with Batch 1).</NeedFirst>
+          )}
           {error && (
             <div className="p-2.5 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg">
               {error}

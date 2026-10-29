@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { NeedFirst } from '../ui/NeedFirst';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { PaymentMethod, FeeTransaction } from '../../types';
 import { toLocalISODate } from '../utils/helpers';
@@ -103,6 +104,9 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {students.length === 0 && (
+            <NeedFirst title="There is no student yet.">A fee is collected from a student. Admit the first student with New Admission, then come back here.</NeedFirst>
+          )}
           {error && (
             <div className="p-3 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />

@@ -5,7 +5,7 @@ import { CourseModal } from '../modals/CourseModal';
 import { CancelReceiptModal } from '../modals/CancelReceiptModal';
 import { Pager } from '../ui/Pager';
 import { usePaged } from '../utils/usePaged';
-import { daysBetween, downloadCsv, fillTemplate, formatDate, openWhatsApp, toLocalISODate } from '../utils/helpers';
+import { daysBetween, downloadCsv, fillTemplate, formatDate, openWhatsApp, plural, toLocalISODate } from '../utils/helpers';
 import {
   CreditCard,
   Search,
@@ -268,7 +268,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
             {profile.currencySymbol}{totalOutstanding.toLocaleString('en-IN')}
           </p>
           <span className="text-[11px] text-rose-600">
-            {defaultersList.length} students with balance{overdueCount > 0 ? ` · ${overdueCount} overdue` : ''}
+            {plural(defaultersList.length, 'student')} with balance{overdueCount > 0 ? ` · ${overdueCount} overdue` : ''}
           </span>
         </div>
 

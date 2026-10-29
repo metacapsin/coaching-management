@@ -123,3 +123,6 @@ export const downloadCsv = (filename: string, headers: string[], rows: (string |
   // The BOM makes Excel read names in Hindi or with accents correctly
   downloadTextFile(filename, '\uFEFF' + lines.join('\n'));
 };
+
+// "1 student", "2 students"
+export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;

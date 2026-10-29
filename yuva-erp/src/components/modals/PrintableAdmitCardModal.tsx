@@ -2,7 +2,7 @@ import React from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { Exam } from '../../types';
 import { ModalShell } from '../ui/ModalShell';
-import { formatDate } from '../utils/helpers';
+import { formatDate, plural } from '../utils/helpers';
 import { Printer, Ticket } from 'lucide-react';
 
 interface PrintableAdmitCardModalProps {
@@ -19,7 +19,7 @@ export const PrintableAdmitCardModal: React.FC<PrintableAdmitCardModalProps> = (
   return (
     <ModalShell
       title="Admit Cards"
-      subtitle={`${exam.title} · ${list.length} students`}
+      subtitle={`${exam.title} · ${plural(list.length, 'student')}`}
       icon={Ticket}
       iconClass="bg-violet-600"
       width="xl"

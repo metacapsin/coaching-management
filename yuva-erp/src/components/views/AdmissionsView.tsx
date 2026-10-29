@@ -5,7 +5,7 @@ import { Pager } from '../ui/Pager';
 import { usePaged } from '../utils/usePaged';
 import { EditStudentModal } from '../modals/EditstudentModal';
 import type { Student } from '../../types';
-import { csvCell, downloadTextFile, openWhatsApp, toLocalISODate } from '../utils/helpers';
+import { csvCell, downloadTextFile, openWhatsApp, plural, toLocalISODate } from '../utils/helpers';
 import {
   Users,
   UserPlus,
@@ -320,7 +320,7 @@ export const AdmissionsView: React.FC<AdmissionsViewProps> = ({
           </div>
 
           <div className="text-xs text-slate-500 whitespace-nowrap">
-            Showing <strong>{filteredStudents.length}</strong> of {students.length} students
+            Showing <strong>{filteredStudents.length}</strong> of {plural(students.length, 'student')}
           </div>
         </div>
       </div>

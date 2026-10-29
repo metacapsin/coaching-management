@@ -3,6 +3,7 @@ import { NoticesCard, MaterialCard } from '../ui/HomeCards';
 import { useInstitute } from '../../Context/InstituteContext';
 import { useAuth } from '../../Context/AuthContext';
 import { CalendarCheck, Clock, Award, Users, Layers, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { plural } from '../utils/helpers';
 
 interface TeacherHomeViewProps {
   onNavigate: (tab: string) => void;
@@ -83,7 +84,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({ onNavigate }) 
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1.5">Welcome, {firstName}</h1>
           <p className="text-xs text-slate-500 mt-1">
             {user?.subject ? `${user.subject} · ` : ''}
-            {batches.length} {batches.length === 1 ? 'batch' : 'batches'} · {students.length} students
+            {batches.length} {batches.length === 1 ? 'batch' : 'batches'} · {plural(students.length, 'student')}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -145,7 +146,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({ onNavigate }) 
               </div>
               <div className="mt-3 flex items-center gap-1.5 text-xs text-slate-600">
                 <Users className="w-3.5 h-3.5 text-slate-400" />
-                {enrolled} students enrolled
+                {plural(enrolled, 'student')} enrolled
               </div>
             </div>
           );

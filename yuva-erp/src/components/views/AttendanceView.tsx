@@ -14,13 +14,16 @@ export const AttendanceView: React.FC = () => {
     getAttendanceForBatchAndDate 
   } = useInstitute();
 
-  const [selectedBatchId, setSelectedBatchId] = useState(batches[0]?.id || '');
+  // '__all' shows every student in one list (the default); a batch can be chosen to see only its students
+  const ALL = '__all';
+  const [selectedBatchId, setSelectedBatchId] = useState(ALL);
+  const showAll = selectedBatchId === ALL;
   const [selectedDate, setSelectedDate] = useState(toLocalISODate());
   const [isAbsentModalOpen, setIsAbsentModalOpen] = useState(false);
   const [saveFeedback, setSaveFeedback] = useState(false);
 
   // Archived students are not on the roll call
-  const batchStudents = students.filter(s => s.batchId === selectedBatchId && s.status !== 'inactive');
+  const batchStudents = students.filter(s => (showAll || s.batchId === selectedBatchId) && s.status !== 'inactive');
   const currentBatch = batches.find(b => b.id === selectedBatchId);
 
   // Local attendance state for current date & batch
@@ -28,10 +31,10 @@ export const AttendanceView: React.FC = () => {
 
   // When date or batch changes, sync with stored attendance
   useEffect(() => {
-    const existing = getAttendanceForBatchAndDate(selectedDate, selectedBatchId);
     const initial: Record<string, AttendanceStatus> = {};
     
     batchStudents.forEach(st => {
+      const existing = getAttendanceForBatchAndDate(selectedDate, st.batchId);
       if (existing && existing.records[st.id]) {
         initial[st.id] = existing.records[st.id];
       } else {
@@ -59,7 +62,12 @@ export const AttendanceView: React.FC = () => {
   };
 
   const handleSave = () => {
-    markAttendance(selectedDate, selectedBatchId, localRecords);
+    // The roll call is stored per batch: the list of all students is split by batch
+    const byBatch: Record<string, Record<string, AttendanceStatus>> = {};
+    batchStudents.forEach(st => {
+      (byBatch[st.batchId] ||= {})[st.id] = localRecords[st.id] || 'present';
+    });
+    Object.entries(byBatch).forEach(([batchId, records]) => markAttendance(selectedDate, batchId, records));
     setSaveFeedback(true);
     setTimeout(() => setSaveFeedback(false), 3000);
   };
@@ -121,16 +129,18 @@ export const AttendanceView: React.FC = () => {
           {/* Batch Selector */}
           <div className="w-full sm:w-auto">
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
-              Select Batch
+              Show
             </label>
             <select
               value={selectedBatchId}
               onChange={e => setSelectedBatchId(e.target.value)}
               className="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium min-w-0 w-full sm:min-w-56 sm:w-auto"
             >
+              <option value={ALL}>All students ({students.filter(s => s.status !== 'inactive').length})</option>
               {batches.map(b => (
                 <option key={b.id} value={b.id}>
-                  {b.name} ({b.classroom})
+                  {b.name}
+                  {b.classroom ? ` (${b.classroom})` : ''}
                 </option>
               ))}
             </select>
@@ -173,7 +183,7 @@ export const AttendanceView: React.FC = () => {
         <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-xs text-center">
           <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-500">Total Enrolled</span>
           <p className="text-xl font-bold text-slate-900 mt-0.5">{totalCount}</p>
-          <span className="text-[10px] text-slate-400">Students in batch</span>
+          <span className="text-[10px] text-slate-400">{showAll ? 'Students in all batches' : 'Students in batch'}</span>
         </div>
 
         <div className="bg-white rounded-xl border border-emerald-200 bg-emerald-50/20 p-3.5 shadow-xs text-center">
@@ -206,10 +216,12 @@ export const AttendanceView: React.FC = () => {
         <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
           <div>
             <h3 className="text-sm font-semibold text-slate-900">
-              Batch Roll Call: {currentBatch?.name}
+              {showAll ? 'Roll Call: all students' : `Batch Roll Call: ${currentBatch?.name}`}
             </h3>
             <p className="text-xs text-slate-500">
-              Room: {currentBatch?.classroom} · Timings: {currentBatch?.startTime} - {currentBatch?.endTime}
+              {showAll
+                ? `${batches.length} batch${batches.length === 1 ? '' : 'es'} · the batch of every student is shown`
+                : `${currentBatch?.classroom ? `Room: ${currentBatch.classroom} · ` : ''}Timings: ${currentBatch?.startTime} - ${currentBatch?.endTime}`}
             </p>
           </div>
           <span className="text-xs text-slate-500">
@@ -219,7 +231,7 @@ export const AttendanceView: React.FC = () => {
 
         {batchStudents.length === 0 ? (
           <div className="py-12 text-center text-slate-400 text-xs">
-            No students currently enrolled in this batch.
+            {showAll ? 'No student is enrolled yet.' : 'No students currently enrolled in this batch.'}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -228,6 +240,7 @@ export const AttendanceView: React.FC = () => {
                 <tr>
                   <th className="p-3.5 w-12 text-center">#</th>
                   <th className="p-3.5">Student Information</th>
+                  {showAll && <th className="p-3.5">Batch</th>}
                   <th className="p-3.5">Guardian Contact</th>
                   <th className="p-3.5 text-center">Attendance Toggle</th>
                 </tr>
@@ -257,6 +270,8 @@ export const AttendanceView: React.FC = () => {
                           </div>
                         </div>
                       </td>
+
+                      {showAll && <td className="p-3.5 text-slate-600">{batches.find(b => b.id === student.batchId)?.name || '-'}</td>}
 
                       <td className="p-3.5">
                         <span className="text-slate-800 font-medium block">{student.parentName}</span>
@@ -333,7 +348,7 @@ export const AttendanceView: React.FC = () => {
           isOpen={isAbsentModalOpen}
           onClose={() => setIsAbsentModalOpen(false)}
           date={selectedDate}
-          batchId={selectedBatchId}
+          batchId={showAll ? '' : selectedBatchId}
           absentStudents={absentStudents}
         />
       )}
