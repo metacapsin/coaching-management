@@ -357,9 +357,12 @@ export const AuthPage: React.FC<{ embedded?: boolean }> = ({ embedded = false })
           </div>
           )}
 
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            {createSuper ? 'Create the Super Admin' : registering ? 'Register your coaching' : memberSignup ? 'Create your account' : 'Welcome back'}
-          </h1>
+          {/* on the website the heading of the page is its own message, so this one is a smaller heading */}
+          {React.createElement(
+            embedded ? 'h2' : 'h1',
+            { className: 'text-2xl font-bold tracking-tight text-slate-900' },
+            createSuper ? 'Create the Super Admin' : registering ? 'Register your coaching' : memberSignup ? 'Create your account' : 'Welcome back'
+          )}
           <p className="text-sm text-slate-500 mt-1">
             {createSuper
               ? 'The Super Admin approves coachings. Create this account first (only once).'

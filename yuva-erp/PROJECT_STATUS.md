@@ -49,7 +49,7 @@ Which modules are complete, which screens (UI) exist, what is still missing, and
 | 32 | **More reports**: Batch comparison, Fees by student, Attendance by student; attendance CSV of a day | `ReportsView.tsx`, `AttendanceView.tsx` | `GET /api/sync` | browser |
 | 33 | **Search** in the tests, the message history and the accounts | `ExamsView`, `NotificationsView`, `Teamview` | none | browser |
 | 34 | **Coaching list download** for the Super Admin (CSV, no student data) | `SuperAdminApp.tsx` | `GET /api/super/orgs` | browser |
-| 35 | **Public website** (the first page before sign in: the sign in form in the top part, then why, how it works, features, roles, security, FAQ, footer; it follows the dark / light theme) | `src/components/landing/LandingPage.tsx` | none | tests + browser |
+| 35 | **Public website** (the first page before sign in: the sign in form in the top part, then why, how it works, features, roles, security, FAQ, footer; the page and the form are dark; it moves: the top message changes by itself, cards rise into place, numbers count up) | `src/components/landing/LandingPage.tsx` | none | tests + browser |
 | 36 | **Book a demo** (form on the website; the Super Admin reads and deletes the requests) | `DemoRequestForm.tsx`, `LeadsPanel` in `SuperAdminApp.tsx` | `POST /api/public/demo-request`, `GET/DELETE /api/super/leads` | tests + browser |
 
 ## 2. Not built / still missing

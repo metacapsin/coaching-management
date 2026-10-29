@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { DemoRequestForm } from './DemoRequestForm';
 import { AuthPage } from '../auth/AuthPage';
-import { ThemeToggle } from '../ui/ThemeToggle';
+import { CountUp, FloatingButtons, Reveal, prefersReducedMotion, useTicker } from './LandingMotion';
 
 // The public website of AcademiaOS: what it is, how it works, who uses it. It is shown before sign in.
 // Everything written here is true for the product (no invented clients, numbers or reviews).
@@ -124,6 +124,42 @@ const FAQ: { q: string; a: string }[] = [
   { q: 'Can I take my data out?', a: 'Yes. Reports download as CSV, and the whole coaching can be downloaded as a backup file and restored later.' }
 ];
 
+// The top of the page changes its message by itself (the first one is the main one)
+const HERO_SLIDES: { title: React.ReactNode; text: string }[] = [
+  {
+    title: (
+      <>
+        Run your whole coaching <span className="text-sky-400">from one place</span>
+      </>
+    ),
+    text: 'Admissions, fees, attendance, tests, notices and reports for the principal, the teachers, the students and their parents. One platform for every coaching of your area.'
+  },
+  {
+    title: (
+      <>
+        Take the roll call <span className="text-sky-400">in a minute</span>
+      </>
+    ),
+    text: 'Mark a batch or all students at once, note who is late, and prepare the message for the parent of an absent student.'
+  },
+  {
+    title: (
+      <>
+        Fees and receipts <span className="text-sky-400">without a register</span>
+      </>
+    ),
+    text: 'Collect the fee, print a numbered receipt, and see at a glance who still has to pay.'
+  },
+  {
+    title: (
+      <>
+        Every coaching’s data <span className="text-sky-400">stays its own</span>
+      </>
+    ),
+    text: 'Separate data for each coaching, roles checked by the server on every request, and a backup every day.'
+  }
+];
+
 const WHY_CARDS = [
   { icon: Building2, title: 'Built for coachings', text: 'Programs, batches, test series, ranks and fee receipts are the way a coaching works.' },
   { icon: ShieldCheck, title: 'Private by design', text: 'Each coaching, its own data. Roles are checked by the server.' },
@@ -141,11 +177,11 @@ const Logo: React.FC<{ className?: string }> = ({ className = '' }) => (
 );
 
 const SectionHead: React.FC<{ kicker: string; title: React.ReactNode; text?: string }> = ({ kicker, title, text }) => (
-  <div className="text-center max-w-3xl mx-auto mb-10">
+  <Reveal className="text-center max-w-3xl mx-auto mb-10">
     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-400">{'— '}{kicker}{' —'}</p>
     <h2 className="text-3xl sm:text-4xl font-bold text-white mt-3 tracking-tight">{title}</h2>
     {text && <p className="text-sky-100/80 mt-4 leading-relaxed">{text}</p>}
-  </div>
+  </Reveal>
 );
 
 export const LandingPage: React.FC = () => {
@@ -154,6 +190,26 @@ export const LandingPage: React.FC = () => {
   const [open, setOpen] = useState<number | null>(0);
   const [scrolled, setScrolled] = useState(false);
   const active = WHY_TABS.find(t => t.id === tab) || WHY_TABS[0];
+
+  // the message at the top changes every few seconds (it waits while the mouse is over it)
+  const [slide, setSlide] = useState(0);
+  const [slideHold, setSlideHold] = useState(false);
+  useTicker(() => setSlide(i => (i + 1) % HERO_SLIDES.length), 6000, slideHold);
+  const hero = HERO_SLIDES[slide];
+
+  // the tabs of "Why" go on by themselves until somebody chooses one
+  const [autoTabs, setAutoTabs] = useState(true);
+  const [tabHold, setTabHold] = useState(false);
+  useTicker(() => setTab(cur => WHY_TABS[(WHY_TABS.findIndex(t => t.id === cur) + 1) % WHY_TABS.length].id), 7000, !autoTabs || tabHold);
+
+  useEffect(() => {
+    if (prefersReducedMotion()) return;
+    const before = document.documentElement.style.scrollBehavior;
+    document.documentElement.style.scrollBehavior = 'smooth';
+    return () => {
+      document.documentElement.style.scrollBehavior = before;
+    };
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -177,7 +233,6 @@ export const LandingPage: React.FC = () => {
             ))}
           </nav>
           <div className="flex items-center gap-1">
-            <ThemeToggle className="!text-slate-300 hover:!text-white hover:!bg-white/10" />
             <button onClick={() => setMenu(m => !m)} aria-label={menu ? 'Close menu' : 'Open menu'} className="lg:hidden p-2 rounded-lg text-slate-300 hover:bg-white/10">
               {menu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -196,19 +251,42 @@ export const LandingPage: React.FC = () => {
 
       {/* Hero */}
       <section className="relative overflow-hidden bg-gradient-to-br from-[#1b2c3c] via-[#16293a] to-[#0f1b26]">
-        <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-pink-500/10 blur-3xl" />
+        <div className="lp-blob absolute -top-24 -right-24 w-96 h-96 rounded-full bg-pink-500/10 blur-3xl" aria-hidden="true" />
+        <div className="lp-blob lp-blob-2 absolute top-1/3 -left-32 w-96 h-96 rounded-full bg-blue-600/15 blur-3xl" aria-hidden="true" />
+        <div className="lp-blob absolute -bottom-32 left-1/3 w-80 h-80 rounded-full bg-sky-400/10 blur-3xl" aria-hidden="true" />
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-16 sm:py-24 grid lg:grid-cols-2 gap-12 items-center">
           <div>
             <span className="inline-block text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-300 bg-sky-400/10 border border-sky-400/20 rounded-full px-3 py-1">
               Coaching institute management
             </span>
-            <h1 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight mt-5 leading-[1.1]">
-              Run your whole coaching <span className="text-sky-400">from one place</span>
-            </h1>
-            <p className="text-lg text-sky-100/80 mt-5 leading-relaxed max-w-xl">
-              Admissions, fees, attendance, tests, notices and reports for the principal, the teachers, the students and their parents. One platform for every coaching of your area.
-            </p>
-            <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-300">
+            <div
+              className="min-h-[15.5rem] sm:min-h-[17rem]"
+              onMouseEnter={() => setSlideHold(true)}
+              onMouseLeave={() => setSlideHold(false)}
+              onFocus={() => setSlideHold(true)}
+              onBlur={() => setSlideHold(false)}
+              aria-live="polite"
+            >
+              <div key={slide} className="lp-slide">
+                <h1 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight mt-5 leading-[1.1]">{hero.title}</h1>
+                <p className="text-lg text-sky-100/80 mt-5 leading-relaxed max-w-xl">{hero.text}</p>
+              </div>
+            </div>
+            <div className="mt-2 flex items-center gap-2" role="group" aria-label="Messages">
+              {HERO_SLIDES.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setSlide(i)}
+                  aria-label={`Show message ${i + 1}`}
+                  aria-current={i === slide}
+                  className={`h-1.5 rounded-full overflow-hidden bg-white/20 transition-all duration-300 ${i === slide ? 'w-10' : 'w-4 hover:bg-white/40'}`}
+                >
+                  {i === slide && <span key={slide} className="lp-bar block h-full bg-sky-400" style={{ animationDuration: '6s', animationPlayState: slideHold ? 'paused' : 'running' }} />}
+                </button>
+              ))}
+            </div>
+            <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-300">
               {['No app to install', 'Works on a phone', 'Each coaching’s data stays separate'].map(t => (
                 <li key={t} className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-emerald-400" />
@@ -217,8 +295,8 @@ export const LandingPage: React.FC = () => {
               ))}
             </ul>
           </div>
-          <div id="signin" className="w-full max-w-md mx-auto lg:ml-auto">
-            <div className="follow-theme rounded-2xl bg-white text-slate-900 shadow-2xl shadow-black/30 p-6 sm:p-8">
+          <div id="signin" className="lp-slide w-full max-w-md mx-auto lg:ml-auto">
+            <div className="auth-dark rounded-2xl bg-[#2a3742] border border-sky-300/25 text-slate-900 shadow-2xl shadow-black/30 p-6 sm:p-8">
               <AuthPage embedded />
             </div>
           </div>
@@ -226,22 +304,34 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* Why: tabs */}
-      <section id="why" className="bg-[#16222d]">
+      <section id="why" className="scroll-mt-16 bg-[#16222d]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div role="tablist" aria-label="Why AcademiaOS" className="flex overflow-x-auto -mx-4 sm:mx-0 border-b border-white/10">
+          <div role="tablist" aria-label="Why AcademiaOS" className="flex overflow-x-auto -mx-4 sm:mx-0 border-b border-white/10" onMouseEnter={() => setTabHold(true)} onMouseLeave={() => setTabHold(false)}>
             {WHY_TABS.map(t => (
               <button
                 key={t.id}
                 role="tab"
                 aria-selected={tab === t.id}
-                onClick={() => setTab(t.id)}
-                className={`shrink-0 px-5 py-4 text-sm font-medium transition-colors ${tab === t.id ? 'text-sky-400 bg-white/5 border-b-2 border-sky-400' : 'text-slate-300 hover:text-white'}`}
+                onClick={() => {
+                  setTab(t.id);
+                  setAutoTabs(false);
+                }}
+                className={`relative shrink-0 px-5 py-4 text-sm font-medium transition-colors ${tab === t.id ? 'text-sky-400 bg-white/5' : 'text-slate-300 hover:text-white'}`}
               >
                 {t.label}
+                {tab === t.id && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-400/25">
+                    {autoTabs ? (
+                      <span key={tab} className="lp-bar block h-full bg-sky-400" style={{ animationDuration: '7s', animationPlayState: tabHold ? 'paused' : 'running' }} />
+                    ) : (
+                      <span className="block h-full bg-sky-400" />
+                    )}
+                  </span>
+                )}
               </button>
             ))}
           </div>
-          <div role="tabpanel" className="py-14 grid lg:grid-cols-2 gap-10 items-center">
+          <div key={tab} role="tabpanel" className="lp-slide py-14 grid lg:grid-cols-2 gap-10 items-center">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-400">{'— '}Why AcademiaOS{' —'}</p>
               <h2 className="text-3xl font-bold text-white mt-3 tracking-tight">{active.title}</h2>
@@ -256,9 +346,9 @@ export const LandingPage: React.FC = () => {
               ))}
             </ul>
           </div>
-          <div className="pb-14 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Reveal stagger className="pb-14 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {WHY_CARDS.map(c => (
-              <div key={c.title} className="rounded-xl border border-white/10 bg-white/[0.03] p-5 hover:border-sky-400/40 transition-colors">
+              <div key={c.title} className="lp-lift rounded-xl border border-white/10 bg-white/[0.03] p-5 hover:border-sky-400/40">
                 <span className="w-11 h-11 rounded-full bg-sky-400/10 text-sky-400 flex items-center justify-center">
                   <c.icon className="w-5 h-5" />
                 </span>
@@ -266,33 +356,33 @@ export const LandingPage: React.FC = () => {
                 <p className="text-sm text-sky-100/70 mt-2 leading-relaxed">{c.text}</p>
               </div>
             ))}
-          </div>
+          </Reveal>
         </div>
       </section>
 
       {/* How it works */}
-      <section id="how" className="bg-[#1b2833] py-20">
+      <section id="how" className="scroll-mt-16 bg-[#1b2833] py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <SectionHead kicker="How it works" title={<>From registration to the first roll call <span className="text-sky-400">in four steps</span></>} text="No long set up. This is how a coaching starts." />
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Reveal stagger className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {STEPS.map(s => (
-              <div key={s.n} className="relative rounded-xl border border-white/10 bg-white/[0.04] p-6">
+              <div key={s.n} className="lp-lift relative rounded-xl border border-white/10 bg-white/[0.04] p-6 hover:border-sky-400/40">
                 <span className="absolute top-3 right-4 text-4xl font-extrabold text-sky-400/70">{s.n}</span>
                 <h3 className="text-lg font-semibold text-white pr-12">{s.title}</h3>
                 <p className="text-sm text-sky-100/75 mt-3 leading-relaxed">{s.text}</p>
               </div>
             ))}
-          </div>
+          </Reveal>
         </div>
       </section>
 
       {/* Features */}
-      <section id="features" className="bg-[#16222d] py-20">
+      <section id="features" className="scroll-mt-16 bg-[#16222d] py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <SectionHead kicker="Features" title={<>Everything a coaching needs, <span className="text-sky-400">in one app</span></>} text="Twelve areas of work, ready to use from the first day." />
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <Reveal stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {FEATURES.map(f => (
-              <div key={f.title} className="group rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-white/[0.02] p-6 hover:border-sky-400/40 transition-colors">
+              <div key={f.title} className="lp-lift group rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-white/[0.02] p-6 hover:border-sky-400/40">
                 <span className="w-11 h-11 rounded-lg bg-blue-600/20 text-sky-300 flex items-center justify-center group-hover:bg-blue-600/30 transition-colors">
                   <f.icon className="w-5 h-5" />
                 </span>
@@ -300,17 +390,17 @@ export const LandingPage: React.FC = () => {
                 <p className="text-sm text-sky-100/75 mt-2 leading-relaxed">{f.text}</p>
               </div>
             ))}
-          </div>
+          </Reveal>
         </div>
       </section>
 
       {/* Roles */}
-      <section id="roles" className="bg-[#1b2833] py-20">
+      <section id="roles" className="scroll-mt-16 bg-[#1b2833] py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <SectionHead kicker="Who uses it" title={<>One sign in, <span className="text-sky-400">six kinds of people</span></>} text="Everybody sees only what belongs to them." />
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <Reveal stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {ROLES.map(r => (
-              <div key={r.who} className="rounded-xl border border-white/10 bg-white/[0.04] p-6">
+              <div key={r.who} className="lp-lift rounded-xl border border-white/10 bg-white/[0.04] p-6 hover:border-sky-400/40">
                 <h3 className="text-lg font-semibold text-white">{r.who}</h3>
                 <ul className="mt-3 space-y-2">
                   {r.sees.map(s => (
@@ -322,7 +412,7 @@ export const LandingPage: React.FC = () => {
                 </ul>
               </div>
             ))}
-          </div>
+          </Reveal>
         </div>
       </section>
 
@@ -330,30 +420,32 @@ export const LandingPage: React.FC = () => {
       <section className="bg-[#16222d] py-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <SectionHead kicker="At a glance" title={<>What is inside, <span className="text-sky-400">in short</span></>} />
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              ['6', 'kinds of sign in', 'Super Admin, principal, front desk, teacher, student, parent'],
-              ['12', 'areas of work', 'From admission to reports'],
-              ['1', 'daily backup', 'Kept automatically'],
-              ['100%', 'separate data', 'For every coaching']
-            ].map(([n, l, d]) => (
-              <div key={l} className="rounded-xl border border-sky-400/30 bg-white/[0.04] p-6 text-center">
-                <div className="text-3xl font-extrabold text-white">{n}</div>
+          <Reveal stagger className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {([
+              [6, '', 'kinds of sign in', 'Super Admin, principal, front desk, teacher, student, parent'],
+              [12, '', 'areas of work', 'From admission to reports'],
+              [1, '', 'daily backup', 'Kept automatically'],
+              [100, '%', 'separate data', 'For every coaching']
+            ] as [number, string, string, string][]).map(([n, suffix, l, d]) => (
+              <div key={l} className="lp-lift rounded-xl border border-sky-400/30 bg-white/[0.04] p-6 text-center">
+                <div className="text-3xl font-extrabold text-white">
+                  <CountUp to={n} suffix={suffix} />
+                </div>
                 <div className="text-sky-300 text-sm font-medium mt-1">{l}</div>
                 <div className="text-xs text-slate-400 mt-1">{d}</div>
               </div>
             ))}
-          </div>
+          </Reveal>
         </div>
       </section>
 
       {/* Security */}
-      <section id="security" className="bg-[#1b2833] py-20">
+      <section id="security" className="scroll-mt-16 bg-[#1b2833] py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <SectionHead kicker="Security and privacy" title={<>Your data is <span className="text-sky-400">yours alone</span></>} text={"Students’ records and fee details are private. This is how they are protected."} />
-          <div className="grid sm:grid-cols-2 gap-4">
+          <Reveal stagger className="grid sm:grid-cols-2 gap-4">
             {SECURITY.map(s => (
-              <div key={s.title} className="flex gap-4 rounded-xl border border-white/10 bg-white/[0.04] p-6">
+              <div key={s.title} className="lp-lift flex gap-4 rounded-xl border border-white/10 bg-white/[0.04] p-6 hover:border-sky-400/40">
                 <span className="w-11 h-11 rounded-full bg-sky-400/10 text-sky-400 flex items-center justify-center shrink-0">
                   <s.icon className="w-5 h-5" />
                 </span>
@@ -363,15 +455,15 @@ export const LandingPage: React.FC = () => {
                 </div>
               </div>
             ))}
-          </div>
+          </Reveal>
         </div>
       </section>
 
       {/* FAQ */}
-      <section id="faq" className="bg-[#16222d] py-20">
+      <section id="faq" className="scroll-mt-16 bg-[#16222d] py-20">
         <div className="max-w-3xl mx-auto px-4 sm:px-6">
           <SectionHead kicker="FAQ" title={<>Questions <span className="text-sky-400">people ask</span></>} />
-          <div className="space-y-3">
+          <Reveal stagger className="space-y-3">
             {FAQ.map((f, i) => (
               <div key={f.q} className="rounded-xl border border-white/10 bg-white/[0.04] overflow-hidden">
                 <button
@@ -382,17 +474,17 @@ export const LandingPage: React.FC = () => {
                   {f.q}
                   <ChevronDown className={`w-5 h-5 text-sky-400 shrink-0 transition-transform ${open === i ? 'rotate-180' : ''}`} />
                 </button>
-                {open === i && <p className="px-5 pb-5 text-sm text-sky-100/80 leading-relaxed">{f.a}</p>}
+                {open === i && <p className="lp-slide px-5 pb-5 text-sm text-sky-100/80 leading-relaxed">{f.a}</p>}
               </div>
             ))}
-          </div>
+          </Reveal>
         </div>
       </section>
 
       {/* Demo request */}
-      <section id="demo" className="bg-gradient-to-br from-[#1b2c3c] to-[#0f1b26] py-20">
+      <section id="demo" className="scroll-mt-16 bg-gradient-to-br from-[#1b2c3c] to-[#0f1b26] py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 grid lg:grid-cols-2 gap-10 items-start">
-          <div>
+          <Reveal>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-400">{'— '}Book a demo{' —'}</p>
             <h2 className="text-3xl sm:text-4xl font-bold text-white mt-3 tracking-tight">See how it works for <span className="text-sky-400">your coaching</span></h2>
             <p className="text-sky-100/80 mt-4 leading-relaxed">
@@ -406,10 +498,14 @@ export const LandingPage: React.FC = () => {
                 </li>
               ))}
             </ul>
-          </div>
-          <DemoRequestForm />
+          </Reveal>
+          <Reveal>
+            <DemoRequestForm />
+          </Reveal>
         </div>
       </section>
+
+      <FloatingButtons />
 
       {/* Footer */}
       <footer className="bg-[#16222d] border-t border-white/10">

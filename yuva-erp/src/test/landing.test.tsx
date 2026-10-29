@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { act } from '@testing-library/react';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 // The sign in form in the top part reads the sign in state: a fake one
 const auth = { signIn: vi.fn(), signUp: vi.fn(), registerStudent: vi.fn(), registerTeacher: vi.fn(), hasUsers: true, hasSuper: true };
@@ -60,5 +61,42 @@ describe('the public website', () => {
     fireEvent.change(screen.getByLabelText('Mobile number'), { target: { value: '123' } });
     fireEvent.click(screen.getByRole('button', { name: /Send my request/ }));
     expect(screen.getByRole('alert').textContent).toBe('Please write a 10-digit mobile number.');
+  });
+
+  it('the message at the top changes by itself and a dot chooses one', () => {
+    vi.useFakeTimers();
+    try {
+      render(<LandingPage />);
+      const title = () => screen.getByRole('heading', { level: 1 }).textContent;
+      expect(title()).toContain('Run your whole coaching');
+      act(() => {
+        vi.advanceTimersByTime(6100);
+      });
+      expect(title()).toContain('Take the roll call in a minute');
+      fireEvent.click(screen.getByRole('button', { name: 'Show message 3' }));
+      expect(title()).toContain('Fees and receipts');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('the tabs of "Why" go on by themselves, until somebody chooses one', () => {
+    vi.useFakeTimers();
+    try {
+      render(<LandingPage />);
+      const selected = () => screen.getByRole('tab', { selected: true }).textContent;
+      expect(selected()).toBe('One platform');
+      act(() => {
+        vi.advanceTimersByTime(7100);
+      });
+      expect(selected()).toBe('Separate data');
+      fireEvent.click(screen.getByRole('tab', { name: 'Works on phone' }));
+      act(() => {
+        vi.advanceTimersByTime(20000);
+      });
+      expect(selected()).toBe('Works on phone'); // chosen by the person: it stays
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
