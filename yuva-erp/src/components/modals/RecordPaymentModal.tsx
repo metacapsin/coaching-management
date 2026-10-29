@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useEscape } from '../ui/useEscape';
 import { NeedFirst } from '../ui/NeedFirst';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { PaymentMethod, FeeTransaction } from '../../types';
@@ -18,6 +19,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   onClose,
   onPaymentSuccess
 }) => {
+  useEscape(onClose);
   const { students, recordPayment, profile } = useInstitute();
 
   // Archived students cannot pay; a pre-selected student is always kept in the list
@@ -95,7 +97,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
               <p className="text-xs text-slate-500">Collect installment, generate receipt voucher & update ledger</p>
             </div>
           </div>
-          <button
+          <button aria-label="Close"
             onClick={onClose}
             className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
           >

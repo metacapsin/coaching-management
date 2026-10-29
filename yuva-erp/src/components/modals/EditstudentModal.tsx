@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { useEscape } from '../ui/useEscape';
 import { useInstitute, DEFAULT_PHOTO } from '../../Context/InstituteContext';
 import type { Student } from '../../types';
 import { resizeImageToDataUrl } from '../utils/Imageutils';
@@ -18,6 +19,7 @@ const inputClass = (hasError: boolean) =>
   }`;
 
 export const EditStudentModal: React.FC<EditStudentModalProps> = ({ student, onClose, onSaved, confirmMode = false }) => {
+  useEscape(onClose);
   const { batches, courses, updateStudent, updateBatch, profile } = useInstitute();
 
   const [form, setForm] = useState({
@@ -156,7 +158,7 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({ student, onC
                 : 'Update details, photo, batch and fee structure.'}
             </p>
           </div>
-          <button
+          <button aria-label="Close"
             onClick={onClose}
             className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
           >

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useEscape } from '../ui/useEscape';
 import { useInstitute } from '../../Context/InstituteContext';
 import { Student } from '../../types';
 import { X, MessageSquare, CreditCard, Printer, IdCard, UserPlus, CalendarX, Award, Bell, Ban } from 'lucide-react';
@@ -19,6 +20,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   onCollectPayment,
   onViewReceipt
 }) => {
+  useEscape(onClose);
   const { 
     batches, 
     courses, 
@@ -175,7 +177,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             >
               <Printer className="w-4 h-4" />
             </button>
-            <button
+            <button aria-label="Close"
               onClick={onClose}
               className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
             >

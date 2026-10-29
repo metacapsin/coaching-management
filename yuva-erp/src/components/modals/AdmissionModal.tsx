@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { useEscape } from '../ui/useEscape';
 import { useInstitute, DEFAULT_PHOTO, defaultBatchId } from '../../Context/InstituteContext';
 import type { PaymentMethod, Student } from '../../types';
 import { resizeImageToDataUrl } from '../utils/Imageutils';
@@ -25,6 +26,7 @@ interface AdmissionModalProps {
 }
 
 export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose, onSuccess, prefill }) => {
+  useEscape(onClose);
   const { batches, courses, students, addStudent, addCourse, addBatch, profile } = useInstitute();
 
   const startCourse = courses.find(c => c.id === prefill?.courseId) || courses[0];
@@ -270,7 +272,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
               Enroll candidate into academic program, assign batch, configure fee ledger & initial receipt.
             </p>
           </div>
-          <button
+          <button aria-label="Close"
             onClick={onClose}
             className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
           >

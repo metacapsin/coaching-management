@@ -1,4 +1,5 @@
 import React from 'react';
+import { useEscape } from '../ui/useEscape';
 import { OrgLogo } from '../ui/OrgLogo';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { Exam, Student } from '../../types';
@@ -16,6 +17,7 @@ export const PrintableReportCardModal: React.FC<PrintableReportCardModalProps> =
   student,
   onClose
 }) => {
+  useEscape(onClose);
   const { profile, students, sendNotification } = useInstitute();
 
   if (!exam || !student) return null;
@@ -83,7 +85,7 @@ export const PrintableReportCardModal: React.FC<PrintableReportCardModalProps> =
               <Printer className="w-3.5 h-3.5" />
               Print Report
             </button>
-            <button
+            <button aria-label="Close"
               onClick={onClose}
               className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors ml-1"
             >

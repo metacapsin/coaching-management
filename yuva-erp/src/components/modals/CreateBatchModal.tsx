@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useEscape } from '../ui/useEscape';
 import { useInstitute } from '../../Context/InstituteContext';
 import { TIME_REGEX, normalizeTime, timeToMinutes } from '../utils/helpers';
 import { X, Layers, Check } from 'lucide-react';
@@ -14,6 +15,7 @@ export const CreateBatchModal: React.FC<CreateBatchModalProps> = ({
   onClose,
   onSuccess
 }) => {
+  useEscape(onClose);
   const { courses, batches, addBatch } = useInstitute();
 
   const [formData, setFormData] = useState({
@@ -107,7 +109,7 @@ export const CreateBatchModal: React.FC<CreateBatchModalProps> = ({
               <p className="text-xs text-slate-500">Configure room, schedule timing, capacity & mentors</p>
             </div>
           </div>
-          <button
+          <button aria-label="Close"
             onClick={onClose}
             className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
           >

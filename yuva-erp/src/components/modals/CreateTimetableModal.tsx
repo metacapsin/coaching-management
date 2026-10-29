@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useEscape } from '../ui/useEscape';
 import { NeedFirst } from '../ui/NeedFirst';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { TimetableSlot } from '../../types';
@@ -16,6 +17,7 @@ export const CreateTimetableModal: React.FC<CreateTimetableModalProps> = ({
   onClose,
   onSuccess
 }) => {
+  useEscape(onClose);
   const { batches, timetable, addTimetableSlot } = useInstitute();
 
   const [formData, setFormData] = useState({
@@ -103,7 +105,7 @@ export const CreateTimetableModal: React.FC<CreateTimetableModalProps> = ({
               <p className="text-xs text-slate-500">Add timetable class slot to weekly master schedule</p>
             </div>
           </div>
-          <button
+          <button aria-label="Close"
             onClick={onClose}
             className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
           >

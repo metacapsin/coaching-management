@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useEscape } from '../ui/useEscape';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { Student } from '../../types';
 import { openWhatsApp, fillTemplate } from '../utils/helpers';
@@ -19,6 +20,7 @@ export const AttendanceAbsentAlertModal: React.FC<AttendanceAbsentAlertModalProp
   batchId,
   absentStudents
 }) => {
+  useEscape(onClose);
   const { batches, templates, sendNotification } = useInstitute();
   const [broadcastSent, setBroadcastSent] = useState(false);
   const [sentCount, setSentCount] = useState(0);
@@ -91,7 +93,7 @@ export const AttendanceAbsentAlertModal: React.FC<AttendanceAbsentAlertModalProp
               </p>
             </div>
           </div>
-          <button
+          <button aria-label="Close"
             onClick={onClose}
             className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
           >

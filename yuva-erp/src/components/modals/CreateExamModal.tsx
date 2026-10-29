@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useEscape } from '../ui/useEscape';
 import { NeedFirst } from '../ui/NeedFirst';
 import { useInstitute } from '../../Context/InstituteContext';
 import { toLocalISODate } from '../utils/helpers';
@@ -15,6 +16,7 @@ export const CreateExamModal: React.FC<CreateExamModalProps> = ({
   onClose,
   onSuccess
 }) => {
+  useEscape(onClose);
   const { batches, exams, addExam } = useInstitute();
 
   const [formData, setFormData] = useState({
@@ -95,7 +97,7 @@ export const CreateExamModal: React.FC<CreateExamModalProps> = ({
               <p className="text-xs text-slate-500">Configure test series, syllabus & maximum marks</p>
             </div>
           </div>
-          <button
+          <button aria-label="Close"
             onClick={onClose}
             className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
           >

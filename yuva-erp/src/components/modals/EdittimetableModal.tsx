@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useEscape } from '../ui/useEscape';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { TimetableSlot } from '../../types';
 import { TIME_REGEX, normalizeTime, timeToMinutes, timesOverlap } from '../utils/helpers';
@@ -16,6 +17,7 @@ const inputClass = (hasError: boolean) =>
   }`;
 
 export const EditTimetableModal: React.FC<EditTimetableModalProps> = ({ slot, onClose, onSaved }) => {
+  useEscape(onClose);
   const { batches, timetable, updateTimetableSlot } = useInstitute();
 
   const [form, setForm] = useState({
@@ -96,7 +98,7 @@ export const EditTimetableModal: React.FC<EditTimetableModalProps> = ({ slot, on
               <p className="text-xs text-slate-500">Change the day, time, room or faculty</p>
             </div>
           </div>
-          <button
+          <button aria-label="Close"
             onClick={onClose}
             className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
           >

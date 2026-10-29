@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useEscape } from '../ui/useEscape';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { Batch } from '../../types';
 import { TIME_REGEX, normalizeTime, timeToMinutes } from '../utils/helpers';
@@ -18,6 +19,7 @@ const inputClass = (hasError: boolean) =>
   }`;
 
 export const EditBatchModal: React.FC<EditBatchModalProps> = ({ batch, enrolled, onClose, onSaved }) => {
+  useEscape(onClose);
   const { courses, updateBatch } = useInstitute();
 
   const [form, setForm] = useState({
@@ -103,7 +105,7 @@ export const EditBatchModal: React.FC<EditBatchModalProps> = ({ batch, enrolled,
               </p>
             </div>
           </div>
-          <button
+          <button aria-label="Close"
             onClick={onClose}
             className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
           >

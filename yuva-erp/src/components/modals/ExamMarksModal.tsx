@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useEscape } from '../ui/useEscape';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { Exam } from '../../types';
 import { X, Award, Check } from 'lucide-react';
@@ -13,6 +14,7 @@ type Row = { score: string; remarks: string; absent: boolean };
 
 // The wrapper only decides whether to show the form, so the form below always calls the same hooks.
 export const ExamMarksModal: React.FC<ExamMarksModalProps> = ({ exam, onClose, onPublished }) => {
+  useEscape(onClose);
   if (!exam) return null;
   return <MarksForm key={exam.id} exam={exam} onClose={onClose} onPublished={onPublished} />;
 };
