@@ -114,7 +114,7 @@ function MainApp() {
   };
 
   const dashboardLabel =
-    user?.isParent ? 'Parent Portal' : role === 'student' ? 'My Portal' : role === 'teacher' ? 'My Dashboard' : 'Command Dashboard';
+    user?.isParent ? 'Parent Portal' : role === 'student' ? 'My Portal' : role === 'teacher' ? 'My Dashboard' : 'Dashboard';
 
   const navItems: { id: TabId; label: string; icon: LucideIcon; badge?: number }[] = [
     { id: 'dashboard', label: dashboardLabel, icon: LayoutDashboard },
