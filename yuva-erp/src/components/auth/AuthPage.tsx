@@ -212,7 +212,8 @@ const Field: React.FC<{
   </div>
 );
 
-export const AuthPage: React.FC = () => {
+// `embedded`: the form is part of the website (no side panel, no full page of its own)
+export const AuthPage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const { signIn, signUp, hasSuper } = useAuth();
 
   // Without a Super Admin the page starts on the Super Admin tab, to create it first
@@ -304,8 +305,9 @@ export const AuthPage: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 bg-slate-50 text-slate-900 font-sans antialiased">
+    <div className={embedded ? 'text-slate-900 font-sans' : 'min-h-screen grid lg:grid-cols-2 bg-slate-50 text-slate-900 font-sans antialiased'}>
       {/* Left: brand panel */}
+      {!embedded && (
       <div className="theme-keep hidden lg:flex flex-col justify-between bg-slate-900 text-white p-12">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-sm">
@@ -336,12 +338,14 @@ export const AuthPage: React.FC = () => {
 
         <div className="text-[11px] text-slate-500">© {new Date().getFullYear()} AcademiaOS · v2.4</div>
       </div>
+      )}
 
-      <ThemeToggle className="fixed top-3 right-3 z-30 bg-white/80 border border-slate-200" />
+      {!embedded && <ThemeToggle className="fixed top-3 right-3 z-30 bg-white/80 border border-slate-200" />}
 
       {/* Right: form */}
-      <div className="flex items-center justify-center p-6 sm:p-10">
+      <div className={embedded ? '' : 'flex items-center justify-center p-6 sm:p-10'}>
         <div className="w-full max-w-md min-w-0">
+          {!embedded && (
           <div className="lg:hidden flex items-center gap-2.5 mb-8">
             <div className="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center">
               <GraduationCap className="w-5 h-5" />
@@ -351,11 +355,6 @@ export const AuthPage: React.FC = () => {
               <div className="text-[11px] text-slate-500">Coaching Institute Management</div>
             </div>
           </div>
-
-          {!createSuper && (
-            <a href="#" className="inline-flex items-center text-xs font-medium text-slate-500 hover:text-slate-800 mb-5">
-              ← Back to the website
-            </a>
           )}
 
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">

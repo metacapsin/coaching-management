@@ -136,6 +136,20 @@
   background-color: #0b1220;
 }
 
+/* a card inside a "theme-keep" area (the sign in form on the website) follows the theme again: in dark mode it is dark */
+.dark .theme-keep .follow-theme {
+  --color-slate-50: #0f172a;
+  --color-slate-100: #1e293b;
+  --color-slate-200: #334155;
+  --color-slate-300: #475569;
+  --color-slate-400: #64748b;
+  --color-slate-500: #94a3b8;
+  --color-slate-600: #cbd5e1;
+  --color-slate-700: #e2e8f0;
+  --color-slate-800: #f1f5f9;
+  --color-slate-900: #f8fafc;
+}
+
 /* coloured chips and notices: dark tint instead of a light pastel */
 .dark .bg-blue-50, .dark [class*="bg-blue-50/"] { background-color: color-mix(in oklab, var(--color-blue-500) 14%, #0f172a); }
 .dark .bg-blue-100 { background-color: color-mix(in oklab, var(--color-blue-500) 24%, #0f172a); }

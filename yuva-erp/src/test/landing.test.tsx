@@ -1,25 +1,32 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+// The sign in form in the top part reads the sign in state: a fake one
+const auth = { signIn: vi.fn(), signUp: vi.fn(), registerStudent: vi.fn(), registerTeacher: vi.fn(), hasUsers: true, hasSuper: true };
+vi.mock('../Context/AuthContext', () => ({ useAuth: () => auth }));
+
 import { LandingPage } from '../components/landing/LandingPage';
 
 afterEach(cleanup);
 
 describe('the public website', () => {
-  it('shows the product, and the sign in and demo links lead to the right places', () => {
+  it('shows the product and the sign in form on the same first page, without extra buttons to another page', () => {
     render(<LandingPage />);
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('Run your whole coaching');
-    const signIn = screen.getAllByRole('link', { name: /Sign in/ });
-    expect(signIn.length).toBeGreaterThan(0);
-    for (const link of signIn) expect(link.getAttribute('href')).toBe('#/login');
-    for (const link of screen.getAllByRole('link', { name: 'Book a demo' })) expect(link.getAttribute('href')).toBe('#demo');
+    expect(screen.getByRole('heading', { level: 1, name: /Run your whole coaching/ })).not.toBeNull();
+    // the sign in form (three tabs) is part of the page
+    expect(screen.getByRole('heading', { name: 'Welcome back' })).not.toBeNull();
+    for (const tab of ['Super Admin', 'Coaching Admin', 'Teacher / Student']) expect(screen.getByRole('button', { name: tab })).not.toBeNull();
+    expect(screen.getByRole('button', { name: /Sign In as Coaching Admin/ })).not.toBeNull();
+    // nothing leads to another page
+    expect(document.querySelector('a[href="#/login"]')).toBeNull();
+    expect(screen.queryByText('Back to the website')).toBeNull();
   });
 
   it('has the sections a visitor looks for', () => {
     render(<LandingPage />);
     for (const id of ['why', 'how', 'features', 'roles', 'security', 'faq', 'demo']) expect(document.getElementById(id)).not.toBeNull();
     expect(screen.getByText('Everything a coaching needs,', { exact: false })).not.toBeNull();
-    // the footer repeats the way in
-    expect(within(document.querySelector('footer') as HTMLElement).getByRole('link', { name: 'Register your coaching' })).not.toBeNull();
+    // the footer leads back up to the sign in form
+    expect(within(document.querySelector('footer') as HTMLElement).getByRole('link', { name: 'Sign in' }).getAttribute('href')).toBe('#top');
   });
 
   it('the tabs change the text', () => {

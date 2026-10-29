@@ -3,7 +3,6 @@ import {
   GraduationCap,
   Menu,
   X,
-  ArrowRight,
   Users,
   Wallet,
   CalendarCheck,
@@ -19,11 +18,12 @@ import {
   Building2,
   ChevronDown,
   Check,
-  LogIn,
   Lock,
   Eye
 } from 'lucide-react';
 import { DemoRequestForm } from './DemoRequestForm';
+import { AuthPage } from '../auth/AuthPage';
+import { ThemeToggle } from '../ui/ThemeToggle';
 
 // The public website of AcademiaOS: what it is, how it works, who uses it. It is shown before sign in.
 // Everything written here is true for the product (no invented clients, numbers or reviews).
@@ -148,50 +148,6 @@ const SectionHead: React.FC<{ kicker: string; title: React.ReactNode; text?: str
   </div>
 );
 
-// A small picture of the dashboard, drawn with plain boxes (no image file needed)
-const HeroMock: React.FC = () => (
-  <div className="relative w-full max-w-md mx-auto" aria-hidden="true">
-    <div className="absolute -inset-6 bg-gradient-to-tr from-blue-600/30 via-sky-400/10 to-pink-500/20 blur-3xl rounded-full" />
-    <div className="relative rounded-2xl border border-white/10 bg-slate-900/80 backdrop-blur shadow-2xl p-4">
-      <div className="flex items-center gap-1.5 mb-3">
-        <span className="w-2.5 h-2.5 rounded-full bg-rose-400" />
-        <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-        <span className="ml-3 text-[10px] text-slate-400">Command Dashboard</span>
-      </div>
-      <div className="grid grid-cols-3 gap-2">
-        {[
-          ['Students', '248', 'text-sky-300'],
-          ['Present today', '92%', 'text-emerald-300'],
-          ['Fees pending', '₹1.2L', 'text-amber-300']
-        ].map(([label, value, tone]) => (
-          <div key={label} className="rounded-lg bg-white/5 border border-white/10 p-2.5">
-            <div className="text-[9px] uppercase tracking-wider text-slate-400">{label}</div>
-            <div className={`text-lg font-bold mt-0.5 ${tone}`}>{value}</div>
-          </div>
-        ))}
-      </div>
-      <div className="mt-3 rounded-lg bg-white/5 border border-white/10 p-3">
-        <div className="text-[9px] uppercase tracking-wider text-slate-400 mb-2">Fees collected, month by month</div>
-        <div className="flex items-end gap-1.5 h-16">
-          {[35, 55, 40, 70, 60, 85, 75].map((h, i) => (
-            <span key={i} style={{ height: `${h}%` }} className="flex-1 rounded-t bg-gradient-to-t from-blue-600 to-sky-400" />
-          ))}
-        </div>
-      </div>
-      <ul className="mt-3 space-y-1.5">
-        {['Roll call saved for Batch A', 'Receipt REC-2026-0042 printed', 'Test ranks published'].map(t => (
-          <li key={t} className="flex items-center gap-2 text-[11px] text-slate-300">
-            <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            {t}
-          </li>
-        ))}
-      </ul>
-      <p className="mt-3 text-[10px] text-slate-500 text-right">Sample screen</p>
-    </div>
-  </div>
-);
-
 export const LandingPage: React.FC = () => {
   const [menu, setMenu] = useState(false);
   const [tab, setTab] = useState(WHY_TABS[0].id);
@@ -206,8 +162,6 @@ export const LandingPage: React.FC = () => {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const btnPrimary = 'px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors';
-  const btnLight = 'px-5 py-2.5 text-sm font-semibold text-sky-100 bg-white/10 hover:bg-white/15 border border-white/15 rounded-lg transition-colors';
 
   return (
     <div id="top" className="theme-keep min-h-screen bg-[#0f1b26] text-slate-200 antialiased font-sans scroll-smooth">
@@ -222,18 +176,12 @@ export const LandingPage: React.FC = () => {
               </a>
             ))}
           </nav>
-          <div className="hidden lg:flex items-center gap-2">
-            <a href="#/login" className={btnLight + ' flex items-center gap-1.5'}>
-              <LogIn className="w-4 h-4" />
-              Sign in
-            </a>
-            <a href="#demo" className={btnPrimary}>
-              Book a demo
-            </a>
+          <div className="flex items-center gap-1">
+            <ThemeToggle className="!text-slate-300 hover:!text-white hover:!bg-white/10" />
+            <button onClick={() => setMenu(m => !m)} aria-label={menu ? 'Close menu' : 'Open menu'} className="lg:hidden p-2 rounded-lg text-slate-300 hover:bg-white/10">
+              {menu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
           </div>
-          <button onClick={() => setMenu(m => !m)} aria-label={menu ? 'Close menu' : 'Open menu'} className="lg:hidden p-2 rounded-lg text-slate-300 hover:bg-white/10">
-            {menu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
         </div>
         {menu && (
           <div className="lg:hidden border-t border-white/10 px-4 py-3 space-y-1 bg-[#0f1b26]">
@@ -242,14 +190,6 @@ export const LandingPage: React.FC = () => {
                 {n.label}
               </a>
             ))}
-            <div className="flex gap-2 pt-2">
-              <a href="#/login" className={btnLight + ' flex-1 text-center'}>
-                Sign in
-              </a>
-              <a href="#demo" onClick={() => setMenu(false)} className={btnPrimary + ' flex-1 text-center'}>
-                Book a demo
-              </a>
-            </div>
           </div>
         )}
       </header>
@@ -268,18 +208,6 @@ export const LandingPage: React.FC = () => {
             <p className="text-lg text-sky-100/80 mt-5 leading-relaxed max-w-xl">
               Admissions, fees, attendance, tests, notices and reports for the principal, the teachers, the students and their parents. One platform for every coaching of your area.
             </p>
-            <div className="flex flex-wrap gap-3 mt-8">
-              <a href="#demo" className={btnPrimary + ' flex items-center gap-2 !px-6 !py-3'}>
-                Book a demo
-                <ArrowRight className="w-4 h-4" />
-              </a>
-              <a href="#/login" className={btnLight + ' !px-6 !py-3'}>
-                Sign in
-              </a>
-              <a href="#how" className="px-3 py-3 text-sm font-semibold text-sky-300 hover:text-sky-200">
-                See how it works
-              </a>
-            </div>
             <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-300">
               {['No app to install', 'Works on a phone', 'Each coaching’s data stays separate'].map(t => (
                 <li key={t} className="flex items-center gap-2">
@@ -289,7 +217,11 @@ export const LandingPage: React.FC = () => {
               ))}
             </ul>
           </div>
-          <HeroMock />
+          <div id="signin" className="w-full max-w-md mx-auto lg:ml-auto">
+            <div className="follow-theme rounded-2xl bg-white text-slate-900 shadow-2xl shadow-black/30 p-6 sm:p-8">
+              <AuthPage embedded />
+            </div>
+          </div>
         </div>
       </section>
 
@@ -350,14 +282,6 @@ export const LandingPage: React.FC = () => {
                 <p className="text-sm text-sky-100/75 mt-3 leading-relaxed">{s.text}</p>
               </div>
             ))}
-          </div>
-          <div className="flex flex-wrap justify-center gap-3 mt-10">
-            <a href="#demo" className={btnPrimary}>
-              Book a demo
-            </a>
-            <a href="#/login" className="px-5 py-2.5 text-sm font-semibold text-white border border-white/30 hover:bg-white/10 rounded-lg transition-colors">
-              Register your coaching
-            </a>
           </div>
         </div>
       </section>
@@ -482,9 +406,6 @@ export const LandingPage: React.FC = () => {
                 </li>
               ))}
             </ul>
-            <a href="#/login" className="inline-flex items-center gap-2 mt-8 text-sm font-semibold text-sky-300 hover:text-sky-200">
-              Already registered? Sign in <ArrowRight className="w-4 h-4" />
-            </a>
           </div>
           <DemoRequestForm />
         </div>
@@ -514,7 +435,7 @@ export const LandingPage: React.FC = () => {
           <div>
             <h4 className="text-base font-semibold text-white">Get started</h4>
             <ul className="mt-4 space-y-2.5 text-sm">
-              {[['#/login', 'Sign in'], ['#/login', 'Register your coaching'], ['#demo', 'Book a demo'], ['#faq', 'FAQ']].map(([h, l]) => (
+              {[['#top', 'Sign in'], ['#top', 'Register your coaching'], ['#demo', 'Book a demo'], ['#faq', 'FAQ']].map(([h, l]) => (
                 <li key={l}>
                   <a href={h} className="text-sky-100/70 hover:text-white">
                     {l}
