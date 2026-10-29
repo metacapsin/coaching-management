@@ -322,11 +322,8 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   // The first data from the server has arrived
   const [ready, setReady] = useState(false);
-  // A brand-new institute: the principal chooses how to start before anything is saved
+  // The principal's start screen (kept for the "sample data" choice; a new coaching now starts empty by itself)
   const [onboarding, setOnboarding] = useState(false);
-  // For the demo every new coaching starts with the sample data (students, fees, exams, notices...), so all
-  // features can be seen at once. Set to false to let the principal choose "start empty" instead.
-  const AUTO_DEMO_FOR_NEW_COACHING = true;
   const [orgName, setOrgName] = useState('');
   const onboardingRef = useRef(false);
   onboardingRef.current = onboarding;
@@ -386,23 +383,23 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       synced.current[key] = value;
     };
     if (data.profile !== undefined) { setProfile(data.profile); mark('profile', data.profile); }
-    if (data.courses !== undefined) { setCourses(data.courses); mark('courses', data.courses); }
-    if (data.batches !== undefined) { setBatches(data.batches); mark('batches', data.batches); }
-    if (data.students !== undefined) { setStudents(data.students); mark('students', data.students); }
-    if (data.attendance !== undefined) { setAttendance(data.attendance); mark('attendance', data.attendance); }
-    if (data.transactions !== undefined) { setTransactions(data.transactions); mark('transactions', data.transactions); }
-    if (data.exams !== undefined) { setExams(data.exams); mark('exams', data.exams); }
-    if (data.timetable !== undefined) { setTimetable(data.timetable); mark('timetable', data.timetable); }
+    { const list = data.courses ?? []; setCourses(list); mark('courses', list); }
+    { const list = data.batches ?? []; setBatches(list); mark('batches', list); }
+    { const list = data.students ?? []; setStudents(list); mark('students', list); }
+    { const list = data.attendance ?? []; setAttendance(list); mark('attendance', list); }
+    { const list = data.transactions ?? []; setTransactions(list); mark('transactions', list); }
+    { const list = data.exams ?? []; setExams(list); mark('exams', list); }
+    { const list = data.timetable ?? []; setTimetable(list); mark('timetable', list); }
     if (data.templates !== undefined) { setTemplates(data.templates); mark('templates', data.templates); }
-    if (data.notificationLogs !== undefined) { setNotificationLogs(data.notificationLogs); mark('notificationLogs', data.notificationLogs); }
-    if (data.enquiries !== undefined) { setEnquiries(data.enquiries); mark('enquiries', data.enquiries); }
-    if (data.expenses !== undefined) { setExpenses(data.expenses); mark('expenses', data.expenses); }
-    if (data.salaries !== undefined) { setSalaries(data.salaries); mark('salaries', data.salaries); }
-    if (data.books !== undefined) { setBooks(data.books); mark('books', data.books); }
-    if (data.transportRoutes !== undefined) { setTransportRoutes(data.transportRoutes); mark('transportRoutes', data.transportRoutes); }
-    if (data.hostelRooms !== undefined) { setHostelRooms(data.hostelRooms); mark('hostelRooms', data.hostelRooms); }
-    if (data.announcements !== undefined) { setAnnouncements(data.announcements); mark('announcements', data.announcements); }
-    if (data.materials !== undefined) { setMaterials(data.materials); mark('materials', data.materials); }
+    { const list = data.notificationLogs ?? []; setNotificationLogs(list); mark('notificationLogs', list); }
+    { const list = data.enquiries ?? []; setEnquiries(list); mark('enquiries', list); }
+    { const list = data.expenses ?? []; setExpenses(list); mark('expenses', list); }
+    { const list = data.salaries ?? []; setSalaries(list); mark('salaries', list); }
+    { const list = data.books ?? []; setBooks(list); mark('books', list); }
+    { const list = data.transportRoutes ?? []; setTransportRoutes(list); mark('transportRoutes', list); }
+    { const list = data.hostelRooms ?? []; setHostelRooms(list); mark('hostelRooms', list); }
+    { const list = data.announcements ?? []; setAnnouncements(list); mark('announcements', list); }
+    { const list = data.materials ?? []; setMaterials(list); mark('materials', list); }
     if (data.submissions !== undefined) setSubmissions(data.submissions); // never pushed back: the server owns it
   };
 
@@ -464,14 +461,11 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         // Nothing stored yet and this is the principal: a new institute
         if (roleRef.current === 'admin' && data.students === undefined && data.profile === undefined) {
           setOrgName(payload.org?.name || '');
-          if (AUTO_DEMO_FOR_NEW_COACHING) {
-            finishOnboarding('sample', {
-              name: payload.org?.name || initialInstituteProfile.name,
-              academicYear: defaultAcademicYear()
-            });
-          } else {
-            setOnboarding(true);
-          }
+          // Every new coaching starts empty: the principal adds the own teachers, students and fees
+          finishOnboarding('empty', {
+            name: payload.org?.name || initialInstituteProfile.name,
+            academicYear: defaultAcademicYear()
+          });
           setReady(true);
           return;
         }
