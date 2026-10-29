@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { PasswordInput } from '../ui/PasswordInput';
 import { useAuth } from '../../Context/AuthContext';
 import type { Portal } from '../../Context/AuthContext';
@@ -213,13 +213,22 @@ const Field: React.FC<{
 );
 
 // `embedded`: the form is part of the website (no side panel, no full page of its own)
-export const AuthPage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
+// `registerSignal`: each time it grows, the form opens on "Register your coaching" (the "Add coaching" button of the website)
+export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }> = ({ embedded = false, registerSignal = 0 }) => {
   const { signIn, signUp, hasSuper } = useAuth();
 
   // Without a Super Admin the page starts on the Super Admin tab, to create it first
   const [portal, setPortal] = useState<Portal>(hasSuper ? 'admin' : 'super');
   // the principal of a new coaching registers here (and waits for the Super Admin's approval)
   const [registering, setRegistering] = useState(false);
+  useEffect(() => {
+    if (registerSignal > 0 && hasSuper) {
+      setPortal('admin');
+      setMemberSignup(false);
+      setRegistering(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [registerSignal]);
   // a teacher or student creating an own account (Teacher / Student tab)
   const [memberSignup, setMemberSignup] = useState(false);
 

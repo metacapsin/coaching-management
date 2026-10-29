@@ -186,6 +186,13 @@ const SectionHead: React.FC<{ kicker: string; title: React.ReactNode; text?: str
 
 export const LandingPage: React.FC = () => {
   const [menu, setMenu] = useState(false);
+  // the "Add coaching" buttons open the registration of a coaching in the form at the top
+  const [registerSignal, setRegisterSignal] = useState(0);
+  const openRegister = () => {
+    setRegisterSignal(n => n + 1);
+    setMenu(false);
+    document.getElementById('signin')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
   const [tab, setTab] = useState(WHY_TABS[0].id);
   const [open, setOpen] = useState<number | null>(0);
   const [scrolled, setScrolled] = useState(false);
@@ -232,7 +239,10 @@ export const LandingPage: React.FC = () => {
               </a>
             ))}
           </nav>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={openRegister} className="px-3.5 py-2 text-xs sm:text-sm font-semibold text-white bg-[#1565c0] hover:bg-[#0d47a1] rounded-lg transition-colors">
+              Add coaching
+            </button>
             <button onClick={() => setMenu(m => !m)} aria-label={menu ? 'Close menu' : 'Open menu'} className="lg:hidden p-2 rounded-lg text-slate-300 hover:bg-white/10">
               {menu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -286,6 +296,9 @@ export const LandingPage: React.FC = () => {
                 </button>
               ))}
             </div>
+            <button type="button" onClick={openRegister} className="mt-6 px-6 py-3 text-sm font-semibold text-white bg-[#1565c0] hover:bg-[#0d47a1] rounded-lg shadow-lg shadow-blue-900/30 transition-colors">
+              Add coaching
+            </button>
             <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-300">
               {['No app to install', 'Works on a phone', 'Each coaching’s data stays separate'].map(t => (
                 <li key={t} className="flex items-center gap-2">
@@ -297,7 +310,7 @@ export const LandingPage: React.FC = () => {
           </div>
           <div id="signin" className="lp-slide w-full max-w-md mx-auto lg:ml-auto">
             <div className="auth-dark rounded-2xl bg-[#2a3742] border border-sky-300/25 text-slate-900 shadow-2xl shadow-black/30 p-6 sm:p-8">
-              <AuthPage embedded />
+              <AuthPage embedded registerSignal={registerSignal} />
             </div>
           </div>
         </div>

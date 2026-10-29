@@ -304,8 +304,6 @@
 .lp-lift:hover { transform: translateY(-6px); box-shadow: 0 18px 40px -18px rgb(14 165 233 / 0.35); }
 
 @media (prefers-reduced-motion: reduce) {
-  .lp-reveal, .lp-stagger > *, .lp-slide, .lp-blob, .lp-bar, .lp-pop, .lp-pulse { animation: none !important; opacity: 1 !important; transform: none !important; }
-  .lp-bar { width: 100%; }
-  .lp-lift { transition: none; }
-  .lp-lift:hover { transform: none; }
+  /* only the endless decoration stops; the movement that shows the content stays */
+  .lp-blob, .lp-pulse { animation: none !important; }
 }

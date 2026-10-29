@@ -99,4 +99,12 @@ describe('the public website', () => {
       vi.useRealTimers();
     }
   });
+
+  it('the Add coaching buttons open the registration of a coaching in the form at the top', () => {
+    render(<LandingPage />);
+    const form = within(document.getElementById('signin') as HTMLElement);
+    expect(form.queryByRole('heading', { name: 'Register your coaching' })).toBeNull();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Add coaching' })[0]);
+    expect(form.getByRole('heading', { name: 'Register your coaching' })).not.toBeNull();
+  });
 });

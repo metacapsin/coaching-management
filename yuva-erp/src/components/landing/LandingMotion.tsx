@@ -2,10 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ArrowUp, CalendarCheck } from 'lucide-react';
 
 // The movement of the website: things rise into place when they come into view, numbers count up, the top of the page
-// changes its message by itself, and two small buttons float at the corners. People who asked their device for less
-// motion get the page without any of it.
+// changes its message by itself, and two small buttons float at the corners.
+// Many phones switch "reduce animations" on by themselves (battery saving), and then nothing would move at all. So the
+// movement that shows the content (rising into place, the changing message, counting up) always runs; only the endless
+// decoration (the floating shapes, the pulse of the button) stops for people who asked for less motion.
 
-export const prefersReducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+export const prefersReducedMotion = () => false;
 
 // Becomes true once the element is on the screen (and stays true)
 export const useInView = <T extends HTMLElement>(threshold = 0) => {
