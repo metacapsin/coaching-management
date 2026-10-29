@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { AttendanceStatus } from '../../types';
 import { AttendanceAbsentAlertModal } from '../modals/AttendanceAbsentAlertModal';
-import { toLocalISODate } from '../utils/helpers';
-import { CalendarCheck, Send, Save, Check } from 'lucide-react';
+import { downloadCsv, toLocalISODate } from '../utils/helpers';
+import { CalendarCheck, Send, Save, Check, Download } from 'lucide-react';
 
 export const AttendanceView: React.FC = () => {
   const { 
@@ -108,6 +108,29 @@ export const AttendanceView: React.FC = () => {
               Send Absent Alerts ({absentCount})
             </button>
           )}
+
+          <button
+            onClick={() =>
+              downloadCsv(
+                `attendance-${selectedDate}${showAll ? '' : `-${currentBatch?.name ?? 'batch'}`}.csv`,
+                ['Date', 'Roll no', 'Student', 'Batch', 'Status', 'Parent', 'Parent phone'],
+                batchStudents.map(st => [
+                  selectedDate,
+                  st.rollNo,
+                  st.name,
+                  batches.find(b => b.id === st.batchId)?.name || '',
+                  localRecords[st.id] || 'present',
+                  st.parentName,
+                  st.parentPhone
+                ])
+              )
+            }
+            disabled={batchStudents.length === 0}
+            className="px-3.5 py-2 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg shadow-xs flex items-center gap-1.5 disabled:opacity-50"
+          >
+            <Download className="w-4 h-4" />
+            CSV
+          </button>
 
           <button
             onClick={handleSave}

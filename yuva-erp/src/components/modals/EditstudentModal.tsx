@@ -32,6 +32,7 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({ student, onC
     parentPhone: student.parentPhone,
     parentEmail: student.parentEmail || '',
     address: student.address,
+    dateOfBirth: student.dateOfBirth || '',
     courseId: student.courseId,
     batchId: student.batchId,
     targetExam: student.targetExam,
@@ -115,6 +116,7 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({ student, onC
       parentPhone: form.parentPhone.trim(),
       parentEmail: form.parentEmail.trim() || undefined,
       address: form.address.trim(),
+      dateOfBirth: form.dateOfBirth || undefined,
       courseId: form.courseId,
       batchId: form.batchId,
       targetExam: form.targetExam.trim(),
@@ -314,6 +316,15 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({ student, onC
                   type="text"
                   value={form.address}
                   onChange={e => setForm({ ...form, address: e.target.value })}
+                  className={inputClass(false)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Date of birth (optional)</label>
+                <input
+                  type="date"
+                  value={form.dateOfBirth}
+                  onChange={e => setForm({ ...form, dateOfBirth: e.target.value })}
                   className={inputClass(false)}
                 />
               </div>

@@ -22,6 +22,8 @@ import type {
   Enquiry,
   Expense,
   Salary,
+  StaffAttendance,
+  StaffStatus,
   Book,
   Announcement,
   StudyMaterial,
@@ -85,6 +87,7 @@ type ListKey =
   | 'enquiries'
   | 'expenses'
   | 'salaries'
+  | 'staffAttendance'
   | 'books'
   | 'announcements'
   | 'materials';
@@ -102,6 +105,7 @@ const LIST_KEYS: ListKey[] = [
   'enquiries',
   'expenses',
   'salaries',
+  'staffAttendance',
   'books',
   'announcements',
   'materials'
@@ -110,7 +114,7 @@ const LIST_KEYS: ListKey[] = [
 // What each kind of account may send (the server checks this again)
 const writableKeys = (role?: string): string[] => {
   if (role === 'admin') return ['profile', ...LIST_KEYS];
-  if (role === 'staff') return LIST_KEYS.filter(key => key !== 'expenses' && key !== 'salaries'); // money lists are for the principal only
+  if (role === 'staff') return LIST_KEYS.filter(key => key !== 'expenses' && key !== 'salaries' && key !== 'staffAttendance'); // money lists are for the principal only
   if (role === 'teacher') return ['attendance', 'exams', 'notificationLogs', 'materials', 'announcements'];
   return [];
 };
@@ -131,6 +135,7 @@ interface Values {
   enquiries: Enquiry[];
   expenses: Expense[];
   salaries: Salary[];
+  staffAttendance: StaffAttendance[];
   books: Book[];
   announcements: Announcement[];
   materials: StudyMaterial[];
@@ -188,6 +193,7 @@ interface InstituteContextType {
   enquiries: Enquiry[];
   expenses: Expense[];
   salaries: Salary[];
+  staffAttendance: StaffAttendance[];
   books: Book[];
   announcements: Announcement[];
   materials: StudyMaterial[];
@@ -261,6 +267,8 @@ interface InstituteContextType {
   deleteSalary: (id: string) => void;
   // Pays one person for a month: writes the expense and remembers the month
   paySalary: (id: string, month: string) => void;
+  // The daily attendance of the teachers and staff (principal only)
+  saveStaffAttendance: (date: string, records: Record<string, StaffStatus>) => void;
 
   // Library (books to read online)
   addBook: (book: Omit<Book, 'id'>) => Book;
@@ -328,6 +336,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [enquiries, setEnquiries] = useState<Enquiry[]>(initialEnquiries);
   const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
   const [salaries, setSalaries] = useState<Salary[]>(initialSalaries);
+  const [staffAttendance, setStaffAttendance] = useState<StaffAttendance[]>([]);
   const [books, setBooks] = useState<Book[]>(initialBooks);
   const [announcements, setAnnouncements] = useState<Announcement[]>(initialAnnouncements);
   const [materials, setMaterials] = useState<StudyMaterial[]>(initialMaterials);
@@ -347,6 +356,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     enquiries,
     expenses,
     salaries,
+    staffAttendance,
     books,
     announcements,
     materials
@@ -376,6 +386,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     { const list = data.enquiries ?? []; setEnquiries(list); mark('enquiries', list); }
     { const list = data.expenses ?? []; setExpenses(list); mark('expenses', list); }
     { const list = data.salaries ?? []; setSalaries(list); mark('salaries', list); }
+    { const list = data.staffAttendance ?? []; setStaffAttendance(list); mark('staffAttendance', list); }
     { const list = data.books ?? []; setBooks(list); mark('books', list); }
     { const list = data.announcements ?? []; setAnnouncements(list); mark('announcements', list); }
     { const list = data.materials ?? []; setMaterials(list); mark('materials', list); }
@@ -464,7 +475,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (pushTimer.current) clearTimeout(pushTimer.current);
     pushTimer.current = setTimeout(flush, 300);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, onboarding, profile, courses, batches, students, attendance, transactions, exams, timetable, templates, notificationLogs, enquiries, expenses, salaries, books, announcements, materials]);
+  }, [ready, onboarding, profile, courses, batches, students, attendance, transactions, exams, timetable, templates, notificationLogs, enquiries, expenses, salaries, staffAttendance, books, announcements, materials]);
 
   // Signing out sends changes that are still waiting
   useEffect(
@@ -850,6 +861,14 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setSalaries(prev => prev.filter(s => s.id !== id));
   };
 
+  const saveStaffAttendance = (date: string, records: Record<string, StaffStatus>) => {
+    setStaffAttendance(prev => {
+      const old = prev.find(a => a.date === date);
+      const row: StaffAttendance = { id: old?.id ?? uid('sat'), date, records, updatedAt: new Date().toISOString() };
+      return old ? prev.map(a => (a.id === old.id ? row : a)) : [row, ...prev];
+    });
+  };
+
   // Paying a salary is an expense too (so the profit is right) and the month is remembered
   const paySalary = (id: string, month: string) => {
     const person = salaries.find(s => s.id === id);
@@ -995,6 +1014,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setEnquiries(initialEnquiries);
     setExpenses(initialExpenses);
     setSalaries(initialSalaries);
+    setStaffAttendance([]);
     setBooks(initialBooks);
     setAnnouncements(initialAnnouncements);
     setMaterials(initialMaterials);
@@ -1013,6 +1033,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setEnquiries([]);
     setExpenses([]);
     setSalaries([]);
+    setStaffAttendance([]);
     setBooks([]);
     setAnnouncements([]);
     setMaterials([]);
@@ -1089,6 +1110,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         enquiries,
         expenses,
         salaries,
+        staffAttendance,
         books,
         announcements,
         materials,
@@ -1126,6 +1148,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         updateSalary,
         deleteSalary,
         paySalary,
+        saveStaffAttendance,
         addBook,
         updateBook,
         deleteBook,

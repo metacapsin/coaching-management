@@ -239,6 +239,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             <div className="space-y-6">
               {/* The student's own login (the principal makes it) */}
               <StudentLoginCard key={student.id} student={student} />
+              <StudentLoginCard key={`${student.id}-parent`} student={student} parent />
 
               {/* Quick Metrics */}
               <div className="grid grid-cols-3 gap-3">

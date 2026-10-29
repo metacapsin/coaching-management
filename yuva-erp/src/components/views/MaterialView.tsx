@@ -26,6 +26,7 @@ export const MaterialView: React.FC = () => {
   const [query, setQuery] = useState('');
   const [busyId, setBusyId] = useState('');
   const isStudent = role === 'student';
+  const isParent = !!user?.isParent;
   const doneIds = new Set(submissions.map(x => x.materialId + ':' + x.studentId));
   const toggle = async (id: string, done: boolean) => {
     setBusyId(id);
@@ -159,7 +160,13 @@ export const MaterialView: React.FC = () => {
                     {late && ' (date is over)'}
                   </p>
                 )}
-                {m.type === 'homework' && isStudent && (
+                {m.type === 'homework' && isParent && (
+                  <p className="mt-3 text-[11px] font-semibold text-slate-600 flex items-center gap-1.5">
+                    {submissions.some(x => x.materialId === m.id) ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <Circle className="w-3.5 h-3.5 text-slate-400" />}
+                    {submissions.some(x => x.materialId === m.id) ? 'Your child has done this homework' : 'Not done yet'}
+                  </p>
+                )}
+                {m.type === 'homework' && isStudent && !isParent && (
                   <button
                     onClick={() => void toggle(m.id, !submissions.some(x => x.materialId === m.id))}
                     disabled={busyId === m.id}

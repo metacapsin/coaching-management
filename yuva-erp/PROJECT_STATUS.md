@@ -41,8 +41,14 @@ Which modules are complete, which screens (UI) exist, what is still missing, and
 | 24 | **Logo** of the coaching (side menu, receipts, report cards) | `SettingsView.tsx`, `OrgLogo.tsx` | profile in `PUT /api/institute` | browser |
 | 25 | **Automatic daily fee reminders** (queue, once a day) | Institute Profile checkbox, `InstituteContext.tsx` | message queue | browser |
 | 26 | **Change own login email** (all roles) | `ChangeEmailForm.tsx` | `POST /api/auth/change-email` | tests + browser |
-| 27 | **Automatic screen tests** (login page, theme, pager, pop-up, access rules, helpers, library) | `src/test/` | `npm run test:ui` | 24 tests |
+| 27 | **Automatic screen tests** (login page, theme, pager, pop-up, access rules, helpers, library) | `src/test/` | `npm run test:ui` | 28 tests |
 | 28 | **Library** (books shared with a link; everybody reads, the office adds) | `LibraryView.tsx` | `PUT /api/institute`, list `books` | tests + browser |
+| 29 | **Parent login** (the child's data only, read only; the principal makes it in the student's Dossier) | `StudentLoginCard.tsx` (parent), `Studentportalview.tsx` | `POST /api/users` with `isParent` | tests + browser |
+| 30 | **Birthdays** on the dashboard (today and the next 7 days) | `DashboardView.tsx` | `dateOfBirth` of the student | tests + browser |
+| 31 | **Staff attendance** (teachers and staff: present, half day, leave, absent; month count; CSV) | `StaffAttendancePanel.tsx` (tab in Expenses) | list `staffAttendance` (principal only) | tests + browser |
+| 32 | **More reports**: Batch comparison, Fees by student, Attendance by student; attendance CSV of a day | `ReportsView.tsx`, `AttendanceView.tsx` | `GET /api/sync` | browser |
+| 33 | **Search** in the tests, the message history and the accounts | `ExamsView`, `NotificationsView`, `Teamview` | none | browser |
+| 34 | **Coaching list download** for the Super Admin (CSV, no student data) | `SuperAdminApp.tsx` | `GET /api/super/orgs` | browser |
 
 ## 2. Not built / still missing
 

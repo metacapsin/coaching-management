@@ -4,14 +4,17 @@ import { useAuth } from '../../Context/AuthContext';
 import { downloadCsv, formatINR, toLocalISODate } from '../utils/helpers';
 import { BarChart3, Download, Printer } from 'lucide-react';
 
-type ReportId = 'fees' | 'profit' | 'attendance' | 'exams' | 'admissions';
+type ReportId = 'fees' | 'profit' | 'attendance' | 'exams' | 'admissions' | 'batches' | 'ledger' | 'studentAtt';
 
 const REPORTS: { id: ReportId; label: string }[] = [
   { id: 'fees', label: 'Fee Collection' },
   { id: 'profit', label: 'Profit & Loss' }, // principal only
   { id: 'attendance', label: 'Attendance' },
   { id: 'exams', label: 'Exam Results' },
-  { id: 'admissions', label: 'Admissions' }
+  { id: 'admissions', label: 'Admissions' },
+  { id: 'batches', label: 'Batch comparison' },
+  { id: 'ledger', label: 'Fees by student' },
+  { id: 'studentAtt', label: 'Attendance by student' }
 ];
 
 const monthKey = (iso: string) => iso.slice(0, 7);
@@ -135,6 +138,69 @@ export const ReportsView: React.FC = () => {
     return [...byMonth.entries()].sort((a, b) => b[0].localeCompare(a[0]));
   }, [students]);
 
+  // the batches side by side: which one needs attention
+  const cmp = useMemo(
+    () =>
+      batches.map(b => {
+        const list = students.filter(x => x.batchId === b.id && x.status !== 'inactive');
+        let present = 0;
+        let total = 0;
+        for (const r of attendance.filter(a => a.batchId === b.id)) {
+          for (const st of Object.values(r.records)) {
+            total++;
+            if (st === 'present' || st === 'late') present++;
+          }
+        }
+        const attPct = total ? Math.round((present / total) * 100) : null;
+        const scores: number[] = [];
+        for (const e of exams.filter(x => x.batchId === b.id)) {
+          for (const r of Object.values(e.results)) if (!r.absent && e.maxMarks > 0) scores.push((r.marksObtained / e.maxMarks) * 100);
+        }
+        const examPct = scores.length ? Math.round(scores.reduce((a, c) => a + c, 0) / scores.length) : null;
+        const net = list.reduce((n, x) => n + Math.max(0, x.totalFees - x.discount), 0);
+        const paid = list.reduce((n, x) => n + x.feePaid, 0);
+        const weak = (attPct !== null && attPct < 75) || (examPct !== null && examPct < 50);
+        return { name: b.name, count: list.length, attPct, examPct, paid, due: Math.max(0, net - paid), weak };
+      }),
+    [batches, students, attendance, exams]
+  );
+
+  // every student: fee, paid, due
+  const ledger = useMemo(
+    () =>
+      [...students]
+        .sort((a, b) => a.rollNo.localeCompare(b.rollNo, undefined, { numeric: true }))
+        .map(x => {
+          const net = Math.max(0, x.totalFees - x.discount);
+          return { roll: x.rollNo, name: x.name, batch: batches.find(b => b.id === x.batchId)?.name || '-', net, paid: x.feePaid, due: Math.max(0, net - x.feePaid) };
+        }),
+    [students, batches]
+  );
+
+  // every student: days present, late, absent
+  const studentAtt = useMemo(
+    () =>
+      [...students]
+        .filter(x => x.status !== 'inactive')
+        .sort((a, b) => a.rollNo.localeCompare(b.rollNo, undefined, { numeric: true }))
+        .map(x => {
+          let present = 0;
+          let late = 0;
+          let absent = 0;
+          let excused = 0;
+          for (const r of attendance) {
+            const st = r.records[x.id];
+            if (st === 'present') present++;
+            else if (st === 'late') late++;
+            else if (st === 'absent') absent++;
+            else if (st === 'excused') excused++;
+          }
+          const days = present + late + absent + excused;
+          return { roll: x.rollNo, name: x.name, batch: batches.find(b => b.id === x.batchId)?.name || '-', present, late, absent, excused, pct: days ? Math.round(((present + late) / days) * 100) : 0 };
+        }),
+    [students, attendance, batches]
+  );
+
   // month by month: what came in, what went out
   const pl = useMemo(() => {
     const byMonth = new Map<string, { collected: number; spent: number }>();
@@ -166,6 +232,21 @@ export const ReportsView: React.FC = () => {
       head: ['Month', `Fees collected (${cur})`, `Expenses (${cur})`, `Profit / loss (${cur})`],
       rows: pl.map(r => [monthLabel(r.key), formatINR(r.collected), formatINR(r.spent), `${r.profit < 0 ? '-' : ''}${formatINR(Math.abs(r.profit))}`]) as (string | number)[][],
       right: [1, 2, 3]
+    },
+    batches: {
+      head: ['Batch', 'Students', 'Attendance %', 'Test average %', `Fees paid (${cur})`, `Fees due (${cur})`, 'Note'],
+      rows: cmp.map(c => [c.name, c.count, c.attPct === null ? '-' : `${c.attPct}%`, c.examPct === null ? '-' : `${c.examPct}%`, formatINR(c.paid), formatINR(c.due), c.weak ? 'Needs attention' : '']) as (string | number)[][],
+      right: [1, 2, 3, 4, 5]
+    },
+    ledger: {
+      head: ['Roll no', 'Student', 'Batch', `Fee (${cur})`, `Paid (${cur})`, `Due (${cur})`],
+      rows: ledger.map(l => [l.roll, l.name, l.batch, formatINR(l.net), formatINR(l.paid), formatINR(l.due)]) as (string | number)[][],
+      right: [3, 4, 5]
+    },
+    studentAtt: {
+      head: ['Roll no', 'Student', 'Batch', 'Present', 'Late', 'Absent', 'Excused', 'Attendance %'],
+      rows: studentAtt.map(a => [a.roll, a.name, a.batch, a.present, a.late, a.absent, a.excused, `${a.pct}%`]) as (string | number)[][],
+      right: [3, 4, 5, 6, 7]
     },
     admissions: {
       head: ['Month', 'New admissions'],

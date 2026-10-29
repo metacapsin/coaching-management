@@ -34,6 +34,7 @@ export interface NewAccountInput {
   subject?: string;
   batchIds?: string[];
   studentId?: string;
+  isParent?: boolean;
 }
 
 export interface NewStudentInput {
@@ -105,6 +106,10 @@ interface AuthContextType {
   changeOwnPassword: (currentPassword: string, newPassword: string) => Promise<AuthResult>;
   changeOwnEmail: (currentPassword: string, newEmail: string) => Promise<AuthResult>;
 }
+
+// The label of one account: a parent's login is a student-role account marked as parent
+export const accountLabel = (user?: { role?: UserRole; isParent?: boolean } | null) =>
+  user?.isParent ? 'Parent' : roleLabel(user?.role);
 
 export const roleLabel = (role?: UserRole) => {
   switch (role) {

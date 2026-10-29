@@ -13,6 +13,7 @@ import type {
   NotificationLog,
   NotificationTemplate,
   Salary,
+  StaffAttendance,
   Student,
   StudyMaterial,
   Submission,
@@ -42,6 +43,7 @@ export interface AuthUser {
   batchIds?: string[]; // teachers: batches they handle
   resetRequestedAt?: string; // set when the person asked for a new password
   mustChangePassword?: boolean; // somebody else set the password: the person must choose an own one
+  isParent?: boolean; // a parent's login (role student, linked to the child's record, read only)
 }
 
 export interface InstituteData {
@@ -58,6 +60,7 @@ export interface InstituteData {
   enquiries?: Enquiry[];
   expenses?: Expense[];
   salaries?: Salary[];
+  staffAttendance?: StaffAttendance[];
   books?: Book[];
   submissions?: Submission[];
   announcements?: Announcement[];

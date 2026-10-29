@@ -23,11 +23,13 @@ const inputCls = 'w-full px-3 py-2 text-sm border border-slate-300 rounded-lg fo
 // The login of one student: the principal makes it (email + a temporary password). The student signs in on the
 // "Teacher / Student" tab and chooses an own password at the first sign in.
 // `auto`: the login is made at once with these values (used right after the admission form)
-export const StudentLoginCard: React.FC<{ student: Student; auto?: { email: string; password: string } }> = ({ student, auto }) => {
+// `parent`: the login of the student's parent instead (it sees the child's data, read only)
+export const StudentLoginCard: React.FC<{ student: Student; auto?: { email: string; password: string }; parent?: boolean }> = ({ student, auto, parent = false }) => {
+  const who = parent ? 'parent' : 'student';
   const { users, addUser, isAdmin } = useAuth();
-  const existing = users.find(u => u.studentId === student.id);
+  const existing = users.find(u => u.studentId === student.id && !!u.isParent === parent);
 
-  const [email, setEmail] = useState(auto?.email || student.email || '');
+  const [email, setEmail] = useState(auto?.email || (parent ? student.parentEmail : student.email) || '');
   const [password, setPassword] = useState(auto?.password || generatePassword);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -48,17 +50,18 @@ export const StudentLoginCard: React.FC<{ student: Student; auto?: { email: stri
   async function create() {
     setError('');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setError('Enter the email the student will sign in with.');
+      setError(`Enter the email the ${who} will sign in with.`);
       return;
     }
     setBusy(true);
     // The student record has to be on the server before the account can point to it: send it first and,
     // if the server does not have it yet, wait a little and try again
-    let result = await addUser({ name: student.name, email: email.trim(), password, role: 'student', phone: student.phone, studentId: student.id });
+    const input = () => ({ name: parent ? student.parentName || `Parent of ${student.name}` : student.name, email: email.trim(), password, role: 'student' as const, phone: parent ? student.parentPhone : student.phone, studentId: student.id, isParent: parent || undefined });
+    let result = await addUser(input());
     for (let i = 0; i < 6 && !result.ok && /student record does not exist/i.test(result.error); i++) {
       await flushPending();
       await new Promise(r => setTimeout(r, 500));
-      result = await addUser({ name: student.name, email: email.trim(), password, role: 'student', phone: student.phone, studentId: student.id });
+      result = await addUser(input());
     }
     setBusy(false);
     if (!result.ok) setError(result.error);
@@ -81,7 +84,7 @@ export const StudentLoginCard: React.FC<{ student: Student; auto?: { email: stri
       <div className="p-4 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 space-y-2">
         <p className="font-semibold flex items-center gap-1.5">
           <Check className="w-4 h-4" />
-          Login created for {student.name}
+          {parent ? 'Parent login created for' : 'Login created for'} {student.name}
         </p>
         <div className="font-mono bg-white border border-emerald-200 rounded-md p-2.5 leading-relaxed">
           Email: {created.email}
@@ -89,7 +92,7 @@ export const StudentLoginCard: React.FC<{ student: Student; auto?: { email: stri
           Password: {created.password}
         </div>
         <p>
-          Give these to the student. They sign in on the <strong>Teacher / Student</strong> tab and choose an own password at the first
+          Give these to the {who}. They sign in on the <strong>Teacher / Student</strong> tab and choose an own password at the first
           sign in. <strong>Note the password now, it is not shown again.</strong>
         </p>
         <button onClick={copy} className="px-3 py-1.5 font-semibold bg-white border border-emerald-300 rounded-md hover:bg-emerald-100 flex items-center gap-1.5">
@@ -105,7 +108,7 @@ export const StudentLoginCard: React.FC<{ student: Student; auto?: { email: stri
       <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-start gap-2">
         <KeyRound className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
         <span>
-          This student has a login: <strong className="text-slate-800">{existing.email}</strong>. They sign in on the Teacher / Student tab. A new
+          This {who} has a login: <strong className="text-slate-800">{existing.email}</strong>. They sign in on the Teacher / Student tab. A new
           password can be set in Team & Access.
         </span>
       </div>
@@ -117,14 +120,18 @@ export const StudentLoginCard: React.FC<{ student: Student; auto?: { email: stri
       <div className="flex items-start gap-2">
         <KeyRound className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
         <div>
-          <p className="text-xs font-semibold text-slate-800">Create a login for this student</p>
-          <p className="text-[11px] text-slate-500">So the student can sign in and see own attendance, fees, results and notices.</p>
+          <p className="text-xs font-semibold text-slate-800">{parent ? "Create a login for the parent" : "Create a login for this student"}</p>
+          <p className="text-[11px] text-slate-500">
+            {parent
+              ? "So the parent can sign in and see the child's attendance, fees, results and notices (read only)."
+              : 'So the student can sign in and see own attendance, fees, results and notices.'}
+          </p>
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="block text-[11px] font-medium text-slate-600 mb-1">Student email (the login)</label>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="student@example.com" className={inputCls} />
+          <label className="block text-[11px] font-medium text-slate-600 mb-1">{parent ? 'Parent email (the login)' : 'Student email (the login)'}</label>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={parent ? 'parent@example.com' : 'student@example.com'} className={inputCls} />
         </div>
         <div>
           <label className="block text-[11px] font-medium text-slate-600 mb-1">Temporary password</label>

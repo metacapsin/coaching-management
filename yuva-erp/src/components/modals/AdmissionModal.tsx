@@ -56,6 +56,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
     status: 'active' as const,
     photoUrl: '',
     address: '',
+    dateOfBirth: '',
     totalFees: startCourse?.standardFee || 0,
     discount: 0,
     nextDueDate: '',
@@ -91,6 +92,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
           </div>
           <div className="p-6 space-y-4">
             <StudentLoginCard student={created} auto={loginAuto ?? undefined} />
+            <StudentLoginCard student={created} parent />
             <div className="flex justify-end">
               <button onClick={onClose} className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg">
                 Done
@@ -243,6 +245,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
       status: formData.status,
       photoUrl: formData.photoUrl || DEFAULT_PHOTO,
       address: formData.address.trim(),
+      dateOfBirth: formData.dateOfBirth || undefined,
       totalFees: Number(formData.totalFees),
       discount: Number(formData.discount) || 0,
       nextDueDate: formData.nextDueDate || undefined,
@@ -469,6 +472,16 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
                   }`}
                 />
                 {errors.parentPhone && <p className="text-xs text-rose-600 mt-1">{errors.parentPhone}</p>}
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Student's date of birth (optional)</label>
+                <input
+                  type="date"
+                  value={formData.dateOfBirth}
+                  onChange={e => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
 
               <div className="md:col-span-2">

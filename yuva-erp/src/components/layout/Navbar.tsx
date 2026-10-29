@@ -13,7 +13,7 @@ import {
   ShieldCheck,
   GraduationCap
 } from 'lucide-react';
-import { useAuth, roleLabel } from '../../Context/AuthContext';
+import { useAuth, accountLabel } from '../../Context/AuthContext';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { downloadFromServer } from '../utils/api';
 import { canManageInstitute } from '../../Context/Access';
@@ -457,7 +457,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="block text-xs font-semibold text-slate-900 truncate">
                   {user?.name || 'User'}
                 </span>
-                <span className="block text-[10px] text-slate-500">{roleLabel(user?.role)}</span>
+                <span className="block text-[10px] text-slate-500">{accountLabel(user)}</span>
               </span>
               <ChevronDown className="w-4 h-4 text-slate-400 hidden sm:block" />
             </button>
@@ -471,7 +471,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <div className="text-[11px] text-slate-500 truncate">{user?.email}</div>
                   <div className="mt-1.5 flex items-center gap-1.5">
                     <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded">
-                      {roleLabel(user?.role)}
+                      {accountLabel(user)}
                     </span>
                     <span className="text-[10px] text-slate-400 truncate">
                       {profile.name} · {profile.academicYear}

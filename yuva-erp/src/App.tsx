@@ -5,7 +5,7 @@
 
 import { useState } from 'react';
 import { InstituteProvider, useInstitute } from './Context/InstituteContext';
-import { AuthProvider, useAuth, roleLabel } from './Context/AuthContext';
+import { AuthProvider, useAuth, roleLabel, accountLabel } from './Context/AuthContext';
 import { canAccessTab, canManageInstitute } from './Context/Access';
 import type { TabId } from './Context/Access';
 import { hasSuperSession, useSyncStatus } from './components/utils/api';
@@ -114,7 +114,7 @@ function MainApp() {
   };
 
   const dashboardLabel =
-    role === 'student' ? 'My Portal' : role === 'teacher' ? 'My Dashboard' : 'Command Dashboard';
+    user?.isParent ? 'Parent Portal' : role === 'student' ? 'My Portal' : role === 'teacher' ? 'My Dashboard' : 'Command Dashboard';
 
   const navItems: { id: TabId; label: string; icon: LucideIcon; badge?: number }[] = [
     { id: 'dashboard', label: dashboardLabel, icon: LayoutDashboard },
@@ -333,7 +333,7 @@ function MainApp() {
               </span>
               <div className="min-w-0">
                 <div className="text-xs font-semibold text-slate-200 truncate">{user?.name}</div>
-                <div className="text-[10px] text-slate-500 truncate">{roleLabel(role)}</div>
+                <div className="text-[10px] text-slate-500 truncate">{accountLabel(user)}</div>
               </div>
             </div>
             <button

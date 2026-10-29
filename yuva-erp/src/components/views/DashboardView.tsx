@@ -19,8 +19,10 @@ import {
   Activity,
   UserX,
   Layers,
-  MessageSquare
+  MessageSquare,
+  Cake
 } from 'lucide-react';
+import { nextBirthdays } from '../utils/helpers';
 
 interface DashboardViewProps {
   onNavigate: (tab: string) => void;
@@ -200,6 +202,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // ----- Students -----
   // Archived students are not counted as enrolled
   const currentStudents = students.filter(s => s.status !== 'inactive');
+
+  // Birthdays today and in the next 7 days
+  const birthdays = nextBirthdays(currentStudents, todayStr);
   const activeStudents = currentStudents.filter(s => s.status === 'active');
   const totalEnrolled = currentStudents.length;
   const activePercent = totalEnrolled > 0 ? Math.round((activeStudents.length / totalEnrolled) * 100) : 0;
@@ -1261,6 +1266,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             )}
           </div>
+
+          {/* Birthdays */}
+          {birthdays.length > 0 && (
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+              <div className="p-4 border-b border-slate-200 flex items-center gap-2 bg-slate-50/50">
+                <Cake className="w-4 h-4 text-pink-600" />
+                <h3 className="text-sm font-semibold text-slate-900">Birthdays</h3>
+              </div>
+              <ul className="divide-y divide-slate-100">
+                {birthdays.map(b => (
+                  <li key={b.student.id} className="px-4 py-2.5 flex items-center justify-between gap-2 text-xs">
+                    <span className="font-medium text-slate-800 truncate">{b.student.name}</span>
+                    <span className={`shrink-0 font-semibold ${b.days === 0 ? 'text-pink-600' : 'text-slate-500'}`}>
+                      {b.days === 0 ? 'Today' : b.days === 1 ? 'Tomorrow' : `In ${b.days} days`}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Upcoming Tests */}
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">

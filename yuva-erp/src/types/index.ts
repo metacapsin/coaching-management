@@ -17,6 +17,7 @@ export interface Student {
   parentName: string;
   parentPhone: string;
   parentEmail?: string;
+  dateOfBirth?: string; // YYYY-MM-DD, optional (used for the birthday list)
   grade: string;
   courseId: string;
   batchId: string;
@@ -246,4 +247,15 @@ export interface Book {
   category: string; // subject
   description?: string;
   url: string; // where the book can be read (a web link)
+}
+
+// ---------- attendance of the teachers and staff ----------
+
+export type StaffStatus = 'present' | 'absent' | 'leave' | 'half';
+
+export interface StaffAttendance {
+  id: string;
+  date: string; // YYYY-MM-DD
+  records: Record<string, StaffStatus>; // salary person id -> status
+  updatedAt: string;
 }

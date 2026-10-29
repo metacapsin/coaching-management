@@ -126,3 +126,19 @@ export const downloadCsv = (filename: string, headers: string[], rows: (string |
 
 // "1 student", "2 students"
 export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+// Students whose birthday is today or within the next `within` days, soonest first
+export const nextBirthdays = <T extends { dateOfBirth?: string }>(list: T[], todayIso: string, within = 7): { student: T; days: number }[] => {
+  const [ty, tm, td] = todayIso.split('-').map(Number);
+  const today = Date.UTC(ty, tm - 1, td);
+  const out: { student: T; days: number }[] = [];
+  for (const student of list) {
+    const m = (student.dateOfBirth || '').match(/^\d{4}-(\d{2})-(\d{2})$/);
+    if (!m) continue;
+    let next = Date.UTC(ty, Number(m[1]) - 1, Number(m[2]));
+    if (next < today) next = Date.UTC(ty + 1, Number(m[1]) - 1, Number(m[2]));
+    const days = Math.round((next - today) / 86400000);
+    if (days <= within) out.push({ student, days });
+  }
+  return out.sort((a, b) => a.days - b.days);
+};

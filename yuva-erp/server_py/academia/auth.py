@@ -99,13 +99,15 @@ def build_user(data, status):
             user[key] = value
     if data.get('studentId'):
         user['studentId'] = data['studentId']
+    if data.get('isParent'):
+        user['isParent'] = True  # a parent's login: it sees the child's data, read only
     if data['role'] == 'teacher':
         user['batchIds'] = list(data.get('batchIds') or [])
     set_password(user, data['password'])
     return user
 
 
-PUBLIC_FIELDS = ('id', 'name', 'email', 'role', 'status', 'createdAt', 'phone', 'subject', 'studentId', 'batchIds', 'resetRequestedAt', 'orgId', 'mustChangePassword')
+PUBLIC_FIELDS = ('id', 'name', 'email', 'role', 'status', 'createdAt', 'phone', 'subject', 'studentId', 'batchIds', 'resetRequestedAt', 'orgId', 'mustChangePassword', 'isParent')
 
 
 def public_user(u):

@@ -20,12 +20,13 @@ import {
   History,
   Users,
   X,
-  AlertTriangle
+  AlertTriangle,
+  Download
 } from 'lucide-react';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { ChangeEmailForm } from '../auth/ChangeEmailForm';
 import { ModalShell } from '../ui/ModalShell';
-import { formatDate, formatDateTime } from '../utils/helpers';
+import { downloadCsv, formatDate, formatDateTime, toLocalISODate } from '../utils/helpers';
 import { ApiError } from '../utils/api';
 import type { AuthUser } from '../utils/api';
 import { useAuth } from '../../Context/AuthContext';
@@ -736,13 +737,42 @@ const Dashboard: React.FC<{ user: AuthUser; onSignOut: () => void }> = ({ user, 
             Each coaching has its own principal and its own data. You see who runs it and how big it is, never the data inside.
           </p>
         </div>
-        <button
-          onClick={() => setModal({ kind: 'add' })}
-          className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm flex items-center gap-1.5 self-start"
-        >
-          <Plus className="w-5 h-5" />
-          Add coaching
-        </button>
+        <div className="flex flex-wrap gap-2 self-start">
+          <button
+            onClick={() =>
+              downloadCsv(
+                `coachings-${toLocalISODate()}.csv`,
+                ['Coaching', 'City', 'Status', 'Principal', 'Principal email', 'Principal phone', 'Students', 'Accounts', 'Monthly fee', 'Paid until', 'Plan', 'Since'],
+                orgs.map(o => [
+                  o.name,
+                  o.city,
+                  o.status,
+                  o.admin?.name ?? '',
+                  o.admin?.email ?? '',
+                  o.admin?.phone ?? '',
+                  o.students,
+                  o.accounts,
+                  o.monthlyFee,
+                  o.paidUntil ?? '',
+                  o.subscription,
+                  o.createdAt.slice(0, 10)
+                ])
+              )
+            }
+            disabled={orgs.length === 0}
+            className="px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+          >
+            <Download className="w-4 h-4" />
+            Download list (CSV)
+          </button>
+          <button
+            onClick={() => setModal({ kind: 'add' })}
+            className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm flex items-center gap-1.5"
+          >
+            <Plus className="w-5 h-5" />
+            Add coaching
+          </button>
+        </div>
       </div>
 
       {notice && (

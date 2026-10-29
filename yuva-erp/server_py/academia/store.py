@@ -12,7 +12,7 @@ Collections (in the database named by MONGODB_DB):
   meta         "version" (counts every change), "profile" (institute profile), "present" (which lists exist)
   audit        the activity log
   courses, batches, students, attendance, transactions, exams, timetable, templates, notificationLogs,
-  enquiries, announcements, materials, expenses, salaries, books
+  enquiries, announcements, materials, expenses, salaries, staffAttendance, books
                one document per record (_id = record id); "_pos" keeps the order of the list
   photos       student photos (_id = student id), kept apart so the data stays small
   backups      automatic and manual snapshots of the data (compressed)
@@ -44,6 +44,7 @@ LISTS = [
     'materials',
     'expenses',
     'salaries',  # who gets how much every month (principal only)
+    'staffAttendance',  # the daily attendance of the teachers and staff (principal only)
     'books',  # the library: books the institute shares to read online (everybody reads)
     'submissions',  # homework marked as done: written only by the students themselves
 ]
@@ -212,8 +213,10 @@ class Store:
         """Emails are unique over all coachings, so everybody signs in with the email only."""
         return clean(self.users.find_one({'email': email}))
 
-    def user_by_student(self, student_id):
-        return clean(self.users.find_one({'studentId': student_id, 'orgId': self.org}))
+    def user_by_student(self, student_id, parent=False):
+        """The student's own login (parent=False) or the parent's login (parent=True) of a student record."""
+        flag = True if parent else {'$ne': True}
+        return clean(self.users.find_one({'studentId': student_id, 'orgId': self.org, 'isParent': flag}))
 
     def add_user(self, user):
         user['orgId'] = self.org

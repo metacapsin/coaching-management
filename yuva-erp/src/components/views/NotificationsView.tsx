@@ -20,6 +20,7 @@ export const NotificationsView: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'composer' | 'templates' | 'logs'>('composer');
   const [logFilter, setLogFilter] = useState<'all' | 'pending'>('all');
+  const [logQuery, setLogQuery] = useState('');
 
   // Archived students do not get messages
   const activeStudents = students.filter(s => s.status !== 'inactive');
@@ -136,8 +137,11 @@ export const NotificationsView: React.FC = () => {
   };
 
   const pendingLogs = notificationLogs.filter(l => l.status === 'pending');
-  const shownLogs = logFilter === 'pending' ? pendingLogs : notificationLogs;
-  const pagedLogs = usePaged(shownLogs, 20, logFilter);
+  const lq = logQuery.trim().toLowerCase();
+  const shownLogs = (logFilter === 'pending' ? pendingLogs : notificationLogs).filter(
+    l => !lq || `${l.recipientName} ${l.studentName ?? ''} ${l.content}`.toLowerCase().includes(lq)
+  );
+  const pagedLogs = usePaged(shownLogs, 20, logFilter + lq);
 
   const sendNow = (id: string) => {
     const log = notificationLogs.find(l => l.id === id);
@@ -486,6 +490,12 @@ export const NotificationsView: React.FC = () => {
               Notification Gateway Dispatch History ({notificationLogs.length})
             </h3>
             <div className="flex items-center gap-2">
+              <input
+              value={logQuery}
+              onChange={e => setLogQuery(e.target.value)}
+              placeholder="Search messages..."
+              className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white w-44 sm:w-56"
+            />
               <select
                 value={logFilter}
                 onChange={e => setLogFilter(e.target.value as 'all' | 'pending')}

@@ -101,6 +101,8 @@ them on a temporary database in your real cluster (it is dropped afterwards).
 | Reports | Principal, staff | Fees, attendance, exam results, admissions (profit and loss for the principal); CSV and print |
 | Parent Broadcasts | Principal, staff | Templates and a message queue |
 | Team & Access | Principal | Teacher, staff and student accounts, batches, password reset |
+| **Parent login** | Parent | A parent signs in on the Teacher / Student tab and sees the child's attendance, fees, results and notices (read only). The principal makes it in the student's Dossier |
+| **Staff attendance** | Principal only | Tab in Expenses & Profit: teachers and staff present / half day / leave / absent, with a month count |
 | **Library** | Everybody reads; principal and front desk add | Books shared with a link (PDF, Drive, website): students and teachers press Read and it opens online |
 | Institute Profile | Principal | Letterhead with a **logo** (side menu, receipts, report cards), "queue fee reminders by itself once a day", backup and restore, clean start |
 

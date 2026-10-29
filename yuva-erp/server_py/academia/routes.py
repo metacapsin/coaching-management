@@ -630,12 +630,13 @@ def add_user():
     if email_taken(email):
         raise HttpError(409, 'An account with this email already exists.')
 
+    is_parent = role == 'student' and b.get('isParent') is True
     if role == 'student':
         student_id = b.get('studentId')
         if not student_id or not isinstance(student_id, str):
             raise HttpError(400, 'Please choose the student record for this account.')
-        if s.user_by_student(student_id):
-            raise HttpError(409, 'This student already has an account.')
+        if s.user_by_student(student_id, parent=is_parent):
+            raise HttpError(409, 'This student already has a parent login.' if is_parent else 'This student already has an account.')
         if not s.get_item('students', student_id):
             raise HttpError(400, 'That student record does not exist.')
 
@@ -649,6 +650,7 @@ def add_user():
             'subject': text(b.get('subject')),
             'batchIds': _batch_ids(b.get('batchIds')),
             'studentId': b.get('studentId') if role == 'student' else None,
+            'isParent': is_parent,
         },
         'active',
     )
@@ -774,7 +776,7 @@ def audit_log():
 @route('/api/homework/<material_id>', ['PUT'], 'user')
 def mark_homework(material_id):
     """A student marks a homework of the own batch as done (or takes the mark back). Only the student can do it."""
-    if g.user['role'] != 'student':
+    if g.user['role'] != 'student' or g.user.get('isParent'):
         raise HttpError(403, 'Only a student marks homework as done.')
     s = store()
     me = s.get_item('students', g.user.get('studentId')) if g.user.get('studentId') else None

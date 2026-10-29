@@ -4,6 +4,7 @@ import type { Expense, ExpenseCategory } from '../../types';
 import { ExpenseModal, CATEGORY_LABEL } from '../modals/ExpenseModal';
 import { Pager } from '../ui/Pager';
 import { SalariesPanel } from './SalariesPanel';
+import { StaffAttendancePanel } from './StaffAttendancePanel';
 import { usePaged } from '../utils/usePaged';
 import { downloadCsv, formatDate, formatINR, toLocalISODate } from '../utils/helpers';
 import { Wallet, Plus, Download, Pencil, Trash2, TrendingUp, TrendingDown } from 'lucide-react';
@@ -266,13 +267,14 @@ const ExpensesPanel: React.FC = () => {
 
 // Two tabs: what the coaching spends, and the salaries (paying one writes an expense)
 export const ExpensesView: React.FC = () => {
-  const [tab, setTab] = useState<'expenses' | 'salaries'>('expenses');
+  const [tab, setTab] = useState<'expenses' | 'salaries' | 'attendance'>('expenses');
   return (
     <div className="space-y-6">
       <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit print:hidden">
         {([
           { id: 'expenses', label: 'Expenses and profit' },
-          { id: 'salaries', label: 'Salaries' }
+          { id: 'salaries', label: 'Salaries' },
+          { id: 'attendance', label: 'Staff attendance' }
         ] as const).map(t => (
           <button
             key={t.id}
@@ -285,7 +287,7 @@ export const ExpensesView: React.FC = () => {
           </button>
         ))}
       </div>
-      {tab === 'expenses' ? <ExpensesPanel /> : <SalariesPanel />}
+      {tab === 'expenses' ? <ExpensesPanel /> : tab === 'salaries' ? <SalariesPanel /> : <StaffAttendancePanel />}
     </div>
   );
 };

@@ -20,7 +20,7 @@ from .store import LISTS
 MAX_ITEMS_PER_REQUEST = 200000
 
 # Lists only the principal may see and change
-PRINCIPAL_ONLY = {'expenses', 'salaries'}
+PRINCIPAL_ONLY = {'expenses', 'salaries', 'staffAttendance'}
 
 
 def rank_of(score, scores):
@@ -68,6 +68,7 @@ def scope_institute(user, store):
             'enquiries': [],
             'expenses': [],
             'salaries': [],
+            'staffAttendance': [],
             'books': store.find('books'),
             'announcements': store.find('announcements', {'$or': [{'audience': 'all'}, {'batchId': {'$in': ids}}]}),
             'materials': store.find('materials', {'batchId': {'$in': ids}}),
@@ -92,6 +93,7 @@ def scope_institute(user, store):
         'enquiries': [],
         'expenses': [],
         'salaries': [],
+        'staffAttendance': [],
         'books': [],
         'announcements': [],
         'materials': [],

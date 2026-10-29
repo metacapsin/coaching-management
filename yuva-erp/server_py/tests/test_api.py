@@ -895,6 +895,16 @@ class Expenses(unittest.TestCase):
         self.assertEqual(len(still), 1)
 
 
+    def test_2b_staff_attendance_is_for_the_principal_only(self):
+        row = {'id': 'sat1', 'date': '2026-10-29', 'records': {'sal1': 'leave'}, 'updatedAt': ''}
+        self.assertEqual(self.call('PUT', '/api/institute', {'changes': {'staffAttendance': {'upsert': [row]}}}, self.admin)[0], 200)
+        self.assertEqual(self.call('GET', '/api/sync', token=self.admin)[1]['institute']['staffAttendance'][0]['records'], {'sal1': 'leave'})
+        self.assertNotIn('staffAttendance', self.call('GET', '/api/sync', token=self.staff)[1]['institute'])
+        self.assertEqual(self.call('GET', '/api/sync', token=self.teacher)[1]['institute']['staffAttendance'], [])
+        change = {'changes': {'staffAttendance': {'remove': ['sat1']}}}
+        self.assertEqual(self.call('PUT', '/api/institute', change, self.staff)[0], 403)
+        self.assertEqual(self.call('PUT', '/api/institute', change, self.teacher)[0], 403)
+
     def test_3_the_teacher_student_tab_is_for_teachers_and_students_only(self):
         login = lambda email, portal: self.call('POST', '/api/auth/login', {'email': email, 'password': PASSWORD, 'portal': portal})
         self.assertEqual(login('t@x.com', 'member')[0], 200)  # a teacher on the Teacher / Student tab
@@ -1020,6 +1030,65 @@ class Library(unittest.TestCase):
     def test_4_the_removed_lists_are_gone(self):
         change = {'transportRoutes': {'upsert': [{'id': 'r1'}]}}
         self.assertEqual(self.call('PUT', '/api/institute', {'changes': change}, self.admin)[0], 400)
+
+
+class Parents(unittest.TestCase):
+    """A parent's login: the child's data only, read only, next to the student's own login."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.db = new_db()
+        cls.api = Api(create_app(db=cls.db, dist_dir='no-dist'))
+        call = cls.api.call
+        cls.admin = call('POST', '/api/auth/setup', {'name': 'P', 'email': 'p@x.com', 'password': PASSWORD})[1]['token']
+        hw = {'id': 'hw1', 'title': 'Chapter 3', 'description': '', 'type': 'homework', 'batchId': 'b1', 'batchName': 'Batch A', 'subject': 'Maths', 'createdAt': '', 'authorId': 'x', 'authorName': 'P'}
+        call('PUT', '/api/institute', {'changes': {'batches': {'upsert': BATCHES}, 'students': {'upsert': STUDENTS}, 'materials': {'upsert': [hw]}}}, cls.admin)
+
+    @classmethod
+    def tearDownClass(cls):
+        drop_db(cls.db)
+
+    def call(self, *a, **kw):
+        return self.api.call(*a, **kw)
+
+    def make(self, email, parent):
+        body = {'name': 'Parent of Alice' if parent else 'Alice', 'email': email, 'password': PASSWORD, 'role': 'student', 'studentId': 's1'}
+        if parent:
+            body['isParent'] = True
+        return self.call('POST', '/api/users', body, self.admin)
+
+    def login(self, email):
+        return self.call('POST', '/api/auth/login', {'email': email, 'password': PASSWORD, 'portal': 'member'})[1]['token']
+
+    def test_1_a_parent_and_a_student_login_live_side_by_side(self):
+        self.assertEqual(self.make('alice@x.com', False)[0], 200)
+        status, data = self.make('mum@x.com', True)
+        self.assertEqual(status, 200)
+        self.assertTrue(data['user']['isParent'])
+        self.assertEqual(self.make('dad@x.com', True)[0], 409)  # one parent login per student
+        self.assertEqual(self.make('alice2@x.com', False)[0], 409)  # and one student login
+        users = self.call('GET', '/api/sync', token=self.admin)[1]['users']
+        self.assertEqual(sorted((u['email'], bool(u.get('isParent'))) for u in users if u['role'] == 'student'), [('alice@x.com', False), ('mum@x.com', True)])
+
+    def test_2_the_parent_sees_the_child_only(self):
+        token = self.login('mum@x.com')
+        view = self.call('GET', '/api/sync', token=token)[1]
+        self.assertTrue(view['user']['isParent'])
+        self.assertEqual([x['id'] for x in view['institute']['students']], ['s1'])
+        self.assertEqual(view['institute']['expenses'], [])
+        self.assertEqual(view['institute']['enquiries'], [])
+
+    def test_3_the_parent_cannot_change_anything_or_mark_homework(self):
+        token = self.login('mum@x.com')
+        change = {'changes': {'students': {'remove': ['s1']}}}
+        self.assertEqual(self.call('PUT', '/api/institute', change, token)[0], 403)
+        self.assertEqual(self.call('PUT', '/api/homework/hw1', {'done': True}, token)[0], 403)
+        self.assertEqual(self.call('GET', '/api/users', token=token)[0] in (401, 403, 404, 405), True)
+        # the student can still mark it
+        self.assertEqual(self.call('PUT', '/api/homework/hw1', {'done': True}, self.login('alice@x.com'))[0], 200)
+        # and the parent sees that the child did it
+        seen = self.call('GET', '/api/sync', token=token)[1]['institute']['submissions']
+        self.assertEqual([x['studentId'] for x in seen], ['s1'])
 
 
 class SuperRecovery(unittest.TestCase):

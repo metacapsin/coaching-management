@@ -21,6 +21,9 @@ export const ExamsView: React.FC = () => {
 
   const [selectedExamId, setSelectedExamId] = useState(exams[0]?.id || '');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [examQuery, setExamQuery] = useState('');
+  const q = examQuery.trim().toLowerCase();
+  const shownExams = exams.filter(e => !q || `${e.title} ${e.code} ${e.subject ?? ''} ${e.batchName}`.toLowerCase().includes(q));
   const [gradingExam, setGradingExam] = useState<Exam | null>(null);
   const [reportCardStudent, setReportCardStudent] = useState<Student | null>(null);
   const [broadcastSentExamId, setBroadcastSentExamId] = useState<string | null>(null);
@@ -128,9 +131,17 @@ export const ExamsView: React.FC = () => {
           <div className="flex justify-between items-center text-xs font-semibold text-slate-500 uppercase tracking-wider px-1">
             <span>Tests & Mock Exams ({exams.length})</span>
           </div>
+          {exams.length > 3 && (
+            <input
+              value={examQuery}
+              onChange={e => setExamQuery(e.target.value)}
+              placeholder="Search tests..."
+              className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white w-full"
+            />
+          )}
 
           <div className="space-y-2">
-            {exams.map(exam => {
+            {shownExams.map(exam => {
               const isSelected = exam.id === currentExam?.id;
               const isPublished = exam.status === 'published';
 

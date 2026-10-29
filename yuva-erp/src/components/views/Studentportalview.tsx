@@ -2,6 +2,7 @@ import { PrintableMyResultsModal } from '../modals/PrintableMyResultsModal';
 import React, { useState } from 'react';
 import { NoticesCard, MaterialCard } from '../ui/HomeCards';
 import { useInstitute } from '../../Context/InstituteContext';
+import { useAuth } from '../../Context/AuthContext';
 import type { ScopedResult } from '../layout/Rolescope';
 import {
   CalendarCheck,
@@ -33,6 +34,7 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }> = ({ onNavigate = () => undefined }) => {
+  const { user } = useAuth();
   const {
     profile,
     students,
@@ -124,9 +126,11 @@ export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }>
         />
         <div className="min-w-0 flex-1">
           <span className="text-xs font-semibold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
-            Student Portal · {profile.academicYear}
+            {user?.isParent ? 'Parent Portal' : 'Student Portal'} · {profile.academicYear}
           </span>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1.5">Hello, {student.name}</h1>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1.5">
+            {user?.isParent ? `Hello, parent of ${student.name}` : `Hello, ${student.name}`}
+          </h1>
           <p className="text-xs text-slate-500 mt-1">
             <span className="font-mono">{student.rollNo}</span> · {student.grade} · Target: {student.targetExam}
           </p>

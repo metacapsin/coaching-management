@@ -75,9 +75,9 @@ const ROLE_BADGE: Record<UserRole, string> = {
   student: 'bg-amber-50 text-amber-700 border-amber-200'
 };
 
-const RoleBadge: React.FC<{ role: UserRole }> = ({ role }) => (
+const RoleBadge: React.FC<{ role: UserRole; parent?: boolean }> = ({ role, parent }) => (
   <span className={`text-[10px] font-semibold border px-1.5 py-0.5 rounded ${ROLE_BADGE[role]}`}>
-    {roleLabel(role)}
+    {parent ? 'Parent' : roleLabel(role)}
   </span>
 );
 
@@ -277,7 +277,10 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
   }, [isAdmin, loadActivity]);
 
   const pending = users.filter(u => u.status === 'pending');
-  const members = users.filter(u => u.status !== 'pending');
+  const [memberQuery, setMemberQuery] = useState('');
+  const mq = memberQuery.trim().toLowerCase();
+  const allMembers = users.filter(u => u.status !== 'pending');
+  const members = allMembers.filter(u => !mq || `${u.name} ${u.email} ${u.phone ?? ''}`.toLowerCase().includes(mq));
   const studentsWithoutAccount = students.filter(s => !users.some(u => u.studentId === s.id));
   const batchName = (id: string) => batches.find(b => b.id === id)?.name || 'Batch';
 
@@ -614,13 +617,20 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
           <div className="p-4 border-b border-slate-200 flex flex-wrap justify-between items-center gap-2 bg-slate-50/50">
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-slate-600" />
-              <h3 className="text-sm font-semibold text-slate-900">All Accounts ({members.length})</h3>
+              <h3 className="text-sm font-semibold text-slate-900">All Accounts ({allMembers.length})</h3>
             </div>
+            <input
+              value={memberQuery}
+              onChange={e => setMemberQuery(e.target.value)}
+              placeholder="Search name or email..."
+              className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white w-44 sm:w-56"
+            />
             <span className="text-xs text-slate-500">
               {members.filter(u => u.role === 'admin').length} Principal ·{' '}
               {members.filter(u => u.role === 'staff').length} Staff ·{' '}
               {members.filter(u => u.role === 'teacher').length} Teachers ·{' '}
-              {members.filter(u => u.role === 'student').length} Students
+              {members.filter(u => u.role === 'student' && !u.isParent).length} Students ·{' '}
+              {members.filter(u => u.isParent).length} Parents
             </span>
           </div>
 
@@ -673,7 +683,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
                             <option value="staff">Front Desk Staff</option>
                           </select>
                         ) : (
-                          <RoleBadge role={member.role} />
+                          <RoleBadge role={member.role} parent={member.isParent} />
                         )}
                       </td>
 
