@@ -26,7 +26,7 @@ import {
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { ChangeEmailForm } from '../auth/ChangeEmailForm';
 import { ModalShell } from '../ui/ModalShell';
-import { downloadCsv, formatDate, formatDateTime, toLocalISODate } from '../utils/helpers';
+import { downloadCsv, formatDate, formatDateTime, toLocalISODate, toWhatsAppNumber } from '../utils/helpers';
 import { ApiError } from '../utils/api';
 import type { AuthUser } from '../utils/api';
 import { useAuth } from '../../Context/AuthContext';
@@ -728,7 +728,7 @@ const ActivityPanel: React.FC = () => {
 
 const Dashboard: React.FC<{ user: AuthUser; onSignOut: () => void }> = ({ user, onSignOut }) => {
   const { orgs, income, error, loaded, reload } = useOrgs(true);
-  const [notice, setNotice] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
+  const [notice, setNotice] = useState<{ type: 'ok' | 'error'; text: string; wa?: string } | null>(null);
   const [modal, setModal] = useState<
     | { kind: 'add' }
     | { kind: 'edit' | 'password' | 'delete' | 'enter' | 'payment'; org: OrgSummary }
@@ -738,9 +738,37 @@ const Dashboard: React.FC<{ user: AuthUser; onSignOut: () => void }> = ({ user, 
   const [filter, setFilter] = useState<'all' | OrgStatus>('all');
   const [query, setQuery] = useState('');
 
-  const flash = (type: 'ok' | 'error', text: string) => {
-    setNotice({ type, text });
-    setTimeout(() => setNotice(null), 6000);
+  const flash = (type: 'ok' | 'error', text: string, wa?: string) => {
+    setNotice({ type, text, wa });
+    setTimeout(() => setNotice(null), wa ? 30000 : 6000);
+  };
+
+  // Approve or reject a request: the principal is told by email (when the server can send it); if not, the same words
+  // are offered here to send on WhatsApp
+  const waUrl = (phone: string, message: string) => `https://wa.me/${toWhatsAppNumber(phone)}?text=${encodeURIComponent(message)}`;
+
+  const decide = async (kind: 'approve' | 'reject', o: OrgSummary) => {
+    let reason = '';
+    if (kind === 'reject') {
+      const answer = window.prompt(`Reject the request of ${o.name}?
+You may write the reason (the principal gets it). Press Cancel to keep the request.`, '');
+      if (answer === null) return;
+      reason = answer.trim();
+    }
+    try {
+      const res = kind === 'approve' ? await superApi.approve(o.id) : await superApi.reject(o.id, reason);
+      const what = kind === 'approve' ? `${o.name} was approved. Its principal can sign in now.` : `The request of ${o.name} was rejected.`;
+      const tell =
+        res.notified === 'sent'
+          ? ` An email was sent to the principal.`
+          : res.notified === 'no-email'
+          ? ` Email is not set up on the server, so send the message on WhatsApp.`
+          : '';
+      flash('ok', what + tell, res.notified === 'no-email' && res.phone && res.message ? waUrl(res.phone, res.message) : undefined);
+      reload();
+    } catch (err) {
+      flash('error', errText(err));
+    }
   };
 
   const act = async (job: () => Promise<unknown>, okText: string) => {
@@ -866,6 +894,11 @@ const Dashboard: React.FC<{ user: AuthUser; onSignOut: () => void }> = ({ user, 
         >
           {notice.type === 'ok' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
           {notice.text}
+          {notice.wa && (
+            <a href={notice.wa} target="_blank" rel="noopener noreferrer" className="ml-2 px-2.5 py-1 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-md whitespace-nowrap">
+              Send on WhatsApp
+            </a>
+          )}
         </div>
       )}
       {error && !loaded && <p className="mb-4 text-xs text-rose-600">{error}</p>}
@@ -923,14 +956,14 @@ const Dashboard: React.FC<{ user: AuthUser; onSignOut: () => void }> = ({ user, 
                 </div>
                 <div className="flex gap-2 shrink-0">
                   <button
-                    onClick={() => act(() => superApi.approve(o.id), `${o.name} was approved. Its principal can sign in now.`)}
+                    onClick={() => decide('approve', o)}
                     className="px-3.5 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg flex items-center gap-1.5"
                   >
                     <Check className="w-4 h-4" />
                     Approve
                   </button>
                   <button
-                    onClick={() => window.confirm(`Reject the request of ${o.name}?`) && act(() => superApi.reject(o.id), `The request of ${o.name} was rejected.`)}
+                    onClick={() => decide('reject', o)}
                     className="px-3.5 py-2 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg flex items-center gap-1.5"
                   >
                     <X className="w-4 h-4" />
@@ -1052,13 +1085,13 @@ const Dashboard: React.FC<{ user: AuthUser; onSignOut: () => void }> = ({ user, 
                     o.status === 'pending' ? (
                       <div className="flex gap-1.5">
                         <button
-                          onClick={() => act(() => superApi.approve(o.id), `${o.name} was approved. Its principal can sign in now.`)}
+                          onClick={() => decide('approve', o)}
                           className="px-2.5 py-1 text-[11px] font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-md"
                         >
                           Approve
                         </button>
                         <button
-                          onClick={() => window.confirm(`Reject the request of ${o.name}?`) && act(() => superApi.reject(o.id), `The request of ${o.name} was rejected.`)}
+                          onClick={() => decide('reject', o)}
                           className="px-2.5 py-1 text-[11px] font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-md"
                         >
                           Reject

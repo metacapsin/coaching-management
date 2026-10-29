@@ -63,6 +63,12 @@ export interface SuperAdminRow {
   you: boolean;
 }
 
+export interface Decision {
+  notified?: 'sent' | 'no-email' | 'none';
+  message?: string;
+  phone?: string;
+}
+
 export const superApi = {
   admins: () => superRequest<{ admins: SuperAdminRow[] }>('GET', '/super/admins').then(r => r.admins),
   addAdmin: (input: { name: string; email: string; password: string }) => superRequest<unknown>('POST', '/super/admins', input),
@@ -76,8 +82,9 @@ export const superApi = {
   recordPayment: (id: string, input: { amount: number; months: number; note: string }) =>
     superRequest<{ org: OrgSummary }>('POST', `/super/orgs/${id}/payments`, input),
   edit: (id: string, input: { name: string; city: string; monthlyFee?: number }) => superRequest<{ org: OrgSummary }>('PUT', `/super/orgs/${id}`, input),
-  approve: (id: string) => superRequest<unknown>('POST', `/super/orgs/${id}/approve`, {}),
-  reject: (id: string) => superRequest<unknown>('POST', `/super/orgs/${id}/reject`, {}),
+  // `notified` says what happened to the email to the principal: sent, no-email (email not set up on the server) or none
+  approve: (id: string) => superRequest<Decision>('POST', `/super/orgs/${id}/approve`, {}),
+  reject: (id: string, reason = '') => superRequest<Decision>('POST', `/super/orgs/${id}/reject`, { reason }),
   suspend: (id: string) => superRequest<unknown>('POST', `/super/orgs/${id}/suspend`, {}),
   activate: (id: string) => superRequest<unknown>('POST', `/super/orgs/${id}/activate`, {}),
   remove: (id: string, confirmName: string) => superRequest<unknown>('DELETE', `/super/orgs/${id}`, { confirmName }),

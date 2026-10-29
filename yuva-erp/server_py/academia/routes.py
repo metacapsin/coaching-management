@@ -16,7 +16,7 @@ from datetime import datetime, timedelta, timezone
 from flask import Blueprint, Response, current_app, g, request
 from pymongo.errors import DuplicateKeyError
 
-from . import auth
+from . import auth, mailer
 from .errors import HttpError
 from .rollno import next_roll_number
 from .scope import apply_changes, scope_institute
@@ -1232,11 +1232,39 @@ def super_record_payment(org_id):
     return {'org': _org_summary(org)}
 
 
+def _principal_of(org):
+    """The first principal (administrator) of a coaching: the person who asked for it."""
+    for u in root().for_org(org['id']).users_all():
+        if u['role'] == 'admin':
+            return u
+    return None
+
+
+def _tell_principal(org, principal, subject, lines):
+    """Emails the principal about the decision. Returns 'sent', 'no-email' (email is not set up on the server) or 'none'."""
+    if not principal:
+        return {'notified': 'none'}
+    greeting = f'Hello {principal.get("name") or ""},'.replace(' ,', ',')
+    text = '\n\n'.join([greeting, *lines, 'AcademiaOS'])
+    sent = bool(principal.get('email')) and mailer.send(principal['email'], subject, text)
+    # `message` and `phone` let the Super Admin send the same words on WhatsApp when no email could be sent
+    return {'notified': 'sent' if sent else 'no-email', 'message': text, 'phone': principal.get('phone') or ''}
+
+
 @route('/api/super/orgs/<org_id>/approve', ['POST'], 'super')
 def super_approve_org(org_id):
     org = _set_org_status(org_id, 'active', only_from=('pending',))
     g.store.audit(g.user, 'coaching-approve', org['name'])
-    return {'org': _org_summary(org)}
+    notified = _tell_principal(
+        org,
+        _principal_of(org),
+        f'Your coaching {org["name"]} is approved',
+        [
+            f'Good news! Your request for {org["name"]} on AcademiaOS is approved.',
+            'You can sign in now with your email and password as Coaching Admin and start adding programs, batches and students.',
+        ],
+    )
+    return {'org': _org_summary(org), **notified}
 
 
 @route('/api/super/orgs/<org_id>/activate', ['POST'], 'super')
@@ -1259,10 +1287,17 @@ def super_reject_org(org_id):
     org = _get_org(org_id)
     if org.get('status') != 'pending':
         raise HttpError(400, 'Only a request that is waiting can be rejected.')
+    principal = _principal_of(org)  # found before the request is removed
+    reason = text(body().get('reason'), 300)
     root().for_org(org['id']).drop_org_data()
     root().org_remove(org['id'])
     g.store.audit(g.user, 'coaching-reject', org['name'])
-    return ok()
+    lines = [f'Sorry, your request for {org["name"]} on AcademiaOS was not approved.']
+    if reason:
+        lines.append(f'Reason: {reason}')
+    lines.append('You can register again with correct details, or contact us for help.')
+    notified = _tell_principal(org, principal, f'Your coaching request for {org["name"]} was not approved', lines)
+    return {'ok': True, **notified}
 
 
 @route('/api/super/orgs/<org_id>', ['DELETE'], 'super')

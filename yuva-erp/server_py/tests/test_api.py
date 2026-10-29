@@ -7,6 +7,7 @@ import json
 import os
 import secrets
 import unittest
+from unittest import mock
 
 import mongomock
 
@@ -710,6 +711,40 @@ class Coachings(unittest.TestCase):
         actions = [e['action'] for e in self.call('GET', '/api/super/audit', token=self.sup)[1]['entries']]
         self.assertIn('coaching-approve', actions)
         self.assertIn('coaching-requested', actions)
+
+    def test_02b_the_principal_is_told_about_the_decision(self):
+        def org_id(name):
+            return next(o['id'] for o in self.call('GET', '/api/super/orgs', token=self.sup)[1]['orgs'] if o['name'] == name)
+
+        # approved: an email goes to the principal
+        self.call('POST', '/api/public/register-coaching', self.coaching('Mailco', 'mail@x.com'))
+        with mock.patch('academia.routes.mailer.send', return_value=True) as send:
+            status, data = self.call('POST', f'/api/super/orgs/{org_id("Mailco")}/approve', token=self.sup)
+        self.assertEqual((status, data['notified']), (200, 'sent'))
+        to, subject, body = send.call_args[0]
+        self.assertEqual(to, 'mail@x.com')
+        self.assertIn('approved', subject)
+        self.assertIn('You can sign in now', body)
+
+        # rejected with a reason, and email is not set up: the same words come back to be sent on WhatsApp
+        self.call('POST', '/api/public/register-coaching', self.coaching('Nomail', 'no@x.com'))
+        with mock.patch('academia.routes.mailer.send', return_value=False):
+            status, data = self.call('POST', f'/api/super/orgs/{org_id("Nomail")}/reject', {'reason': 'Wrong city'}, self.sup)
+        self.assertEqual((status, data['notified']), (200, 'no-email'))
+        self.assertIn('not approved', data['message'])
+        self.assertIn('Reason: Wrong city', data['message'])
+        self.assertEqual(data['phone'], '+91 98000 11111')
+        # the request is gone, so that email can register again
+        self.assertEqual(self.call('POST', '/api/public/register-coaching', self.coaching('Nomail', 'no@x.com'))[0], 200)
+        self.call('POST', f'/api/super/orgs/{org_id("Nomail")}/reject', {}, self.sup)
+        # the two coachings of this test are removed again, the next tests count on the coachings that were there
+        self.call('DELETE', f'/api/super/orgs/{org_id("Mailco")}', {'confirmName': 'Mailco'}, self.sup)
+
+    def test_02c_without_an_email_service_nothing_is_sent_and_nothing_breaks(self):
+        from academia import mailer
+        with mock.patch.dict(os.environ, {'SMTP_HOST': '', 'SMTP_USER': '', 'SMTP_PASSWORD': ''}):
+            self.assertFalse(mailer.configured())
+            self.assertFalse(mailer.send('a@b.com', 'hi', 'text'))
 
     def test_03_an_added_coaching_waits_for_the_approval(self):
         # "Add coaching" only sends a request: nobody can sign in before the Approve
