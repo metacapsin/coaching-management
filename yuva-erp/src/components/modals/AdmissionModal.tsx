@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { useInstitute, DEFAULT_PHOTO } from '../../Context/InstituteContext';
+import { useInstitute, DEFAULT_PHOTO, defaultBatchId } from '../../Context/InstituteContext';
 import type { PaymentMethod, Student } from '../../types';
 import { resizeImageToDataUrl } from '../utils/Imageutils';
 import { normalizePhone, toLocalISODate } from '../utils/helpers';
@@ -25,7 +25,7 @@ interface AdmissionModalProps {
 }
 
 export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose, onSuccess, prefill }) => {
-  const { batches, courses, students, addStudent, profile } = useInstitute();
+  const { batches, courses, students, addStudent, addCourse, addBatch, profile } = useInstitute();
 
   const startCourse = courses.find(c => c.id === prefill?.courseId) || courses[0];
 
@@ -34,6 +34,10 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
   const [makeLogin, setMakeLogin] = useState(true);
   const [loginPassword, setLoginPassword] = useState(generatePassword);
   const [loginAuto, setLoginAuto] = useState<{ email: string; password: string } | null>(null);
+  // A program or a batch can be written in right here when the institute has none yet
+  const [newProgram, setNewProgram] = useState<{ name: string; fee: string } | null>(null);
+  const [newBatch, setNewBatch] = useState<{ name: string; seats: string } | null>(null);
+  const [quickError, setQuickError] = useState('');
 
   const [formData, setFormData] = useState({
     name: prefill?.name ?? '',
@@ -109,6 +113,49 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
       totalFees: course ? course.standardFee : prev.totalFees,
       targetExam: course ? course.name : prev.targetExam
     }));
+  };
+
+  const saveNewProgram = () => {
+    const name = (newProgram?.name || '').trim();
+    const fee = Number(newProgram?.fee || 0);
+    if (!name) return setQuickError('Write the name of the program.');
+    if (!Number.isFinite(fee) || fee < 0) return setQuickError('The fee cannot be negative.');
+    const course = addCourse({
+      code: name.replace(/[^A-Za-z0-9]/g, '').slice(0, 6).toUpperCase() || `PRG${Date.now().toString().slice(-3)}`,
+      name,
+      category: 'Engineering',
+      duration: '1 Year',
+      standardFee: fee,
+      description: ''
+    });
+    setFormData(prev => ({ ...prev, courseId: course.id, batchId: defaultBatchId(course.id), totalFees: course.standardFee, targetExam: course.name }));
+    setNewProgram(null);
+    setQuickError('');
+  };
+
+  const saveNewBatch = () => {
+    const name = (newBatch?.name || '').trim();
+    const seats = Math.floor(Number(newBatch?.seats || 30));
+    if (!formData.courseId) return setQuickError('Choose or add a program first.');
+    if (!name) return setQuickError('Write the name of the batch.');
+    if (!Number.isFinite(seats) || seats < 1) return setQuickError('Write how many seats the batch has.');
+    const batch = addBatch({
+      code: `BAT-${Date.now().toString().slice(-4)}`,
+      name,
+      courseId: formData.courseId,
+      courseName: courses.find(c => c.id === formData.courseId)?.name || formData.targetExam || 'Program',
+      subjects: [],
+      facultyName: '',
+      classroom: '',
+      scheduleDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      startTime: '04:30 PM',
+      endTime: '07:45 PM',
+      maxCapacity: seats,
+      status: 'ongoing'
+    });
+    setFormData(prev => ({ ...prev, batchId: batch.id }));
+    setNewBatch(null);
+    setQuickError('');
   };
 
   const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -233,6 +280,15 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+          {(courses.length === 0 || batches.length === 0) && (
+            <div className="p-3.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-900">
+              <p className="font-semibold">A student needs a program and a batch.</p>
+              <p className="mt-1">
+                None is written yet. In section 3 below choose <strong>＋ Add a new program</strong> and then <strong>＋ Add a new batch</strong>:
+                you can write them in right here.
+              </p>
+            </div>
+          )}
           {/* Section 1: Student Information */}
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
@@ -435,13 +491,23 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Selected Program</label>
                 <select
-                  value={formData.courseId}
-                  onChange={e => handleCourseChange(e.target.value)}
+                  value={newProgram ? '__new' : formData.courseId}
+                  onChange={e => {
+                    setQuickError('');
+                    if (e.target.value === '__new') {
+                      setNewProgram({ name: '', fee: '' });
+                    } else {
+                      setNewProgram(null);
+                      handleCourseChange(e.target.value);
+                    }
+                  }}
                   className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 >
+                  {!formData.courseId && !newProgram && <option value="">Choose a program</option>}
                   {courses.map(c => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
+                  <option value="__new">＋ Add a new program...</option>
                 </select>
               </div>
 
@@ -450,11 +516,19 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
                   Batch Assignment <span className="text-rose-500">*</span>
                 </label>
                 <select
-                  value={formData.batchId}
-                  onChange={e => setFormData({ ...formData, batchId: e.target.value })}
+                  value={newBatch ? '__new' : formData.batchId}
+                  onChange={e => {
+                    setQuickError('');
+                    if (e.target.value === '__new') {
+                      setNewBatch({ name: '', seats: '30' });
+                    } else {
+                      setNewBatch(null);
+                      setFormData({ ...formData, batchId: e.target.value });
+                    }
+                  }}
                   className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 >
-                  {courseBatches.length === 0 && <option value="">No batch for this program yet</option>}
+                  {!formData.batchId && !newBatch && <option value="">{courseBatches.length === 0 ? 'No batch yet: add one below' : 'Choose a batch'}</option>}
                   {courseBatches.map(b => {
                     const filled = students.filter(st => st.batchId === b.id).length;
                     return (
@@ -464,6 +538,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
                       </option>
                     );
                   })}
+                  <option value="__new">＋ Add a new batch...</option>
                 </select>
               </div>
 
@@ -477,6 +552,73 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
                   className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+
+              {newProgram && (
+                <div className="md:col-span-3 p-3.5 rounded-lg bg-blue-50/60 border border-blue-100 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                  <div className="sm:col-span-1">
+                    <label className="block text-xs font-medium text-slate-700 mb-1">New program name</label>
+                    <input
+                      autoFocus
+                      value={newProgram.name}
+                      onChange={e => setNewProgram({ ...newProgram, name: e.target.value })}
+                      placeholder="e.g. JEE 2 Year"
+                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Standard fee</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={newProgram.fee}
+                      onChange={e => setNewProgram({ ...newProgram, fee: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={saveNewProgram} className="px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg">
+                      Save program
+                    </button>
+                    <button type="button" onClick={() => { setNewProgram(null); setQuickError(''); }} className="px-3 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {newBatch && (
+                <div className="md:col-span-3 p-3.5 rounded-lg bg-blue-50/60 border border-blue-100 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">New batch name</label>
+                    <input
+                      autoFocus
+                      value={newBatch.name}
+                      onChange={e => setNewBatch({ ...newBatch, name: e.target.value })}
+                      placeholder="e.g. Morning Batch A"
+                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Seats</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={newBatch.seats}
+                      onChange={e => setNewBatch({ ...newBatch, seats: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={saveNewBatch} className="px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg">
+                      Save batch
+                    </button>
+                    <button type="button" onClick={() => { setNewBatch(null); setQuickError(''); }} className="px-3 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+              {quickError && <p className="md:col-span-3 text-xs text-rose-600">{quickError}</p>}
             </div>
           </div>
 
@@ -600,6 +742,17 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
               className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
+
+          {Object.keys(errors).length > 0 && (
+            <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-800">
+              <p className="font-semibold">The admission was not saved. Please fix:</p>
+              <ul className="list-disc pl-5 mt-1 space-y-0.5">
+                {Object.values(errors).map(message => (
+                  <li key={message}>{message}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Footer Actions */}
           <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
