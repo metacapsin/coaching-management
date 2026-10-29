@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PasswordInput } from '../ui/PasswordInput';
 import { useAuth } from '../../Context/AuthContext';
 import type { Portal } from '../../Context/AuthContext';
 import { ApiError, requestPasswordReset, resetSuperPassword } from '../utils/api';
@@ -132,8 +133,8 @@ const SuperForgotPassword: React.FC<{ initialEmail: string }> = ({ initialEmail 
             Choose a new password for the Super Admin. This works only on the computer where the server runs.
           </p>
           <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Super Admin email" className={cls} />
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="New password" autoComplete="new-password" className={cls} />
-          <input type="password" value={again} onChange={e => setAgain(e.target.value)} placeholder="New password again" autoComplete="new-password" className={cls} />
+          <PasswordInput value={password} onChange={e => setPassword(e.target.value)} placeholder="New password" autoComplete="new-password" className={cls} />
+          <PasswordInput value={again} onChange={e => setAgain(e.target.value)} placeholder="New password again" autoComplete="new-password" className={cls} />
           {error && <p className="text-xs text-rose-600">{error}</p>}
           <div className="flex gap-2 justify-end">
             <button type="button" onClick={() => setOpen(false)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">

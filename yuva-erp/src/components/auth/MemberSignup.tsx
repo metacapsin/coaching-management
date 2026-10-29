@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PasswordInput } from '../ui/PasswordInput';
 import { AlertCircle, CheckCircle2, GraduationCap, BookOpen, UserCheck, Loader2 } from 'lucide-react';
 import { useAuth } from '../../Context/AuthContext';
 import { CoachingPicker } from './CoachingForms';
@@ -111,8 +112,8 @@ export const MemberSignup: React.FC<{ onClose: () => void }> = ({ onClose }) => 
           <input value={f.phone} onChange={set('phone')} placeholder="Mobile number (10 digits)" inputMode="tel" autoComplete="tel" className={cls} />
           {kind === 'teacher' && <input value={f.subject} onChange={set('subject')} placeholder="Subject you teach" className={cls} />}
           <input type="email" value={f.email} onChange={set('email')} placeholder="Email" autoComplete="email" className={cls} />
-          <input type="password" value={f.password} onChange={set('password')} placeholder="Password (8+ characters, letters and numbers)" autoComplete="new-password" className={cls} />
-          <input type="password" value={f.again} onChange={set('again')} placeholder="Password again" autoComplete="new-password" className={cls} />
+          <PasswordInput value={f.password} onChange={set('password')} placeholder="Password (8+ characters, letters and numbers)" autoComplete="new-password" className={cls} />
+          <PasswordInput value={f.again} onChange={set('again')} placeholder="Password again" autoComplete="new-password" className={cls} />
           {error && (
             <p className="text-xs text-rose-600 flex items-start gap-1.5">
               <AlertCircle className="w-4 h-4 shrink-0" />

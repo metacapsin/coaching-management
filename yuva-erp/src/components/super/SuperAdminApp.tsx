@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { PasswordInput } from '../ui/PasswordInput';
 import {
   Building2,
   Check,
@@ -270,8 +271,8 @@ const MyPasswordModal: React.FC<{ onClose: () => void; onDone: (msg: string) => 
       </div>
       <form onSubmit={submit} className="p-6 space-y-4 border-t border-slate-100 mt-5">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Password</h3>
-        <input type="password" placeholder="Current password" value={current} onChange={e => setCurrent(e.target.value)} className={inputCls} autoComplete="current-password" />
-        <input type="password" placeholder="New password" value={next} onChange={e => setNext(e.target.value)} className={inputCls} autoComplete="new-password" />
+        <PasswordInput placeholder="Current password" value={current} onChange={e => setCurrent(e.target.value)} className={inputCls} autoComplete="current-password" />
+        <PasswordInput placeholder="New password" value={next} onChange={e => setNext(e.target.value)} className={inputCls} autoComplete="new-password" />
         {error && <p className="text-xs text-rose-600">{error}</p>}
         <div className="flex justify-end gap-2">
           <button type="button" onClick={onClose} className="px-4 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">
@@ -385,7 +386,7 @@ const EnterModal: React.FC<{ org: OrgSummary; onClose: () => void }> = ({ org, o
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-700 mb-1">Password</label>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="off" className={inputCls} />
+          <PasswordInput value={password} onChange={e => setPassword(e.target.value)} autoComplete="off" className={inputCls} />
         </div>
         {error && <p className="text-xs text-rose-600">{error}</p>}
         <div className="flex justify-end gap-2">

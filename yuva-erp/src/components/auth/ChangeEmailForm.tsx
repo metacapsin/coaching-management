@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PasswordInput } from '../ui/PasswordInput';
 import { useAuth } from '../../Context/AuthContext';
 
 const cls = 'w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500';
@@ -31,7 +32,7 @@ export const ChangeEmailForm: React.FC<{ onDone?: (message: string) => void }> =
         Now you sign in with <strong className="text-slate-700">{user?.email}</strong>.
       </p>
       <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="New email" autoComplete="off" className={cls} />
-      <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Current password" autoComplete="current-password" className={cls} />
+      <PasswordInput value={password} onChange={e => setPassword(e.target.value)} placeholder="Current password" autoComplete="current-password" className={cls} />
       {error && <p className="text-xs text-rose-600">{error}</p>}
       <button type="submit" disabled={busy} className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-lg">
         {busy ? 'Saving...' : 'Change email'}

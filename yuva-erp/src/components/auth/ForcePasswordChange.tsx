@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PasswordInput } from '../ui/PasswordInput';
 import { KeyRound, Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../Context/AuthContext';
 import { ThemeToggle } from '../ui/ThemeToggle';
@@ -49,9 +50,9 @@ export const ForcePasswordChange: React.FC = () => {
           Your current password was set by somebody else, so they know it. Choose a new one that only you know. You can use the
           app right after.
         </p>
-        <input type="password" placeholder="Current password (the one you just signed in with)" value={current} onChange={e => setCurrent(e.target.value)} autoComplete="current-password" className={inputCls} />
-        <input type="password" placeholder="New password" value={next} onChange={e => setNext(e.target.value)} autoComplete="new-password" className={inputCls} />
-        <input type="password" placeholder="New password again" value={again} onChange={e => setAgain(e.target.value)} autoComplete="new-password" className={inputCls} />
+        <PasswordInput placeholder="Current password (the one you just signed in with)" value={current} onChange={e => setCurrent(e.target.value)} autoComplete="current-password" className={inputCls} />
+        <PasswordInput placeholder="New password" value={next} onChange={e => setNext(e.target.value)} autoComplete="new-password" className={inputCls} />
+        <PasswordInput placeholder="New password again" value={again} onChange={e => setAgain(e.target.value)} autoComplete="new-password" className={inputCls} />
         {error && (
           <p className="text-xs text-rose-600 flex items-start gap-1.5">
             <AlertCircle className="w-4 h-4 shrink-0" />
