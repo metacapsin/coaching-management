@@ -85,8 +85,8 @@ export const HI: Record<string, string> = {
   'Send a request from the sign in page with the name of your coaching and the principal. The Super Admin approves it.':
     'साइन इन पेज से कोचिंग और प्रिंसिपल के नाम के साथ अनुरोध भेजें। सुपर एडमिन उसे मंज़ूर करता है।',
   'Add programs and batches': 'प्रोग्राम और बैच जोड़ें',
-  'Write down your programs with their fees. Every program starts with a first batch, so you can admit students at once.':
-    'अपने प्रोग्राम फ़ीस के साथ लिखें। हर प्रोग्राम का पहला बैच अपने आप बनता है, इसलिए तुरंत एडमिशन हो सकता है।',
+  'Write down your programs with their fees. Add a batch to a program while you admit the first student, or in Batches.':
+    'अपने प्रोग्राम फ़ीस के साथ लिखें। पहले छात्र का एडमिशन करते समय या बैच पेज पर प्रोग्राम में बैच जोड़ें।',
   'Admit students and add teachers': 'छात्र भर्ती करें और शिक्षक जोड़ें',
   'Admission gives the student a login. Add teachers, front desk staff and the parents of your students.':
     'एडमिशन के साथ छात्र को लॉगिन मिलता है। शिक्षक, फ़्रंट डेस्क स्टाफ़ और छात्रों के अभिभावक जोड़ें।',

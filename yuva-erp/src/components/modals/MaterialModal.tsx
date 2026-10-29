@@ -81,7 +81,7 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({ material, onClose 
     >
       <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
           {myBatches.length === 0 && (
-            <NeedFirst title="Study material is shared with a batch.">Create a batch first (Batches &amp; Timetable, Create New Batch, or add a program in Fees &amp; Invoicing: it comes with Batch 1).</NeedFirst>
+            <NeedFirst title="Study material is shared with a batch.">Create a batch first (Batches &amp; Timetable, Create New Batch).</NeedFirst>
           )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>

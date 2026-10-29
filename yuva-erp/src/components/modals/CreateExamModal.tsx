@@ -107,7 +107,7 @@ export const CreateExamModal: React.FC<CreateExamModalProps> = ({
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {batches.length === 0 && (
-            <NeedFirst title="A test needs a batch.">Create a batch first (Batches &amp; Timetable, Create New Batch, or add a program in Fees &amp; Invoicing: it comes with Batch 1).</NeedFirst>
+            <NeedFirst title="A test needs a batch.">Create a batch first (Batches &amp; Timetable, Create New Batch).</NeedFirst>
           )}
           {error && (
             <div className="p-2.5 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg">

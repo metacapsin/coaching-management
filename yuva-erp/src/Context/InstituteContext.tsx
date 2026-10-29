@@ -53,7 +53,6 @@ import { toLocalISODate, toLocalDateTime, uid, fillTemplate, formatDate } from '
 export const DEFAULT_PHOTO = '/avatar.svg';
 
 // The batch that is made together with a new program
-export const defaultBatchId = (courseId: string) => `b-${courseId}`;
 
 // Next receipt number: REC-<year>-<4 digits>, one higher than the highest used so far
 const newReceiptSuffix = (receiptNo: string) => receiptNo.split('-').pop() || '';
@@ -619,26 +618,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       id: uid('c')
     };
     setCourses(prev => [...prev, newCourse]);
-    // The very first program of a coaching starts with one batch ("Batch 1"), so a student can be admitted at once. Later
-    // programs do not get a batch behind the back of the person: it is made in the admission form or in Batches.
-    if (batches.length > 0) return newCourse;
-    const firstBatch: Batch = {
-      id: defaultBatchId(newCourse.id),
-      code: `BAT-${Date.now().toString().slice(-4)}`,
-      name: `${newCourse.name} - Batch 1`,
-      courseId: newCourse.id,
-      courseName: newCourse.name,
-      subjects: [],
-      facultyName: '',
-      classroom: '',
-      scheduleDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-      startTime: '04:30 PM',
-      endTime: '07:45 PM',
-      maxCapacity: 30,
-      enrolledCount: 0,
-      status: 'ongoing'
-    };
-    setBatches(prev => [...prev, firstBatch]);
+    // A program never gets a batch behind the back of the person: batches are made in the admission form or in Batches.
     return newCourse;
   };
 

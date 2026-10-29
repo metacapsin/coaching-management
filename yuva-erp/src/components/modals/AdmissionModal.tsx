@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useEscape } from '../ui/useEscape';
-import { useInstitute, DEFAULT_PHOTO, defaultBatchId } from '../../Context/InstituteContext';
+import { useInstitute, DEFAULT_PHOTO } from '../../Context/InstituteContext';
 import type { PaymentMethod, Student } from '../../types';
 import { resizeImageToDataUrl } from '../utils/Imageutils';
 import { normalizePhone, toLocalISODate } from '../utils/helpers';
@@ -132,11 +132,10 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
       standardFee: fee,
       description: ''
     });
-    // the first program of a coaching comes with its first batch; for a later program the batch is written right here
-    const firstOne = batches.length === 0;
-    setFormData(prev => ({ ...prev, courseId: course.id, batchId: firstOne ? defaultBatchId(course.id) : '', totalFees: course.standardFee, targetExam: course.name }));
+    // the batch of the new program is written right here (the name is suggested), so exactly the batch the person saves is made
+    setFormData(prev => ({ ...prev, courseId: course.id, batchId: '', totalFees: course.standardFee, targetExam: course.name }));
     setNewProgram(null);
-    if (!firstOne) setNewBatch({ name: `${name} - Batch 1`, seats: '30' });
+    setNewBatch({ name: `${name} - Batch 1`, seats: '30' });
     setQuickError('');
   };
 

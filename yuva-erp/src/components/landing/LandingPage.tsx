@@ -79,7 +79,7 @@ const WHY_TABS: { id: string; label: string; title: string; text: string; points
 
 const STEPS = [
   { n: '01', title: 'Register your coaching', text: 'Send a request from the sign in page with the name of your coaching and the principal. The Super Admin approves it.' },
-  { n: '02', title: 'Add programs and batches', text: 'Write down your programs with their fees. Every program starts with a first batch, so you can admit students at once.' },
+  { n: '02', title: 'Add programs and batches', text: 'Write down your programs with their fees. Add a batch to a program while you admit the first student, or in Batches.' },
   { n: '03', title: 'Admit students and add teachers', text: 'Admission gives the student a login. Add teachers, front desk staff and the parents of your students.' },
   { n: '04', title: 'Run the day', text: 'Attendance, fees, tests, notices and study material, with reports and reminders for every month.' }
 ];
