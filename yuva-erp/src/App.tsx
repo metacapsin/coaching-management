@@ -23,7 +23,7 @@ import { NoticesView } from './components/views/NoticesView';
 import { MaterialView } from './components/views/MaterialView';
 import { ReportsView } from './components/views/ReportsView';
 import { ExpensesView } from './components/views/ExpensesView';
-import { FacilitiesView } from './components/views/FacilitiesView';
+import { LibraryView } from './components/views/LibraryView';
 import { TeamView } from './components/views/Teamview';
 import { StudentPortalView } from './components/views/Studentportalview';
 import { TeacherHomeView } from './components/views/Teacherhomeview';
@@ -61,7 +61,7 @@ import {
   BookOpen,
   BarChart3,
   Wallet,
-  Building2
+  Library
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { FeeTransaction, Student } from './types';
@@ -127,9 +127,9 @@ function MainApp() {
     { id: 'notifications', label: 'Parent Broadcasts', icon: Bell, badge: notificationLogs.length },
     { id: 'notices', label: 'Notice Board', icon: Megaphone },
     { id: 'material', label: role === 'student' ? 'Study Material' : 'Study Material & Homework', icon: BookOpen },
+    { id: 'library', label: 'Library', icon: Library },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
     { id: 'expenses', label: 'Expenses & Profit', icon: Wallet },
-    { id: 'facilities', label: 'Library, Transport, Hostel', icon: Building2 },
     { id: 'team', label: role === 'admin' ? 'Team & Access' : 'My Account', icon: ShieldCheck },
     { id: 'settings', label: 'Institute Profile', icon: Settings }
   ];
@@ -206,8 +206,8 @@ function MainApp() {
         return <ReportsView />;
       case 'expenses':
         return <ExpensesView />;
-      case 'facilities':
-        return <FacilitiesView />;
+      case 'library':
+        return <LibraryView />;
       case 'team':
         return <TeamView addTeacherSignal={addTeacherSignal} />;
       case 'settings':

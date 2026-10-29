@@ -44,7 +44,7 @@ const TAB_META: Record<TabId, { title: string; subtitle: string }> = {
   material: { title: 'Study Material', subtitle: 'Notes, links and homework by batch' },
   reports: { title: 'Reports', subtitle: 'Fees, attendance, results and admissions' },
   expenses: { title: 'Expenses & Profit', subtitle: 'What the coaching spends and what is left' },
-  facilities: { title: 'Library, Transport, Hostel', subtitle: 'Books, bus routes and hostel rooms' }
+  library: { title: 'Library', subtitle: 'Books to read online' }
 };
 
 const SEEN_KEY = 'academia_os_notif_seen_v1';

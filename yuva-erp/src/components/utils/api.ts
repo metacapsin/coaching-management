@@ -9,7 +9,6 @@ import type {
   Exam,
   Expense,
   FeeTransaction,
-  HostelRoom,
   InstituteProfile,
   NotificationLog,
   NotificationTemplate,
@@ -17,8 +16,7 @@ import type {
   Student,
   StudyMaterial,
   Submission,
-  TimetableSlot,
-  TransportRoute
+  TimetableSlot
 } from '../../types';
 import type { UserRole } from '../../Context/Access';
 
@@ -61,8 +59,6 @@ export interface InstituteData {
   expenses?: Expense[];
   salaries?: Salary[];
   books?: Book[];
-  transportRoutes?: TransportRoute[];
-  hostelRooms?: HostelRoom[];
   submissions?: Submission[];
   announcements?: Announcement[];
   materials?: StudyMaterial[];

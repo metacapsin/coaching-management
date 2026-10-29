@@ -41,10 +41,8 @@ Which modules are complete, which screens (UI) exist, what is still missing, and
 | 24 | **Logo** of the coaching (side menu, receipts, report cards) | `SettingsView.tsx`, `OrgLogo.tsx` | profile in `PUT /api/institute` | browser |
 | 25 | **Automatic daily fee reminders** (queue, once a day) | Institute Profile checkbox, `InstituteContext.tsx` | message queue | browser |
 | 26 | **Change own login email** (all roles) | `ChangeEmailForm.tsx` | `POST /api/auth/change-email` | tests + browser |
-| 27 | **Automatic screen tests** (login page, theme, pager, pop-up, access rules, helpers, facilities) | `src/test/` | `npm run test:ui` | 24 tests |
-| 28 | **Library** (books, copies, issue / return, overdue) | `FacilitiesView.tsx` (tab Library) | `PUT /api/institute`, list `books` | tests + browser |
-| 29 | **Transport** (bus routes, driver, stops, riders, monthly bus fee) | `FacilitiesView.tsx` (tab Transport) | `PUT /api/institute`, list `transportRoutes` | tests + browser |
-| 30 | **Hostel** (rooms, beds, residents, rent) | `FacilitiesView.tsx` (tab Hostel) | `PUT /api/institute`, list `hostelRooms` | tests + browser |
+| 27 | **Automatic screen tests** (login page, theme, pager, pop-up, access rules, helpers, library) | `src/test/` | `npm run test:ui` | 24 tests |
+| 28 | **Library** (books shared with a link; everybody reads, the office adds) | `LibraryView.tsx` | `PUT /api/institute`, list `books` | tests + browser |
 
 ## 2. Not built / still missing
 

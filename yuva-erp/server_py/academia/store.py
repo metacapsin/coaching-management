@@ -12,7 +12,7 @@ Collections (in the database named by MONGODB_DB):
   meta         "version" (counts every change), "profile" (institute profile), "present" (which lists exist)
   audit        the activity log
   courses, batches, students, attendance, transactions, exams, timetable, templates, notificationLogs,
-  enquiries, announcements, materials, expenses, salaries, books, transportRoutes, hostelRooms
+  enquiries, announcements, materials, expenses, salaries, books
                one document per record (_id = record id); "_pos" keeps the order of the list
   photos       student photos (_id = student id), kept apart so the data stays small
   backups      automatic and manual snapshots of the data (compressed)
@@ -44,9 +44,7 @@ LISTS = [
     'materials',
     'expenses',
     'salaries',  # who gets how much every month (principal only)
-    'books',  # library: books and who borrowed them
-    'transportRoutes',  # bus routes with the students who use them
-    'hostelRooms',  # hostel rooms with the students who stay in them
+    'books',  # the library: books the institute shares to read online (everybody reads)
     'submissions',  # homework marked as done: written only by the students themselves
 ]
 

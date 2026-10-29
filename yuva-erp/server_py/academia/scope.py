@@ -68,9 +68,7 @@ def scope_institute(user, store):
             'enquiries': [],
             'expenses': [],
             'salaries': [],
-            'books': [],
-            'transportRoutes': [],
-            'hostelRooms': [],
+            'books': store.find('books'),
             'announcements': store.find('announcements', {'$or': [{'audience': 'all'}, {'batchId': {'$in': ids}}]}),
             'materials': store.find('materials', {'batchId': {'$in': ids}}),
             'submissions': store.find(
@@ -95,8 +93,6 @@ def scope_institute(user, store):
         'expenses': [],
         'salaries': [],
         'books': [],
-        'transportRoutes': [],
-        'hostelRooms': [],
         'announcements': [],
         'materials': [],
         'submissions': [],
@@ -151,6 +147,7 @@ def scope_institute(user, store):
         'notificationLogs': logs,
         'announcements': store.find('announcements', {'$or': [{'audience': 'all'}, {'batchId': me.get('batchId')}]}),
         'materials': store.find('materials', {'batchId': me.get('batchId')}),
+        'books': store.find('books'),
         'submissions': store.find('submissions', {'studentId': me['id']}),
     }
 

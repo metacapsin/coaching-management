@@ -12,7 +12,7 @@ export type TabId =
   | 'material'
   | 'reports'
   | 'expenses'
-  | 'facilities'
+  | 'library'
   | 'notifications'
   | 'team'
   | 'settings';
@@ -35,7 +35,7 @@ export const ROLE_TABS: Record<UserRole, TabId[]> = {
     'material',
     'reports',
     'expenses',
-    'facilities',
+    'library',
     'notifications',
     'team',
     'settings'
@@ -52,14 +52,14 @@ export const ROLE_TABS: Record<UserRole, TabId[]> = {
     'notices',
     'material',
     'reports',
-    'facilities',
+    'library',
     'notifications',
     'team'
   ],
   // Teacher: own dashboard + own batches only (the server sends only their data)
-  teacher: ['dashboard', 'attendance', 'exams', 'notices', 'material', 'team'],
+  teacher: ['dashboard', 'attendance', 'exams', 'notices', 'material', 'library', 'team'],
   // Student: own portal, notices and study material of the batch
-  student: ['dashboard', 'notices', 'material', 'team']
+  student: ['dashboard', 'notices', 'material', 'library', 'team']
 };
 
 export const canAccessTab = (role: UserRole | undefined, tab: TabId) =>

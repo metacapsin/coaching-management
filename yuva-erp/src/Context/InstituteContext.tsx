@@ -23,8 +23,6 @@ import type {
   Expense,
   Salary,
   Book,
-  TransportRoute,
-  HostelRoom,
   Announcement,
   StudyMaterial,
   Submission
@@ -44,8 +42,6 @@ import {
   initialExpenses,
   initialSalaries,
   initialBooks,
-  initialTransportRoutes,
-  initialHostelRooms,
   initialAnnouncements,
   initialMaterials
 } from '../data/mockData';
@@ -87,8 +83,6 @@ type ListKey =
   | 'expenses'
   | 'salaries'
   | 'books'
-  | 'transportRoutes'
-  | 'hostelRooms'
   | 'announcements'
   | 'materials';
 
@@ -106,8 +100,6 @@ const LIST_KEYS: ListKey[] = [
   'expenses',
   'salaries',
   'books',
-  'transportRoutes',
-  'hostelRooms',
   'announcements',
   'materials'
 ];
@@ -137,8 +129,6 @@ interface Values {
   expenses: Expense[];
   salaries: Salary[];
   books: Book[];
-  transportRoutes: TransportRoute[];
-  hostelRooms: HostelRoom[];
   announcements: Announcement[];
   materials: StudyMaterial[];
 }
@@ -196,8 +186,6 @@ interface InstituteContextType {
   expenses: Expense[];
   salaries: Salary[];
   books: Book[];
-  transportRoutes: TransportRoute[];
-  hostelRooms: HostelRoom[];
   announcements: Announcement[];
   materials: StudyMaterial[];
   submissions: Submission[]; // homework marked as done (read only here; a student marks it with markHomework)
@@ -271,16 +259,10 @@ interface InstituteContextType {
   // Pays one person for a month: writes the expense and remembers the month
   paySalary: (id: string, month: string) => void;
 
-  // Library, transport and hostel
-  addBook: (book: Omit<Book, 'id' | 'issues'>) => Book;
+  // Library (books to read online)
+  addBook: (book: Omit<Book, 'id'>) => Book;
   updateBook: (id: string, updated: Partial<Omit<Book, 'id'>>) => void;
   deleteBook: (id: string) => void;
-  addTransportRoute: (route: Omit<TransportRoute, 'id'>) => TransportRoute;
-  updateTransportRoute: (id: string, updated: Partial<Omit<TransportRoute, 'id'>>) => void;
-  deleteTransportRoute: (id: string) => void;
-  addHostelRoom: (room: Omit<HostelRoom, 'id'>) => HostelRoom;
-  updateHostelRoom: (id: string, updated: Partial<Omit<HostelRoom, 'id'>>) => void;
-  deleteHostelRoom: (id: string) => void;
 
   // Notice actions
   addAnnouncement: (notice: Omit<Announcement, 'id' | 'createdAt' | 'authorId' | 'authorName'>) => Announcement;
@@ -344,8 +326,6 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
   const [salaries, setSalaries] = useState<Salary[]>(initialSalaries);
   const [books, setBooks] = useState<Book[]>(initialBooks);
-  const [transportRoutes, setTransportRoutes] = useState<TransportRoute[]>(initialTransportRoutes);
-  const [hostelRooms, setHostelRooms] = useState<HostelRoom[]>(initialHostelRooms);
   const [announcements, setAnnouncements] = useState<Announcement[]>(initialAnnouncements);
   const [materials, setMaterials] = useState<StudyMaterial[]>(initialMaterials);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
@@ -365,8 +345,6 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     expenses,
     salaries,
     books,
-    transportRoutes,
-    hostelRooms,
     announcements,
     materials
   };
@@ -396,8 +374,6 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     { const list = data.expenses ?? []; setExpenses(list); mark('expenses', list); }
     { const list = data.salaries ?? []; setSalaries(list); mark('salaries', list); }
     { const list = data.books ?? []; setBooks(list); mark('books', list); }
-    { const list = data.transportRoutes ?? []; setTransportRoutes(list); mark('transportRoutes', list); }
-    { const list = data.hostelRooms ?? []; setHostelRooms(list); mark('hostelRooms', list); }
     { const list = data.announcements ?? []; setAnnouncements(list); mark('announcements', list); }
     { const list = data.materials ?? []; setMaterials(list); mark('materials', list); }
     if (data.submissions !== undefined) setSubmissions(data.submissions); // never pushed back: the server owns it
@@ -485,7 +461,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (pushTimer.current) clearTimeout(pushTimer.current);
     pushTimer.current = setTimeout(flush, 300);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, onboarding, profile, courses, batches, students, attendance, transactions, exams, timetable, templates, notificationLogs, enquiries, expenses, salaries, books, transportRoutes, hostelRooms, announcements, materials]);
+  }, [ready, onboarding, profile, courses, batches, students, attendance, transactions, exams, timetable, templates, notificationLogs, enquiries, expenses, salaries, books, announcements, materials]);
 
   // Signing out sends changes that are still waiting
   useEffect(
@@ -869,33 +845,15 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     updateSalary(id, { lastPaidMonth: month });
   };
 
-  // ----- library, transport, hostel (office work: the principal and the front desk) -----
+  // ----- library (the principal and the front desk add the books; everybody reads) -----
 
-  const addBook = (data: Omit<Book, 'id' | 'issues'>) => {
-    const book: Book = { ...data, id: uid('book'), issues: [] };
+  const addBook = (data: Omit<Book, 'id'>) => {
+    const book: Book = { ...data, id: uid('book') };
     setBooks(prev => [book, ...prev]);
     return book;
   };
   const updateBook = (id: string, updated: Partial<Omit<Book, 'id'>>) => setBooks(prev => prev.map(b => (b.id === id ? { ...b, ...updated } : b)));
   const deleteBook = (id: string) => setBooks(prev => prev.filter(b => b.id !== id));
-
-  const addTransportRoute = (data: Omit<TransportRoute, 'id'>) => {
-    const route: TransportRoute = { ...data, id: uid('route') };
-    setTransportRoutes(prev => [route, ...prev]);
-    return route;
-  };
-  const updateTransportRoute = (id: string, updated: Partial<Omit<TransportRoute, 'id'>>) =>
-    setTransportRoutes(prev => prev.map(r => (r.id === id ? { ...r, ...updated } : r)));
-  const deleteTransportRoute = (id: string) => setTransportRoutes(prev => prev.filter(r => r.id !== id));
-
-  const addHostelRoom = (data: Omit<HostelRoom, 'id'>) => {
-    const room: HostelRoom = { ...data, id: uid('room') };
-    setHostelRooms(prev => [room, ...prev]);
-    return room;
-  };
-  const updateHostelRoom = (id: string, updated: Partial<Omit<HostelRoom, 'id'>>) =>
-    setHostelRooms(prev => prev.map(r => (r.id === id ? { ...r, ...updated } : r)));
-  const deleteHostelRoom = (id: string) => setHostelRooms(prev => prev.filter(r => r.id !== id));
 
   // ----- homework done (the student's mark goes to its own route, not through the data sync) -----
 
@@ -1017,8 +975,6 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setExpenses(initialExpenses);
     setSalaries(initialSalaries);
     setBooks(initialBooks);
-    setTransportRoutes(initialTransportRoutes);
-    setHostelRooms(initialHostelRooms);
     setAnnouncements(initialAnnouncements);
     setMaterials(initialMaterials);
   };
@@ -1037,8 +993,6 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setExpenses([]);
     setSalaries([]);
     setBooks([]);
-    setTransportRoutes([]);
-    setHostelRooms([]);
     setAnnouncements([]);
     setMaterials([]);
   };
@@ -1115,8 +1069,6 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         expenses,
         salaries,
         books,
-        transportRoutes,
-        hostelRooms,
         announcements,
         materials,
         submissions,
@@ -1156,12 +1108,6 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         addBook,
         updateBook,
         deleteBook,
-        addTransportRoute,
-        updateTransportRoute,
-        deleteTransportRoute,
-        addHostelRoom,
-        updateHostelRoom,
-        deleteHostelRoom,
         markHomework,
         addAnnouncement,
         updateAnnouncement,
