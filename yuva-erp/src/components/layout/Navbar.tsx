@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useAuth, accountLabel } from '../../Context/AuthContext';
 import { ThemeToggle } from '../ui/ThemeToggle';
+import { LangToggle, useLang } from '../../i18n/LangContext';
 import { downloadFromServer } from '../utils/api';
 import { canManageInstitute } from '../../Context/Access';
 import type { TabId } from '../../Context/Access';
@@ -102,6 +103,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const bellRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
+  const { t } = useLang();
   const meta =
     activeTab === 'dashboard' && user?.role === 'student'
       ? { title: 'My Portal', subtitle: 'Your attendance, fees, results and timetable' }
@@ -233,8 +235,8 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="flex items-center gap-3 px-4 sm:px-6 lg:px-8 h-16">
         {/* Page title */}
         <div className="hidden md:block min-w-0 mr-2 shrink-0 max-w-56">
-          <h2 className="text-sm font-bold text-slate-900 truncate leading-tight">{meta.title}</h2>
-          <p className="text-[11px] text-slate-500 truncate">{meta.subtitle}</p>
+          <h2 className="text-sm font-bold text-slate-900 truncate leading-tight">{t(meta.title)}</h2>
+          <p className="text-[11px] text-slate-500 truncate">{t(meta.subtitle)}</p>
         </div>
 
         {/* Global student search */}
@@ -323,6 +325,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Right side actions */}
         <div className="ml-auto flex items-center gap-2 sm:gap-3 shrink-0">
+          <LangToggle className="text-slate-600" />
           <ThemeToggle />
 
           {/* Save status */}

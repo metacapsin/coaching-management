@@ -619,7 +619,9 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       id: uid('c')
     };
     setCourses(prev => [...prev, newCourse]);
-    // A new program starts with one batch ("Batch 1"), so a student can be admitted at once. More batches can be added later.
+    // The very first program of a coaching starts with one batch ("Batch 1"), so a student can be admitted at once. Later
+    // programs do not get a batch behind the back of the person: it is made in the admission form or in Batches.
+    if (batches.length > 0) return newCourse;
     const firstBatch: Batch = {
       id: defaultBatchId(newCourse.id),
       code: `BAT-${Date.now().toString().slice(-4)}`,

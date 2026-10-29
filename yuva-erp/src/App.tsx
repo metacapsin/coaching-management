@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { InstituteProvider, useInstitute } from './Context/InstituteContext';
 import { AuthProvider, useAuth, roleLabel, accountLabel } from './Context/AuthContext';
 import { canAccessTab, canManageInstitute } from './Context/Access';
+import { useLang } from './i18n/LangContext';
 import type { TabId } from './Context/Access';
 import { hasSuperSession, useSyncStatus } from './components/utils/api';
 import { tabPath, useTabRoute } from './components/utils/useTabRoute';
@@ -70,6 +71,7 @@ import { FeeTransaction, Student } from './types';
 function MainApp() {
   const { profile, students, transactions, notificationLogs } = useInstitute();
   const { user, signOut } = useAuth();
+  const { t } = useLang();
 
   const role = user?.role;
   const syncStatus = useSyncStatus();
@@ -312,7 +314,7 @@ function MainApp() {
                 >
                   <div className="flex items-center gap-2.5">
                     <Icon className={`w-4 h-4 ${isActive ? 'text-blue-400' : 'text-slate-400'}`} />
-                    <span>{item.label}</span>
+                    <span>{t(item.label)}</span>
                   </div>
 
                   {isManager && typeof item.badge === 'number' && item.badge > 0 && (

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { PasswordInput } from '../ui/PasswordInput';
 import { useAuth } from '../../Context/AuthContext';
+import { useLang } from '../../i18n/LangContext';
 import type { Portal } from '../../Context/AuthContext';
 import { ApiError, requestPasswordReset, resetSuperPassword } from '../utils/api';
 import { RegisterCoachingForm } from './CoachingForms';
@@ -24,6 +25,7 @@ import type { LucideIcon } from 'lucide-react';
 
 // "Forgot your password?": tells the principal, who then sets a new password in Team & Access
 const ForgotPassword: React.FC<{ initialEmail: string }> = ({ initialEmail }) => {
+  const { t } = useLang();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState(initialEmail);
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
@@ -43,7 +45,7 @@ const ForgotPassword: React.FC<{ initialEmail: string }> = ({ initialEmail }) =>
   if (!open) {
     return (
       <button type="button" onClick={() => setOpen(true)} className="mt-4 w-full text-xs font-medium text-blue-600 hover:underline">
-        Forgot your password?
+        {t('Forgot your password?')}
       </button>
     );
   }
@@ -84,6 +86,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // "Forgot your password?" of the Super Admin. Nobody is above the Super Admin, so the new password is set right here,
 // and the server accepts it only from the server computer itself (like creating the Super Admin).
 const SuperForgotPassword: React.FC<{ initialEmail: string }> = ({ initialEmail }) => {
+  const { t } = useLang();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
@@ -112,7 +115,7 @@ const SuperForgotPassword: React.FC<{ initialEmail: string }> = ({ initialEmail 
   if (!open) {
     return (
       <button type="button" onClick={() => setOpen(true)} className="mt-4 w-full text-xs font-medium text-blue-600 hover:underline">
-        Forgot your password?
+        {t('Forgot your password?')}
       </button>
     );
   }
@@ -190,16 +193,18 @@ const Field: React.FC<{
   autoComplete?: string;
   inputMode?: 'text' | 'tel' | 'email';
   right?: React.ReactNode;
-}> = ({ label, icon: Icon, value, onChange, error, type = 'text', placeholder, autoComplete, inputMode, right }) => (
+}> = ({ label, icon: Icon, value, onChange, error, type = 'text', placeholder, autoComplete, inputMode, right }) => {
+  const { t } = useLang();
+  return (
   <div>
-    <label className="block text-xs font-medium text-slate-700 mb-1">{label}</label>
+    <label className="block text-xs font-medium text-slate-700 mb-1">{t(label)}</label>
     <div className="relative">
       <Icon className="w-4 h-4 absolute left-3 top-3 text-slate-400 pointer-events-none" />
       <input
         type={type}
         inputMode={inputMode}
         autoComplete={autoComplete}
-        placeholder={placeholder}
+        placeholder={placeholder ? t(placeholder) : placeholder}
         value={value}
         onChange={e => onChange(e.target.value)}
         className={`w-full pl-9 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
@@ -208,14 +213,16 @@ const Field: React.FC<{
       />
       {right}
     </div>
-    {error && <p className="text-xs text-rose-600 mt-1">{error}</p>}
+    {error && <p className="text-xs text-rose-600 mt-1">{t(error)}</p>}
   </div>
-);
+  );
+};
 
 // `embedded`: the form is part of the website (no side panel, no full page of its own)
 // `registerSignal`: each time it grows, the form opens on "Register your coaching" (the "Add coaching" button of the website)
 export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }> = ({ embedded = false, registerSignal = 0 }) => {
   const { signIn, signUp, hasSuper } = useAuth();
+  const { t } = useLang();
 
   // Without a Super Admin the page starts on the Super Admin tab, to create it first
   const [portal, setPortal] = useState<Portal>(hasSuper ? 'admin' : 'super');
@@ -370,16 +377,16 @@ export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }>
           {React.createElement(
             embedded ? 'h2' : 'h1',
             { className: 'text-2xl font-bold tracking-tight text-slate-900' },
-            createSuper ? 'Create the Super Admin' : registering ? 'Register your coaching' : memberSignup ? 'Create your account' : 'Welcome back'
+            t(createSuper ? 'Create the Super Admin' : registering ? 'Register your coaching' : memberSignup ? 'Create your account' : 'Welcome back')
           )}
           <p className="text-sm text-slate-500 mt-1">
             {createSuper
               ? 'The Super Admin approves coachings. Create this account first (only once).'
               : registering
-              ? 'The Super Admin checks your request. After approval you sign in here as Coaching Admin.'
+              ? t('The Super Admin checks your request. After approval you sign in here as Coaching Admin.')
               : memberSignup
-              ? 'For teachers and students. Choose your coaching first.'
-              : `Sign in as ${activePortal.label} to continue.`}
+              ? t('For teachers and students. Choose your coaching first.')
+              : t('Sign in as {x} to continue.').replace('{x}', t(activePortal.label))}
           </p>
 
           {/* The two logins */}
@@ -396,12 +403,12 @@ export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }>
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
-                  {p.label}
+                  {t(p.label)}
                 </button>
               );
             })}
           </div>
-          <p className="mt-2 text-[11px] text-slate-400 text-center">{activePortal.blurb}</p>
+          <p className="mt-2 text-[11px] text-slate-400 text-center">{t(activePortal.blurb)}</p>
 
           {createSuper && (
             <div className="mt-5 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900 flex items-start gap-2">
@@ -501,7 +508,7 @@ export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }>
                     onChange={e => setRemember(e.target.checked)}
                     className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
                   />
-                  <span className="text-xs text-slate-700">Keep me signed in on this device</span>
+                  <span className="text-xs text-slate-700">{t('Keep me signed in on this device')}</span>
                 </label>
               )}
 
@@ -513,12 +520,12 @@ export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }>
                 {submitting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Please wait...
+                    {t('Please wait...')}
                   </>
                 ) : createSuper ? (
                   'Create Super Admin Account'
                 ) : (
-                  `Sign In as ${activePortal.label}`
+                  t('Sign In as {x}').replace('{x}', t(activePortal.label))
                 )}
               </button>
             </form>
@@ -526,18 +533,18 @@ export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }>
 
           {portal === 'admin' && !registering && (
             <div className="mt-5 text-sm text-slate-600 text-center">
-              New coaching?{' '}
+              {t('New coaching?')}{' '}
               <button type="button" onClick={() => setRegistering(true)} className="font-semibold text-blue-600 hover:underline">
-                Register your coaching
+                {t('Register your coaching')}
               </button>
             </div>
           )}
 
           {portal === 'member' && !memberSignup && (
             <div className="mt-5 text-sm text-slate-600 text-center">
-              New teacher or student?{' '}
+              {t('New teacher or student?')}{' '}
               <button type="button" onClick={() => setMemberSignup(true)} className="font-semibold text-blue-600 hover:underline">
-                Create an account
+                {t('Create an account')}
               </button>
             </div>
           )}
@@ -546,7 +553,7 @@ export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }>
           {portal !== 'super' && !registering && !memberSignup && <ForgotPassword initialEmail={email} />}
 
           <p className="mt-6 text-[11px] text-slate-400 text-center leading-relaxed">
-            Your account and data are stored on the institute's server.
+            {t("Your account and data are stored on the institute's server.")}
           </p>
         </div>
       </div>

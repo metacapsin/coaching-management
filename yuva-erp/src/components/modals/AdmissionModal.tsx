@@ -132,8 +132,11 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
       standardFee: fee,
       description: ''
     });
-    setFormData(prev => ({ ...prev, courseId: course.id, batchId: defaultBatchId(course.id), totalFees: course.standardFee, targetExam: course.name }));
+    // the first program of a coaching comes with its first batch; for a later program the batch is written right here
+    const firstOne = batches.length === 0;
+    setFormData(prev => ({ ...prev, courseId: course.id, batchId: firstOne ? defaultBatchId(course.id) : '', totalFees: course.standardFee, targetExam: course.name }));
     setNewProgram(null);
+    if (!firstOne) setNewBatch({ name: `${name} - Batch 1`, seats: '30' });
     setQuickError('');
   };
 

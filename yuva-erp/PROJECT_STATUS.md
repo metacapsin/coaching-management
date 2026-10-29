@@ -90,3 +90,14 @@ Every other route is about accounts, coachings, backups and photos:
 | Backend start | `server_py/run.py` |
 | Backend code | `server_py/academia/` (`routes.py`, `store.py`, `scope.py`, `auth.py`) |
 | Tests | `server_py/tests/test_api.py` (run `npm test`) |
+
+## Website extras
+
+| What | Where |
+| --- | --- |
+| Contact (email, phone, address) in the footer, real customer quotes, list of app screenshots | `src/data/siteInfo.ts` (empty fields are not shown; no quotes = no testimonial section) |
+| Screenshots of the real app (sample data) | `public/screens/*.png`, shown as a gallery on the website |
+| Slider ("A day in your coaching", gallery, testimonials) | `src/components/landing/Carousel.tsx` |
+| Hindi / English button | `src/i18n/LangContext.tsx`, Hindi text in `src/i18n/hi.ts` (English text is the key; a missing Hindi text shows the English one) |
+
+Hindi covers the website, the sign in and register forms, the side menu and the page titles. The inside of each module (forms, tables, buttons) is still English.

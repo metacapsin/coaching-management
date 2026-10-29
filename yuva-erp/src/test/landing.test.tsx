@@ -6,6 +6,7 @@ const auth = { signIn: vi.fn(), signUp: vi.fn(), registerStudent: vi.fn(), regis
 vi.mock('../Context/AuthContext', () => ({ useAuth: () => auth }));
 
 import { LandingPage } from '../components/landing/LandingPage';
+import { LangProvider } from '../i18n/LangContext';
 
 afterEach(cleanup);
 
@@ -106,5 +107,36 @@ describe('the public website', () => {
     expect(form.queryByRole('heading', { name: 'Register your coaching' })).toBeNull();
     fireEvent.click(screen.getAllByRole('button', { name: 'Add coaching' })[0]);
     expect(form.getByRole('heading', { name: 'Register your coaching' })).not.toBeNull();
+  });
+
+  it('the language button turns the page into Hindi and back, and the choice is remembered', () => {
+    localStorage.removeItem('academiaos.lang');
+    render(
+      <LangProvider>
+        <LandingPage />
+      </LangProvider>
+    );
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('Run your whole coaching');
+    fireEvent.click(screen.getByRole('button', { name: 'हिंदी में देखें' }));
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('अपनी पूरी कोचिंग चलाएँ');
+    expect(screen.getByRole('button', { name: 'सुपर एडमिन' })).not.toBeNull();
+    expect(localStorage.getItem('academiaos.lang')).toBe('hi');
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to English' }));
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('Run your whole coaching');
+    localStorage.removeItem('academiaos.lang');
+  });
+
+  it('the slider of a day moves with the arrows, and the gallery shows the screens of the app', () => {
+    render(<LandingPage />);
+    const day = screen.getByRole('group', { name: 'A day in your coaching' });
+    expect(within(day).getByText('Morning: the roll call')).not.toBeNull();
+    fireEvent.click(within(day).getByRole('button', { name: 'Next' }));
+    expect(within(day).getByText('Noon: new admissions')).not.toBeNull();
+    fireEvent.click(within(day).getByRole('button', { name: 'Previous' }));
+    expect(within(day).getByText('Morning: the roll call')).not.toBeNull();
+    const gallery = screen.getByRole('group', { name: 'See the real app' });
+    expect(gallery.querySelector('img')?.getAttribute('src')).toBe('/screens/dashboard.png');
+    // no real customer words yet: no invented ones are shown
+    expect(screen.queryByText('What coachings say')).toBeNull();
   });
 });

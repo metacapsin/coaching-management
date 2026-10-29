@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowUp, CalendarCheck } from 'lucide-react';
+import { useLang } from '../../i18n/LangContext';
 
 // The movement of the website: things rise into place when they come into view, numbers count up, the top of the page
 // changes its message by itself, and two small buttons float at the corners.
@@ -82,6 +83,7 @@ export const useTicker = (onTick: () => void, ms: number, paused: boolean) => {
 
 // The round "up" button (after some scrolling) and the "Book a demo" pill, both floating at the corners
 export const FloatingButtons: React.FC = () => {
+  const { t } = useLang();
   const [far, setFar] = useState(false);
   useEffect(() => {
     const onScroll = () => setFar(window.scrollY > 520);
@@ -94,7 +96,7 @@ export const FloatingButtons: React.FC = () => {
       {far && (
         <a
           href="#top"
-          aria-label="Back to the top"
+          aria-label={t('Back to the top')}
           className="lp-pop fixed bottom-5 left-4 z-30 w-12 h-12 rounded-full bg-sky-500 hover:bg-sky-400 text-white flex items-center justify-center shadow-lg shadow-black/40 transition-colors"
         >
           <ArrowUp className="w-5 h-5" />
@@ -105,7 +107,7 @@ export const FloatingButtons: React.FC = () => {
         className="lp-pulse fixed bottom-5 right-4 z-30 px-4 py-3 rounded-full bg-sky-400 hover:bg-sky-300 text-slate-900 text-sm font-semibold flex items-center gap-2 shadow-lg shadow-black/40 transition-colors"
       >
         <CalendarCheck className="w-4 h-4" />
-        Book a demo
+        {t('Book a demo')}
       </a>
     </>
   );

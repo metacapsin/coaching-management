@@ -23,6 +23,9 @@ import {
 } from 'lucide-react';
 import { DemoRequestForm } from './DemoRequestForm';
 import { AuthPage } from '../auth/AuthPage';
+import { Carousel } from './Carousel';
+import { LangToggle, useLang } from '../../i18n/LangContext';
+import { SITE_INFO, SCREENSHOTS, TESTIMONIALS } from '../../data/siteInfo';
 import { CountUp, FloatingButtons, Reveal, prefersReducedMotion, useTicker } from './LandingMotion';
 
 // The public website of AcademiaOS: what it is, how it works, who uses it. It is shown before sign in.
@@ -125,39 +128,23 @@ const FAQ: { q: string; a: string }[] = [
 ];
 
 // The top of the page changes its message by itself (the first one is the main one)
-const HERO_SLIDES: { title: React.ReactNode; text: string }[] = [
+const HERO_SLIDES: { a: string; b: string; text: string }[] = [
   {
-    title: (
-      <>
-        Run your whole coaching <span className="text-sky-400">from one place</span>
-      </>
-    ),
+    a: 'Run your whole coaching ',
+    b: 'from one place',
     text: 'Admissions, fees, attendance, tests, notices and reports for the principal, the teachers, the students and their parents. One platform for every coaching of your area.'
   },
-  {
-    title: (
-      <>
-        Take the roll call <span className="text-sky-400">in a minute</span>
-      </>
-    ),
-    text: 'Mark a batch or all students at once, note who is late, and prepare the message for the parent of an absent student.'
-  },
-  {
-    title: (
-      <>
-        Fees and receipts <span className="text-sky-400">without a register</span>
-      </>
-    ),
-    text: 'Collect the fee, print a numbered receipt, and see at a glance who still has to pay.'
-  },
-  {
-    title: (
-      <>
-        Every coaching’s data <span className="text-sky-400">stays its own</span>
-      </>
-    ),
-    text: 'Separate data for each coaching, roles checked by the server on every request, and a backup every day.'
-  }
+  { a: 'Take the roll call ', b: 'in a minute', text: 'Mark a batch or all students at once, note who is late, and prepare the message for the parent of an absent student.' },
+  { a: 'Fees and receipts ', b: 'without a register', text: 'Collect the fee, print a numbered receipt, and see at a glance who still has to pay.' },
+  { a: 'Every coaching’s data ', b: 'stays its own', text: 'Separate data for each coaching, roles checked by the server on every request, and a backup every day.' }
+];
+
+const DAY: { title: string; text: string }[] = [
+  { title: 'Morning: the roll call', text: 'The teacher opens the batch on a phone and marks who is present. The parent of an absent student gets a message ready to send.' },
+  { title: 'Noon: new admissions', text: 'The front desk admits a student, takes the first fee and prints the receipt. The student’s login is made in the same step.' },
+  { title: 'Afternoon: tests and marks', text: 'Schedule a test, enter the marks, and the ranks and report cards are ready to print.' },
+  { title: 'Evening: fees and notices', text: 'See who still has to pay, remind them, and send a notice or homework to a batch.' },
+  { title: 'Month end: reports', text: 'Fees collected, expenses, salaries and profit. Download the reports as CSV.' }
 ];
 
 const WHY_CARDS = [
@@ -172,26 +159,30 @@ const Logo: React.FC<{ className?: string }> = ({ className = '' }) => (
     <span className="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center">
       <GraduationCap className="w-5 h-5" />
     </span>
-    <span className="text-xl font-bold tracking-tight text-white">AcademiaOS</span>
+    <span className="hidden min-[360px]:inline text-lg sm:text-xl font-bold tracking-tight text-white">AcademiaOS</span>
   </a>
 );
 
-const SectionHead: React.FC<{ kicker: string; title: React.ReactNode; text?: string }> = ({ kicker, title, text }) => (
+const SectionHead: React.FC<{ kicker: string; title: React.ReactNode; text?: string }> = ({ kicker, title, text }) => {
+  const { t } = useLang();
+  return (
   <Reveal className="text-center max-w-3xl mx-auto mb-10">
-    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-400">{'— '}{kicker}{' —'}</p>
+    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-400">{'— '}{t(kicker)}{' —'}</p>
     <h2 className="text-3xl sm:text-4xl font-bold text-white mt-3 tracking-tight">{title}</h2>
-    {text && <p className="text-sky-100/80 mt-4 leading-relaxed">{text}</p>}
+    {text && <p className="text-sky-100/80 mt-4 leading-relaxed">{t(text)}</p>}
   </Reveal>
-);
+  );
+};
 
 export const LandingPage: React.FC = () => {
+  const { t: tr } = useLang();
   const [menu, setMenu] = useState(false);
   // the "Add coaching" buttons open the registration of a coaching in the form at the top
   const [registerSignal, setRegisterSignal] = useState(0);
   const openRegister = () => {
     setRegisterSignal(n => n + 1);
     setMenu(false);
-    document.getElementById('signin')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    document.getElementById('signin')?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
   };
   const [tab, setTab] = useState(WHY_TABS[0].id);
   const [open, setOpen] = useState<number | null>(0);
@@ -230,18 +221,19 @@ export const LandingPage: React.FC = () => {
     <div id="top" className="theme-keep min-h-screen bg-[#0f1b26] text-slate-200 antialiased font-sans scroll-smooth">
       {/* Top bar */}
       <header className={`sticky top-0 z-40 border-b ${scrolled ? 'bg-[#0f1b26]/95 backdrop-blur border-white/10' : 'bg-[#0f1b26] border-transparent'}`}>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-          <Logo />
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4">
+          <Logo className="shrink-0" />
           <nav className="hidden lg:flex items-center gap-7" aria-label="Main">
             {NAV.map(n => (
               <a key={n.href} href={n.href} className="text-sm text-slate-300 hover:text-white transition-colors">
-                {n.label}
+                {tr(n.label)}
               </a>
             ))}
           </nav>
           <div className="flex items-center gap-2">
-            <button type="button" onClick={openRegister} className="px-3.5 py-2 text-xs sm:text-sm font-semibold text-white bg-[#1565c0] hover:bg-[#0d47a1] rounded-lg transition-colors">
-              Add coaching
+            <LangToggle className="text-slate-200" />
+            <button type="button" onClick={openRegister} className="px-2.5 sm:px-3.5 py-2 text-xs sm:text-sm font-semibold text-white bg-[#1565c0] hover:bg-[#0d47a1] rounded-lg transition-colors">
+              {tr('Add coaching')}
             </button>
             <button onClick={() => setMenu(m => !m)} aria-label={menu ? 'Close menu' : 'Open menu'} className="lg:hidden p-2 rounded-lg text-slate-300 hover:bg-white/10">
               {menu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -252,7 +244,7 @@ export const LandingPage: React.FC = () => {
           <div className="lg:hidden border-t border-white/10 px-4 py-3 space-y-1 bg-[#0f1b26]">
             {NAV.map(n => (
               <a key={n.href} href={n.href} onClick={() => setMenu(false)} className="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-white/10">
-                {n.label}
+                {tr(n.label)}
               </a>
             ))}
           </div>
@@ -267,7 +259,7 @@ export const LandingPage: React.FC = () => {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-16 sm:py-24 grid lg:grid-cols-2 gap-12 items-center">
           <div>
             <span className="inline-block text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-300 bg-sky-400/10 border border-sky-400/20 rounded-full px-3 py-1">
-              Coaching institute management
+              {tr('Coaching institute management')}
             </span>
             <div
               className="min-h-[15.5rem] sm:min-h-[17rem]"
@@ -278,32 +270,27 @@ export const LandingPage: React.FC = () => {
               aria-live="polite"
             >
               <div key={slide} className="lp-slide">
-                <h1 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight mt-5 leading-[1.1]">{hero.title}</h1>
-                <p className="text-lg text-sky-100/80 mt-5 leading-relaxed max-w-xl">{hero.text}</p>
+                <h1 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight mt-5 leading-[1.1]">{tr(hero.a)}<span className="text-sky-400">{tr(hero.b)}</span></h1>
+                <p className="text-lg text-sky-100/80 mt-5 leading-relaxed max-w-xl">{tr(hero.text)}</p>
               </div>
             </div>
-            <div className="mt-2 flex items-center gap-2" role="group" aria-label="Messages">
+            <div className="-mt-2 flex items-center gap-1.5" role="group" aria-label="Messages">
               {HERO_SLIDES.map((_, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setSlide(i)}
-                  aria-label={`Show message ${i + 1}`}
-                  aria-current={i === slide}
-                  className={`h-1.5 rounded-full overflow-hidden bg-white/20 transition-all duration-300 ${i === slide ? 'w-10' : 'w-4 hover:bg-white/40'}`}
-                >
-                  {i === slide && <span key={slide} className="lp-bar block h-full bg-sky-400" style={{ animationDuration: '6s', animationPlayState: slideHold ? 'paused' : 'running' }} />}
+                <button key={i} type="button" onClick={() => setSlide(i)} aria-label={`Show message ${i + 1}`} aria-current={i === slide} className="py-4 px-0.5">
+                  <span className={`block h-1.5 rounded-full overflow-hidden bg-white/20 transition-all duration-300 ${i === slide ? 'w-10' : 'w-4 hover:bg-white/40'}`}>
+                    {i === slide && <span key={slide} className="lp-bar block h-full bg-sky-400" style={{ animationDuration: '6s', animationPlayState: slideHold ? 'paused' : 'running' }} />}
+                  </span>
                 </button>
               ))}
             </div>
             <button type="button" onClick={openRegister} className="mt-6 px-6 py-3 text-sm font-semibold text-white bg-[#1565c0] hover:bg-[#0d47a1] rounded-lg shadow-lg shadow-blue-900/30 transition-colors">
-              Add coaching
+              {tr('Add coaching')}
             </button>
             <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-300">
-              {['No app to install', 'Works on a phone', 'Each coaching’s data stays separate'].map(t => (
-                <li key={t} className="flex items-center gap-2">
+              {['No app to install', 'Works on a phone', 'Each coaching’s data stays separate'].map(item => (
+                <li key={item} className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-emerald-400" />
-                  {t}
+                  {tr(item)}
                 </li>
               ))}
             </ul>
@@ -331,7 +318,7 @@ export const LandingPage: React.FC = () => {
                 }}
                 className={`relative shrink-0 px-5 py-4 text-sm font-medium transition-colors ${tab === t.id ? 'text-sky-400 bg-white/5' : 'text-slate-300 hover:text-white'}`}
               >
-                {t.label}
+                {tr(t.label)}
                 {tab === t.id && (
                   <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-400/25">
                     {autoTabs ? (
@@ -346,15 +333,15 @@ export const LandingPage: React.FC = () => {
           </div>
           <div key={tab} role="tabpanel" className="lp-slide py-14 grid lg:grid-cols-2 gap-10 items-center">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-400">{'— '}Why AcademiaOS{' —'}</p>
-              <h2 className="text-3xl font-bold text-white mt-3 tracking-tight">{active.title}</h2>
-              <p className="text-sky-100/80 mt-4 leading-relaxed">{active.text}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-400">{'— '}{tr('Why AcademiaOS')}{' —'}</p>
+              <h2 className="text-3xl font-bold text-white mt-3 tracking-tight">{tr(active.title)}</h2>
+              <p className="text-sky-100/80 mt-4 leading-relaxed">{tr(active.text)}</p>
             </div>
             <ul className="space-y-3">
               {active.points.map(p => (
                 <li key={p} className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-slate-100">
                   <Check className="w-5 h-5 text-sky-400 shrink-0 mt-0.5" />
-                  {p}
+                  {tr(p)}
                 </li>
               ))}
             </ul>
@@ -365,8 +352,8 @@ export const LandingPage: React.FC = () => {
                 <span className="w-11 h-11 rounded-full bg-sky-400/10 text-sky-400 flex items-center justify-center">
                   <c.icon className="w-5 h-5" />
                 </span>
-                <h3 className="text-base font-semibold text-white mt-4">{c.title}</h3>
-                <p className="text-sm text-sky-100/70 mt-2 leading-relaxed">{c.text}</p>
+                <h3 className="text-base font-semibold text-white mt-4">{tr(c.title)}</h3>
+                <p className="text-sm text-sky-100/70 mt-2 leading-relaxed">{tr(c.text)}</p>
               </div>
             ))}
           </Reveal>
@@ -376,13 +363,13 @@ export const LandingPage: React.FC = () => {
       {/* How it works */}
       <section id="how" className="scroll-mt-16 bg-[#1b2833] py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <SectionHead kicker="How it works" title={<>From registration to the first roll call <span className="text-sky-400">in four steps</span></>} text="No long set up. This is how a coaching starts." />
+          <SectionHead kicker="How it works" title={<>{tr('From registration to the first roll call ')}<span className="text-sky-400">{tr('in four steps')}</span></>} text="No long set up. This is how a coaching starts." />
           <Reveal stagger className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {STEPS.map(s => (
               <div key={s.n} className="lp-lift relative rounded-xl border border-white/10 bg-white/[0.04] p-6 hover:border-sky-400/40">
                 <span className="absolute top-3 right-4 text-4xl font-extrabold text-sky-400/70">{s.n}</span>
-                <h3 className="text-lg font-semibold text-white pr-12">{s.title}</h3>
-                <p className="text-sm text-sky-100/75 mt-3 leading-relaxed">{s.text}</p>
+                <h3 className="text-lg font-semibold text-white pr-12">{tr(s.title)}</h3>
+                <p className="text-sm text-sky-100/75 mt-3 leading-relaxed">{tr(s.text)}</p>
               </div>
             ))}
           </Reveal>
@@ -392,15 +379,15 @@ export const LandingPage: React.FC = () => {
       {/* Features */}
       <section id="features" className="scroll-mt-16 bg-[#16222d] py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <SectionHead kicker="Features" title={<>Everything a coaching needs, <span className="text-sky-400">in one app</span></>} text="Twelve areas of work, ready to use from the first day." />
+          <SectionHead kicker="Features" title={<>{tr('Everything a coaching needs, ')}<span className="text-sky-400">{tr('in one app')}</span></>} text="Twelve areas of work, ready to use from the first day." />
           <Reveal stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {FEATURES.map(f => (
               <div key={f.title} className="lp-lift group rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-white/[0.02] p-6 hover:border-sky-400/40">
                 <span className="w-11 h-11 rounded-lg bg-blue-600/20 text-sky-300 flex items-center justify-center group-hover:bg-blue-600/30 transition-colors">
                   <f.icon className="w-5 h-5" />
                 </span>
-                <h3 className="text-lg font-semibold text-white mt-4">{f.title}</h3>
-                <p className="text-sm text-sky-100/75 mt-2 leading-relaxed">{f.text}</p>
+                <h3 className="text-lg font-semibold text-white mt-4">{tr(f.title)}</h3>
+                <p className="text-sm text-sky-100/75 mt-2 leading-relaxed">{tr(f.text)}</p>
               </div>
             ))}
           </Reveal>
@@ -410,16 +397,16 @@ export const LandingPage: React.FC = () => {
       {/* Roles */}
       <section id="roles" className="scroll-mt-16 bg-[#1b2833] py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <SectionHead kicker="Who uses it" title={<>One sign in, <span className="text-sky-400">six kinds of people</span></>} text="Everybody sees only what belongs to them." />
+          <SectionHead kicker="Who uses it" title={<>{tr('One sign in, ')}<span className="text-sky-400">{tr('six kinds of people')}</span></>} text="Everybody sees only what belongs to them." />
           <Reveal stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {ROLES.map(r => (
               <div key={r.who} className="lp-lift rounded-xl border border-white/10 bg-white/[0.04] p-6 hover:border-sky-400/40">
-                <h3 className="text-lg font-semibold text-white">{r.who}</h3>
+                <h3 className="text-lg font-semibold text-white">{tr(r.who)}</h3>
                 <ul className="mt-3 space-y-2">
                   {r.sees.map(s => (
                     <li key={s} className="flex items-start gap-2 text-sm text-sky-100/80">
                       <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                      {s}
+                      {tr(s)}
                     </li>
                   ))}
                 </ul>
@@ -429,10 +416,68 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
+      {/* A day in a coaching: slider */}
+      <section className="bg-[#16222d] py-20">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6">
+          <SectionHead kicker="Where it is used" title={tr('A day in your coaching')} />
+          <Carousel
+            label={tr('A day in your coaching')}
+            slides={DAY.map(d => (
+              <div key={d.title} className="rounded-2xl border border-sky-400/30 bg-white/[0.05] p-8 text-center min-h-[11rem] flex flex-col justify-center">
+                <h3 className="text-xl font-semibold text-white">{tr(d.title)}</h3>
+                <p className="text-sky-100/80 mt-3 leading-relaxed">{tr(d.text)}</p>
+              </div>
+            ))}
+          />
+        </div>
+      </section>
+
+      {/* Screens of the real app */}
+      {SCREENSHOTS.length > 0 && (
+        <section id="screens" className="scroll-mt-16 bg-[#1b2833] py-20">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6">
+            <SectionHead kicker="The app" title={tr('See the real app')} text="Screens of AcademiaOS, with sample data." />
+            <Carousel
+              label={tr('See the real app')}
+              ms={7000}
+              slides={SCREENSHOTS.map(x => (
+                <figure key={x.file} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 sm:p-4">
+                  <a href={x.file} target="_blank" rel="noopener noreferrer" aria-label={`${tr(x.title)}: ${tr('Open the full screen')}`}>
+                    <img src={x.file} alt={x.title} loading="lazy" className="w-full rounded-lg border border-white/10" />
+                  </a>
+                  <figcaption className="mt-3 text-center">
+                    <span className="font-semibold text-white">{tr(x.title)}</span>
+                    <span className="block text-sm text-sky-100/75 mt-1">{tr(x.text)}</span>
+                  </figcaption>
+                </figure>
+              ))}
+            />
+          </div>
+        </section>
+      )}
+
+      {/* Real words of customers (only when there are real ones) */}
+      {TESTIMONIALS.length > 0 && (
+        <section className="bg-[#1b2833] py-20">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6">
+            <SectionHead kicker="What coachings say" title={tr('What coachings say')} />
+            <Carousel
+              label={tr('What coachings say')}
+              slides={TESTIMONIALS.map(q => (
+                <blockquote key={q.name} className="rounded-2xl border border-sky-400/30 bg-white/[0.05] p-8 text-center">
+                  <p className="text-lg text-white leading-relaxed">“{q.quote}”</p>
+                  <footer className="mt-4 text-sm text-sky-300">{q.name}, {q.role}</footer>
+                </blockquote>
+              ))}
+            />
+          </div>
+        </section>
+      )}
+
       {/* Facts */}
       <section className="bg-[#16222d] py-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <SectionHead kicker="At a glance" title={<>What is inside, <span className="text-sky-400">in short</span></>} />
+          <SectionHead kicker="At a glance" title={<>{tr('What is inside, ')}<span className="text-sky-400">{tr('in short')}</span></>} />
           <Reveal stagger className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {([
               [6, '', 'kinds of sign in', 'Super Admin, principal, front desk, teacher, student, parent'],
@@ -444,8 +489,8 @@ export const LandingPage: React.FC = () => {
                 <div className="text-3xl font-extrabold text-white">
                   <CountUp to={n} suffix={suffix} />
                 </div>
-                <div className="text-sky-300 text-sm font-medium mt-1">{l}</div>
-                <div className="text-xs text-slate-400 mt-1">{d}</div>
+                <div className="text-sky-300 text-sm font-medium mt-1">{tr(l)}</div>
+                <div className="text-xs text-slate-400 mt-1">{tr(d)}</div>
               </div>
             ))}
           </Reveal>
@@ -455,16 +500,16 @@ export const LandingPage: React.FC = () => {
       {/* Security */}
       <section id="security" className="scroll-mt-16 bg-[#1b2833] py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <SectionHead kicker="Security and privacy" title={<>Your data is <span className="text-sky-400">yours alone</span></>} text={"Students’ records and fee details are private. This is how they are protected."} />
+          <SectionHead kicker="Security and privacy" title={<>{tr('Your data is ')}<span className="text-sky-400">{tr('yours alone')}</span></>} text={"Students’ records and fee details are private. This is how they are protected."} />
           <Reveal stagger className="grid sm:grid-cols-2 gap-4">
             {SECURITY.map(s => (
-              <div key={s.title} className="lp-lift flex gap-4 rounded-xl border border-white/10 bg-white/[0.04] p-6 hover:border-sky-400/40">
+              <div key={tr(s.title)} className="lp-lift flex gap-4 rounded-xl border border-white/10 bg-white/[0.04] p-6 hover:border-sky-400/40">
                 <span className="w-11 h-11 rounded-full bg-sky-400/10 text-sky-400 flex items-center justify-center shrink-0">
                   <s.icon className="w-5 h-5" />
                 </span>
                 <div>
-                  <h3 className="text-base font-semibold text-white">{s.title}</h3>
-                  <p className="text-sm text-sky-100/75 mt-1.5 leading-relaxed">{s.text}</p>
+                  <h3 className="text-base font-semibold text-white">{tr(s.title)}</h3>
+                  <p className="text-sm text-sky-100/75 mt-1.5 leading-relaxed">{tr(s.text)}</p>
                 </div>
               </div>
             ))}
@@ -475,7 +520,7 @@ export const LandingPage: React.FC = () => {
       {/* FAQ */}
       <section id="faq" className="scroll-mt-16 bg-[#16222d] py-20">
         <div className="max-w-3xl mx-auto px-4 sm:px-6">
-          <SectionHead kicker="FAQ" title={<>Questions <span className="text-sky-400">people ask</span></>} />
+          <SectionHead kicker="FAQ" title={<>{tr('Questions ')}<span className="text-sky-400">{tr('people ask')}</span></>} />
           <Reveal stagger className="space-y-3">
             {FAQ.map((f, i) => (
               <div key={f.q} className="rounded-xl border border-white/10 bg-white/[0.04] overflow-hidden">
@@ -484,10 +529,10 @@ export const LandingPage: React.FC = () => {
                   aria-expanded={open === i}
                   className="w-full px-5 py-4 flex items-center justify-between gap-3 text-left text-sm sm:text-base font-semibold text-white hover:bg-white/5"
                 >
-                  {f.q}
+                  {tr(f.q)}
                   <ChevronDown className={`w-5 h-5 text-sky-400 shrink-0 transition-transform ${open === i ? 'rotate-180' : ''}`} />
                 </button>
-                {open === i && <p className="lp-slide px-5 pb-5 text-sm text-sky-100/80 leading-relaxed">{f.a}</p>}
+                {open === i && <p className="lp-slide px-5 pb-5 text-sm text-sky-100/80 leading-relaxed">{tr(f.a)}</p>}
               </div>
             ))}
           </Reveal>
@@ -498,16 +543,16 @@ export const LandingPage: React.FC = () => {
       <section id="demo" className="scroll-mt-16 bg-gradient-to-br from-[#1b2c3c] to-[#0f1b26] py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 grid lg:grid-cols-2 gap-10 items-start">
           <Reveal>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-400">{'— '}Book a demo{' —'}</p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mt-3 tracking-tight">See how it works for <span className="text-sky-400">your coaching</span></h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-400">{'— '}{tr('Book a demo')}{' —'}</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mt-3 tracking-tight">{tr('See how it works for ')}<span className="text-sky-400">{tr('your coaching')}</span></h2>
             <p className="text-sky-100/80 mt-4 leading-relaxed">
-              Tell us who you are and we will get back to you to show AcademiaOS and answer your questions. Already have a coaching here? Sign in directly.
+              {tr('Tell us who you are and we will get back to you to show AcademiaOS and answer your questions. Already have a coaching here? Sign in directly.')}
             </p>
             <ul className="mt-6 space-y-2 text-sm text-slate-300">
-              {['A walk through of the app with your own questions', 'Help to register your coaching', 'No payment is asked on this page'].map(t => (
-                <li key={t} className="flex items-center gap-2">
+              {['A walk through of the app with your own questions', 'Help to register your coaching', 'No payment is asked on this page'].map(item => (
+                <li key={item} className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-emerald-400" />
-                  {t}
+                  {tr(item)}
                 </li>
               ))}
             </ul>
@@ -526,47 +571,57 @@ export const LandingPage: React.FC = () => {
           <div>
             <Logo />
             <p className="text-sm text-sky-100/70 mt-4 leading-relaxed">
-              Coaching institute management: admissions, fees, attendance, exams and reports for principals, teachers, students and parents.
+              {tr('Coaching institute management: admissions, fees, attendance, exams and reports for principals, teachers, students and parents.')}
             </p>
           </div>
           <div>
-            <h4 className="text-base font-semibold text-white">Product</h4>
+            <h4 className="text-base font-semibold text-white">{tr('Product')}</h4>
             <ul className="mt-4 space-y-2.5 text-sm">
               {[['#features', 'Features'], ['#how', 'How it works'], ['#roles', 'Who uses it'], ['#security', 'Security']].map(([h, l]) => (
                 <li key={h}>
                   <a href={h} className="text-sky-100/70 hover:text-white">
-                    {l}
+                    {tr(l)}
                   </a>
                 </li>
               ))}
             </ul>
           </div>
           <div>
-            <h4 className="text-base font-semibold text-white">Get started</h4>
+            <h4 className="text-base font-semibold text-white">{tr('Get started')}</h4>
             <ul className="mt-4 space-y-2.5 text-sm">
               {[['#top', 'Sign in'], ['#top', 'Register your coaching'], ['#demo', 'Book a demo'], ['#faq', 'FAQ']].map(([h, l]) => (
                 <li key={l}>
                   <a href={h} className="text-sky-100/70 hover:text-white">
-                    {l}
+                    {tr(l)}
                   </a>
                 </li>
               ))}
             </ul>
           </div>
           <div>
-            <h4 className="text-base font-semibold text-white">Who signs in</h4>
+            <h4 className="text-base font-semibold text-white">{tr('Who signs in')}</h4>
             <ul className="mt-4 space-y-2.5 text-sm text-sky-100/70">
-              <li>Super Admin</li>
-              <li>Coaching Admin (principal and front desk)</li>
-              <li>Teacher, student and parent</li>
+              <li>{tr('Super Admin')}</li>
+              <li>{tr('Coaching Admin (principal and front desk)')}</li>
+              <li>{tr('Teacher, student and parent')}</li>
             </ul>
+            {(SITE_INFO.email || SITE_INFO.phone || SITE_INFO.address) && (
+              <>
+                <h4 className="text-base font-semibold text-white mt-6">{tr('Contact')}</h4>
+                <ul className="mt-3 space-y-2 text-sm text-sky-100/70">
+                  {SITE_INFO.email && <li><a href={`mailto:${SITE_INFO.email}`} className="hover:text-white">{SITE_INFO.email}</a></li>}
+                  {SITE_INFO.phone && <li><a href={`tel:${SITE_INFO.phone.replace(/\s/g, '')}`} className="hover:text-white">{SITE_INFO.phone}</a></li>}
+                  {SITE_INFO.address && <li>{SITE_INFO.address}</li>}
+                </ul>
+              </>
+            )}
           </div>
         </div>
         <div className="border-t border-white/10">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 text-xs text-slate-400 flex flex-wrap justify-between gap-2">
-            <span>© {new Date().getFullYear()} AcademiaOS. All rights reserved.</span>
+            <span>© {new Date().getFullYear()} AcademiaOS. {tr('All rights reserved.')}</span>
             <a href="#top" className="hover:text-white">
-              Back to top
+              {tr('Back to top')}
             </a>
           </div>
         </div>
