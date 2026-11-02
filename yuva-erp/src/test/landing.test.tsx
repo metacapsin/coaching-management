@@ -6,7 +6,7 @@ const auth = { signIn: vi.fn(), signUp: vi.fn(), registerStudent: vi.fn(), regis
 vi.mock('../data/siteInfo', async importOriginal => {
   const real = await importOriginal<typeof import('../data/siteInfo')>();
   // two pages have an address, the others are empty
-  return { ...real, SOCIAL: real.SOCIAL.map(x => (x.key === 'facebook' || x.key === 'instagram' ? { ...x, url: `https://example.com/${x.key}` } : x)) };
+  return { ...real, SOCIAL: real.SOCIAL.map(x => ({ ...x, url: x.key === 'facebook' || x.key === 'instagram' ? `https://example.com/${x.key}` : '' })) };
 });
 vi.mock('../Context/AuthContext', () => ({ useAuth: () => auth }));
 

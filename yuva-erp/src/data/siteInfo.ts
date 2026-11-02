@@ -8,15 +8,15 @@ export const SITE_INFO = {
   address: 'Vijay Chowk, Laxmi Nagar, East Delhi, Delhi 110092, India'
 };
 
-// The round buttons under the text of the footer. Only the ones with a real address (url) are shown, so fill in the
-// pages of the company and leave the others empty. key: facebook, x, linkedin, instagram, medium, reviews.
+// The round buttons under the text of the footer. For now each one opens the home page of the site (and Reviews a search for the
+// company), not the company's own page. Put the company's own page as url when it is known; an empty url hides the button. key: facebook, x, linkedin, instagram, medium, reviews.
 export const SOCIAL: { key: 'facebook' | 'x' | 'linkedin' | 'instagram' | 'medium' | 'reviews'; label: string; url: string }[] = [
-  { key: 'facebook', label: 'Facebook', url: '' },
-  { key: 'x', label: 'X', url: '' },
-  { key: 'linkedin', label: 'LinkedIn', url: '' },
-  { key: 'instagram', label: 'Instagram', url: '' },
-  { key: 'medium', label: 'Medium', url: '' },
-  { key: 'reviews', label: 'Reviews', url: '' }
+  { key: 'facebook', label: 'Facebook', url: 'https://www.facebook.com' },
+  { key: 'x', label: 'X', url: 'https://x.com' },
+  { key: 'linkedin', label: 'LinkedIn', url: 'https://www.linkedin.com' },
+  { key: 'instagram', label: 'Instagram', url: 'https://www.instagram.com' },
+  { key: 'medium', label: 'Medium', url: 'https://medium.com' },
+  { key: 'reviews', label: 'Reviews', url: 'https://www.google.com/search?q=Bytechnik+reviews' }
 ];
 
 // Real quotes of real coachings (with their permission). While this list is empty the page shows no testimonials.
