@@ -776,6 +776,16 @@ class Coachings(unittest.TestCase):
         self.assertEqual(status, 200)
         self.__class__.admin_a = data['token']  # the reset signed the old sessions out
 
+    def test_02g_a_coaching_added_by_the_super_admin_tells_its_principal(self):
+        sent = []
+        spy = lambda to, subject, body, html=None: sent.append((to, subject, body)) or True
+        with mock.patch('academia.routes.mailer.send', side_effect=spy):
+            status, data = self.call('POST', '/api/super/orgs', {'coachingName': 'Eta', 'city': 'Kota', 'adminName': 'Eta Admin', 'email': 'eta@x.com', 'phone': '+91 98000 11111', 'password': PASSWORD}, self.sup)
+        self.assertEqual((status, data['notified']), (200, 'sent'))
+        self.assertEqual([m[0] for m in sent], ['eta@x.com'])
+        self.assertIn('added', sent[0][1])
+        self.call('POST', f'/api/super/orgs/{data["org"]["id"]}/reject', {}, self.sup)
+
     def test_02f_the_people_of_a_coaching_get_their_emails(self):
         sent = []
         spy = lambda to, subject, body, html=None: sent.append((to, subject, body)) or True

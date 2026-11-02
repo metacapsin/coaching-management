@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowUp, CalendarCheck } from 'lucide-react';
+import { ArrowUp, Building2, CalendarCheck } from 'lucide-react';
 import { useLang } from '../../i18n/LangContext';
 
 // The movement of the website: things rise into place when they come into view, numbers count up, the top of the page
@@ -82,7 +82,7 @@ export const useTicker = (onTick: () => void, ms: number, paused: boolean) => {
 };
 
 // The round "up" button (after some scrolling) and the "Book a demo" pill, both floating at the corners
-export const FloatingButtons: React.FC = () => {
+export const FloatingButtons: React.FC<{ onAddCoaching?: () => void }> = ({ onAddCoaching }) => {
   const { t } = useLang();
   const [far, setFar] = useState(false);
   useEffect(() => {
@@ -102,13 +102,25 @@ export const FloatingButtons: React.FC = () => {
           <ArrowUp className="w-5 h-5" />
         </a>
       )}
-      <a
-        href="#demo"
-        className="lp-pulse fixed bottom-5 right-4 z-30 px-4 py-3 rounded-full bg-sky-400 hover:bg-sky-300 text-slate-900 text-sm font-semibold flex items-center gap-2 shadow-lg shadow-black/40 transition-colors"
-      >
-        <CalendarCheck className="w-4 h-4" />
-        {t('Book a demo')}
-      </a>
+      <div className="fixed bottom-5 right-4 z-30 flex flex-col items-end gap-2">
+        {onAddCoaching && (
+          <button
+            type="button"
+            onClick={onAddCoaching}
+            className="px-4 py-3 rounded-full bg-[#1565c0] hover:bg-[#0d47a1] text-white text-sm font-semibold flex items-center gap-2 shadow-lg shadow-black/40 transition-colors"
+          >
+            <Building2 className="w-4 h-4" />
+            {t('Add coaching')}
+          </button>
+        )}
+        <a
+          href="#demo"
+          className="lp-pulse px-4 py-3 rounded-full bg-sky-400 hover:bg-sky-300 text-slate-900 text-sm font-semibold flex items-center gap-2 shadow-lg shadow-black/40 transition-colors"
+        >
+          <CalendarCheck className="w-4 h-4" />
+          {t('Book a demo')}
+        </a>
+      </div>
     </>
   );
 };

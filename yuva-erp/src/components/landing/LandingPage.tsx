@@ -586,7 +586,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
         </div>
       </section>
 
-      <FloatingButtons />
+      <FloatingButtons onAddCoaching={openRegister} />
 
       {/* Footer */}
       <footer className="bg-[#16222d] border-t border-white/10">

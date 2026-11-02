@@ -1291,7 +1291,17 @@ def super_add_org():
     approval, and only the Approve of the Super Admin makes it work (like a coaching that asked to join)."""
     org, user = _new_coaching(body(), 'pending')
     g.store.audit(g.user, 'coaching-requested', f'{org["name"]} ({user["email"]}) added by the Super Admin')
-    return {'org': _org_summary(org)}
+    sent, _ = _mail(
+        user['email'],
+        f'Your coaching {org["name"]} was added on AcademiaOS',
+        'Your coaching was added',
+        [f'The Super Admin added {org["name"]} on AcademiaOS for you. It is ready to be approved; you can sign in as soon as it is approved.'],
+        details=[('Coaching', org['name']), ('City', org.get('city')), ('Sign in with', user['email'])],
+        button=('Visit AcademiaOS', _site_url()),
+        note='You will get another email when it is approved. The password was chosen by the Super Admin; you will be asked to choose your own at the first sign in.',
+        name=user.get('name'),
+    )
+    return {'org': _org_summary(org), 'notified': 'sent' if sent else 'no-email'}
 
 
 @route('/api/super/orgs/<org_id>', ['PUT'], 'super')
