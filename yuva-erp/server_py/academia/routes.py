@@ -231,6 +231,7 @@ def forgot_password():
                 'Your password reset code',
                 ['Use this code to set a new password. It works for 15 minutes.'],
                 code=code,
+                button=('Open the sign in page', _login_link('member' if target['role'] in ('teacher', 'student') else 'admin')),
                 note='If you did not ask for it, you can ignore this email.',
                 name=target.get('name'),
             )
@@ -970,6 +971,7 @@ def register_coaching():
         'We received your request',
         ['Thank you! The Super Admin will check your request now.'],
         details=[('Coaching', org['name']), ('City', org.get('city'))],
+        button=('Visit AcademiaOS', _site_url()),
         note='You will get an email as soon as your request is approved or rejected.',
         name=user.get('name'),
     )
@@ -981,7 +983,7 @@ def register_coaching():
                 'New coaching request',
                 ['A new coaching asked to join AcademiaOS and waits for your decision. Sign in as Super Admin and press Approve or Reject on the Coachings page.'],
                 details=[('Coaching', org['name']), ('City', org.get('city')), ('Principal', user.get('name')), ('Email', user['email']), ('Mobile', user.get('phone'))],
-                button=('Open the Coachings page', _site_url()),
+                button=('Sign in as Super Admin', _login_link('super')),
                 note='The principal is told by email about your decision.',
                 name=admin.get('name'),
             )
@@ -1310,6 +1312,11 @@ def _site_url():
     return (os.environ.get('PUBLIC_URL') or request.host_url).rstrip('/')
 
 
+def _login_link(portal='admin'):
+    """The link of the buttons in emails: the website, with the sign in form of that kind of person ready and in view."""
+    return f'{_site_url()}/?portal={portal}#signin'
+
+
 def _mail(to, subject, heading, lines, **look):
     """Sends a good looking email (HTML card with the plain text next to it). Returns (handed over, plain text)."""
     plain, html = email_template.render(heading, lines, **look)
@@ -1346,7 +1353,7 @@ def super_approve_org(org_id):
             'Good news! You can sign in now with your email and password as Coaching Admin. Start with a program and a batch, then admit your first student.',
         ],
         details=[('Coaching', org['name']), ('City', org.get('city'))],
-        button=('Sign in to AcademiaOS', _site_url()),
+        button=('Sign in as Coaching Admin', _login_link('admin')),
         accent=email_template.GREEN,
     )
     return {'org': _org_summary(org), **notified}
@@ -1384,7 +1391,7 @@ def super_reject_org(org_id):
         'Your request was not approved',
         ['Sorry, the Super Admin could not approve your request. You can register again with correct details, or contact us for help.'],
         details=[('Coaching', org['name']), ('Reason', reason)],
-        button=('Register again', _site_url()),
+        button=('Register again', _login_link('admin')),
         accent=email_template.RED,
     )
     return {'ok': True, **notified}

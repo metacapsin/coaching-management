@@ -139,4 +139,14 @@ describe('the public website', () => {
     // no real customer words yet: no invented ones are shown
     expect(screen.queryByText('What coachings say')).toBeNull();
   });
+
+  it('a link from an email opens the sign in form of that person (?portal=super)', () => {
+    window.history.replaceState(null, '', '/?portal=super#signin');
+    try {
+      render(<LandingPage />);
+      expect(screen.getByRole('button', { name: /Sign In as Super Admin/ })).not.toBeNull();
+    } finally {
+      window.history.replaceState(null, '', '/');
+    }
+  });
 });

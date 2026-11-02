@@ -252,6 +252,15 @@ const Field: React.FC<{
   );
 };
 
+const portalOfLink = (): Portal | null => {
+  try {
+    const wanted = new URLSearchParams(window.location.search).get('portal');
+    return wanted === 'super' || wanted === 'admin' || wanted === 'member' ? wanted : null;
+  } catch {
+    return null;
+  }
+};
+
 // `embedded`: the form is part of the website (no side panel, no full page of its own)
 // `registerSignal`: each time it grows, the form opens on "Register your coaching" (the "Add coaching" button of the website)
 export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }> = ({ embedded = false, registerSignal = 0 }) => {
@@ -259,7 +268,8 @@ export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }>
   const { t } = useLang();
 
   // Without a Super Admin the page starts on the Super Admin tab, to create it first
-  const [portal, setPortal] = useState<Portal>(hasSuper ? 'admin' : 'super');
+  // a link in an email can say which form to open: /?portal=super (or admin, member)
+  const [portal, setPortal] = useState<Portal>(() => (hasSuper ? portalOfLink() ?? 'admin' : 'super'));
   // the principal of a new coaching registers here (and waits for the Super Admin's approval)
   const [registering, setRegistering] = useState(false);
   useEffect(() => {

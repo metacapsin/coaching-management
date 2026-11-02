@@ -209,6 +209,13 @@ export const LandingPage: React.FC = () => {
     };
   }, []);
 
+  // a link from an email (/?portal=super#signin) lands on the sign in form
+  useEffect(() => {
+    if (window.location.hash !== '#signin' && !new URLSearchParams(window.location.search).get('portal')) return;
+    const id = setTimeout(() => document.getElementById('signin')?.scrollIntoView?.({ behavior: 'smooth', block: 'center' }), 500);
+    return () => clearTimeout(id);
+  }, []);
+
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
     onScroll();
