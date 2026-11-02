@@ -191,8 +191,8 @@ const SuperForgotPassword: React.FC<{ initialEmail: string }> = ({ initialEmail 
 // students (their accounts are made by the principal of their coaching, inside the app: no sign-up here).
 const PORTALS: { id: Portal; label: string; icon: LucideIcon; blurb: string }[] = [
   { id: 'super', label: 'Super Admin', icon: Crown, blurb: 'Approves coachings and manages all of them.' },
-  { id: 'admin', label: 'Coaching Admin', icon: ShieldCheck, blurb: 'Principal of one coaching, with its own data.' },
-  { id: 'member', label: 'Teacher / Student', icon: Users, blurb: 'Sign in, or create your account (choose your coaching).' }
+  { id: 'admin', label: 'Coaching Admin', icon: ShieldCheck, blurb: 'Principal or front desk of one coaching, with its own data.' },
+  { id: 'member', label: 'Teacher / Student', icon: Users, blurb: 'Teacher, student or parent: sign in here. Teachers and students can also create their account.' }
 ];
 
 const FEATURES = [

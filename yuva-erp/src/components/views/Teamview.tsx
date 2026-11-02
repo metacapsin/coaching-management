@@ -221,7 +221,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
 
   // Add account
   const [showAdd, setShowAdd] = useState(false);
-  const [aRole, setARole] = useState<UserRole>('staff');
+  const [aRole, setARole] = useState<UserRole | 'parent'>('staff');
   const [aName, setAName] = useState('');
   const [aEmail, setAEmail] = useState('');
   const [aPhone, setAPhone] = useState('');
@@ -281,7 +281,8 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
   const mq = memberQuery.trim().toLowerCase();
   const allMembers = users.filter(u => u.status !== 'pending');
   const members = allMembers.filter(u => !mq || `${u.name} ${u.email} ${u.phone ?? ''}`.toLowerCase().includes(mq));
-  const studentsWithoutAccount = students.filter(s => !users.some(u => u.studentId === s.id));
+  const studentsWithoutAccount = students.filter(s => !users.some(u => u.studentId === s.id && !u.isParent));
+  const studentsWithoutParent = students.filter(s => !users.some(u => u.studentId === s.id && u.isParent));
   const batchName = (id: string) => batches.find(b => b.id === id)?.name || 'Batch';
 
   const showNotice = (type: 'success' | 'error', text: string) => {
@@ -315,7 +316,13 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
   const handlePickStudent = (id: string) => {
     setAStudentId(id);
     const s = students.find(item => item.id === id);
-    if (s) {
+    if (!s) return;
+    if (aRole === 'parent') {
+      // a parent login: the name and number of the parent, the child's data is what it shows
+      setAName(s.parentName || `Parent of ${s.name}`);
+      setAEmail(s.parentEmail || '');
+      setAPhone(s.parentPhone || '');
+    } else {
       setAName(s.name);
       setAEmail(s.email || '');
       setAPhone(s.phone || '');
@@ -332,11 +339,12 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
         name: aName,
         email: aEmail,
         password: aPassword,
-        role: aRole,
+        role: aRole === 'parent' ? 'student' : aRole,
         phone: aPhone,
         subject: aSubject,
         batchIds: aBatchIds,
-        studentId: aRole === 'student' ? aStudentId : undefined
+        studentId: aRole === 'student' || aRole === 'parent' ? aStudentId : undefined,
+        isParent: aRole === 'parent' ? true : undefined
       });
       if (!result.ok) {
         setAError(result.error);
@@ -913,15 +921,34 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
               <label className="block text-xs font-medium text-slate-700 mb-1">Role</label>
               <select
                 value={aRole}
-                onChange={e => setARole(e.target.value as UserRole)}
+                onChange={e => {
+                  setARole(e.target.value as UserRole | 'parent');
+                  setAStudentId('');
+                }}
                 className={`${inputClass} bg-white`}
               >
                 <option value="staff">Front Desk Staff</option>
                 <option value="teacher">Teacher</option>
                 <option value="student">Student</option>
+                <option value="parent">Parent</option>
                 <option value="admin">Principal (Administrator)</option>
               </select>
             </div>
+
+            {aRole === 'parent' && (
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Child (student record)</label>
+                <select value={aStudentId} onChange={e => handlePickStudent(e.target.value)} className={`${inputClass} bg-white`}>
+                  <option value="">Select the student whose parent this is...</option>
+                  {studentsWithoutParent.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.rollNo})
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-slate-400 mt-1">The parent signs in and sees the attendance, fees and results of this child (read only).</p>
+              </div>
+            )}
 
             {aRole === 'student' && (
               <div>
