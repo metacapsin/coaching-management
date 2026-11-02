@@ -451,7 +451,26 @@ function MainApp() {
 
 // Shows the login page until a user is signed in. The server sends each role only its own data.
 function AuthGate() {
-  const { user, ready, serverError, retryConnection } = useAuth();
+  const { user, ready, serverError, retryConnection, signOut } = useAuth();
+
+  // A link from an email (/?portal=super, /?portal=admin...) is meant for signing in. Somebody who is already signed in
+  // (for example the Super Admin on the same computer) still sees the sign in page first, with a note, and not the app.
+  const [fromLink, setFromLink] = useState(() => new URLSearchParams(window.location.search).has('portal'));
+  const [seenId, setSeenId] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (ready && seenId === undefined) setSeenId(user?.id ?? null);
+  }, [ready, user, seenId]);
+  const leaveLink = () => {
+    setFromLink(false);
+    window.history.replaceState(null, '', window.location.pathname);
+  };
+  // somebody signed in through the form: the link has done its work
+  useEffect(() => {
+    if (fromLink && seenId !== undefined && user && user.id !== seenId) {
+      setFromLink(false);
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, [fromLink, seenId, user]);
 
   // signed out: the address of a page of the app is no more (the website is at "/")
   useEffect(() => {
@@ -462,6 +481,19 @@ function AuthGate() {
   if (!ready) return <ConnectionScreen />;
   // The website is the first page; the sign in form is in its top part
   if (!user) return <LandingPage />;
+  if (fromLink && seenId === user.id) {
+    return (
+      <LandingPage
+        signedIn={{
+          text: `${user.name} (${roleLabel(user.role)})`,
+          onContinue: leaveLink,
+          onSignOut: () => {
+            void signOut();
+          }
+        }}
+      />
+    );
+  }
   // somebody else set this password: choose an own one before anything else
   if (user.mustChangePassword) return <ForcePasswordChange />;
   // the Super Admin signed in on the same login page: the list of coachings instead of a coaching

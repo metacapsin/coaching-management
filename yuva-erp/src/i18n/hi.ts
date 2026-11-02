@@ -298,6 +298,11 @@ export const HI: Record<string, string> = {
   'Send code': 'कोड भेजें',
   'Could not send the request. Please try again.': 'अनुरोध नहीं भेजा जा सका। फिर कोशिश करें।',
 
+  'You are already signed in as': 'आप पहले से साइन इन हैं:',
+  'Use the form below to sign in as somebody else.': 'किसी और के रूप में साइन इन करने के लिए नीचे का फ़ॉर्म इस्तेमाल करें।',
+  'Open my dashboard': 'मेरा डैशबोर्ड खोलें',
+  'Sign Out': 'साइन आउट',
+
   // ---- app: side menu and page titles
   'Dashboard': 'डैशबोर्ड',
   'Admissions & Students': 'एडमिशन और छात्र',

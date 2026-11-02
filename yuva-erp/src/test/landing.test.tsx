@@ -149,4 +149,16 @@ describe('the public website', () => {
       window.history.replaceState(null, '', '/');
     }
   });
+
+  it('somebody already signed in who comes by a link of an email sees the sign in form with a note', () => {
+    const onContinue = vi.fn();
+    const onSignOut = vi.fn();
+    render(<LandingPage signedIn={{ text: 'Sahil Raza (Super Admin)', onContinue, onSignOut }} />);
+    expect(screen.getByText('Sahil Raza (Super Admin)')).not.toBeNull();
+    expect(screen.getByRole('button', { name: /Sign In as/ })).not.toBeNull(); // the form is there
+    fireEvent.click(screen.getByRole('button', { name: 'Open my dashboard' }));
+    expect(onContinue).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Sign Out' }));
+    expect(onSignOut).toHaveBeenCalled();
+  });
 });

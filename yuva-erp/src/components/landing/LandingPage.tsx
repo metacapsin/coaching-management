@@ -174,7 +174,8 @@ const SectionHead: React.FC<{ kicker: string; title: React.ReactNode; text?: str
   );
 };
 
-export const LandingPage: React.FC = () => {
+// `signedIn`: somebody is already signed in on this browser and came here by a link of an email
+export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () => void; onSignOut: () => void } }> = ({ signedIn }) => {
   const { t: tr } = useLang();
   const [menu, setMenu] = useState(false);
   // the "Add coaching" buttons open the registration of a coaching in the form at the top
@@ -304,6 +305,21 @@ export const LandingPage: React.FC = () => {
           </div>
           <div id="signin" className="lp-slide w-full max-w-md mx-auto lg:ml-auto">
             <div className="auth-dark rounded-2xl bg-[#2a3742] border border-sky-300/25 text-slate-900 shadow-2xl shadow-black/30 p-6 sm:p-8">
+              {signedIn && (
+                <div className="mb-5 p-3 rounded-lg border border-sky-300/30 bg-sky-400/10 text-xs text-sky-100">
+                  <p>
+                    {tr('You are already signed in as')} <strong className="text-white">{signedIn.text}</strong>. {tr('Use the form below to sign in as somebody else.')}
+                  </p>
+                  <div className="mt-2 flex gap-2">
+                    <button type="button" onClick={signedIn.onContinue} className="px-3 py-1.5 font-semibold text-white bg-[#1565c0] hover:bg-[#0d47a1] rounded-md">
+                      {tr('Open my dashboard')}
+                    </button>
+                    <button type="button" onClick={signedIn.onSignOut} className="px-3 py-1.5 font-semibold text-sky-100 border border-sky-300/40 hover:bg-white/10 rounded-md">
+                      {tr('Sign Out')}
+                    </button>
+                  </div>
+                </div>
+              )}
               <AuthPage embedded registerSignal={registerSignal} />
             </div>
           </div>
