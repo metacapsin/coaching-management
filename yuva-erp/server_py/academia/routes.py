@@ -415,6 +415,22 @@ def register_teacher():
     add_user_or_conflict(user)
     s.bump()
     s.audit(user, 'register-teacher', 'Waiting for approval')
+    coaching = _coaching_name(s)
+    _mail(
+        user['email'],
+        f'We received your request for {coaching}',
+        'We received your request',
+        [f'Thank you! The principal of {coaching} will check your request to join as a teacher. You will get an email when it is approved.'],
+        details=[('Coaching', coaching), ('Subject', user.get('subject'))],
+        name=user.get('name'),
+    )
+    _tell_principals(
+        s,
+        f'A teacher asks to join {coaching}',
+        'A teacher asks to join',
+        ['Sign in, open Team & Access and press Approve or Reject.'],
+        details=[('Name', user.get('name')), ('Email', user['email']), ('Mobile', user.get('phone')), ('Subject', user.get('subject'))],
+    )
     return ok()
 
 
@@ -478,6 +494,16 @@ def register_student():
     add_user_or_conflict(user)
     s.bump()
     s.audit(user, 'register-student', student.get('rollNo'))
+    coaching = _coaching_name(s)
+    _mail(
+        user['email'],
+        f'Your AcademiaOS account for {coaching}',
+        f'Welcome to {coaching}',
+        ['Your account is ready. You can see your attendance, fees, results, notices and study material.'],
+        details=[('Coaching', coaching), ('Sign in with', user['email'])],
+        button=('Sign in', _login_link('member')),
+        name=user.get('name'),
+    )
     return start_session(user)
 
 
@@ -710,6 +736,7 @@ def add_user():
     add_user_or_conflict(user)
     s.bump()
     s.audit(g.user, 'user-add', f'{user["email"]} ({role_label(role)})')
+    _welcome_mail(s, user, b['password'])
     return {'user': auth.public_user(user)}
 
 
@@ -726,6 +753,17 @@ def approve_user(user_id):
     s.save_user(target)
     s.bump()
     s.audit(g.user, 'user-approve', target['email'])
+    coaching = _coaching_name(s)
+    _mail(
+        target['email'],
+        f'Your account for {coaching} is approved',
+        'Your account is approved',
+        ['You can sign in now with your email and the password you chose.'],
+        details=[('Coaching', coaching), ('Sign in with', target['email'])],
+        button=('Sign in', _login_link(_portal_of(target['role']))),
+        accent=email_template.GREEN,
+        name=target.get('name'),
+    )
     return ok()
 
 
@@ -740,6 +778,16 @@ def reject_user(user_id):
     s.remove_user(user_id)
     s.bump()
     s.audit(g.user, 'user-reject', target['email'])
+    coaching = _coaching_name(s)
+    _mail(
+        target['email'],
+        f'Your request for {coaching} was not approved',
+        'Your request was not approved',
+        ['Sorry, the principal could not approve your request. You can ask the principal of the coaching for help.'],
+        details=[('Coaching', coaching)],
+        accent=email_template.RED,
+        name=target.get('name'),
+    )
     return ok()
 
 
@@ -1321,6 +1369,52 @@ def _mail(to, subject, heading, lines, **look):
     """Sends a good looking email (HTML card with the plain text next to it). Returns (handed over, plain text)."""
     plain, html = email_template.render(heading, lines, **look)
     return bool(mailer.send(to, subject, plain, html)), plain
+
+
+def _coaching_name(s):
+    return (root().org_get(s.org) or {}).get('name') or 'your coaching'
+
+
+def _portal_of(role):
+    """Which tab of the sign in form a kind of person uses."""
+    return 'member' if role in ('teacher', 'student') else 'admin'
+
+
+ROLE_WORDS = {
+    'teacher': ('a teacher', 'You can take the attendance and enter the marks of your batches, and share notices and study material.'),
+    'student': ('a student', 'You can see your attendance, fees, results, notices and study material.'),
+    'staff': ('front desk staff', 'You can handle admissions, enquiries, fees, attendance, exams and notices.'),
+    'admin': ('an administrator', 'You can manage the whole coaching.'),
+}
+
+
+def _welcome_mail(s, user, password):
+    """Tells a person that the principal made an account for them (email, the first password, and where to sign in)."""
+    role = user['role']
+    if role == 'student' and user.get('isParent'):
+        label, what = 'a parent', 'You can follow the attendance, fees and results of your child (read only).'
+    else:
+        label, what = ROLE_WORDS.get(role, ('a member', ''))
+    coaching = _coaching_name(s)
+    _mail(
+        user['email'],
+        f'Your AcademiaOS account for {coaching}',
+        f'Welcome to {coaching}',
+        [f'The principal added you as {label}. {what}'],
+        details=[('Coaching', coaching), ('Sign in with', user['email']), ('First password', password)],
+        button=('Sign in', _login_link(_portal_of(role))),
+        note='The principal chose this first password. You will be asked to choose your own at the first sign in. If you did not expect this email, you can ignore it.',
+        name=user.get('name'),
+    )
+
+
+def _tell_principals(s, subject, heading, lines, details=None):
+    for p in s.users_all():
+        if p['role'] == 'admin' and (p.get('status') or 'active') == 'active':
+            _mail(
+                p['email'], subject, heading, lines, details=details,
+                button=('Sign in as Coaching Admin', _login_link('admin')), name=p.get('name'),
+            )
 
 
 def _principal_of(org):

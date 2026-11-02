@@ -776,6 +776,31 @@ class Coachings(unittest.TestCase):
         self.assertEqual(status, 200)
         self.__class__.admin_a = data['token']  # the reset signed the old sessions out
 
+    def test_02f_the_people_of_a_coaching_get_their_emails(self):
+        sent = []
+        spy = lambda to, subject, body, html=None: sent.append((to, subject, body)) or True
+        with mock.patch('academia.routes.mailer.send', side_effect=spy):
+            # the principal adds a teacher: the teacher is told the email, the first password and where to sign in
+            added = self.call('POST', '/api/users', {'name': 'Tina Teacher', 'email': 'tina@x.com', 'password': 'Teach#12345', 'role': 'teacher', 'subject': 'Physics', 'batchIds': []}, self.admin_a)
+            self.assertEqual(added[0], 200)
+            # a teacher asks to join by the sign up form: the teacher and the principal are told
+            asked = self.call('POST', '/api/auth/register-teacher', {'orgId': self.org_a, 'name': 'Rita Teacher', 'email': 'rita@x.com', 'phone': '9876500077', 'password': 'Teach#12345', 'subject': 'Maths'})
+            self.assertEqual(asked[0], 200)
+        tina = next(m for m in sent if m[0] == 'tina@x.com')
+        self.assertIn('Your AcademiaOS account', tina[1])
+        self.assertIn('teacher', tina[2])
+        self.assertIn('Teach#12345', tina[2])  # the first password the principal chose
+        self.assertIn('portal=member', tina[2])  # the button opens the teacher / student form
+        self.assertIn('rita@x.com', [m[0] for m in sent])  # "we received your request"
+        self.assertIn('a@x.com', [m[0] for m in sent])  # the principal: "a teacher asks to join"
+        # the principal approves her: she is told
+        rita_id = next(u['id'] for u in self.call('GET', '/api/sync', None, self.admin_a)[1]['users'] if u['email'] == 'rita@x.com')
+        sent.clear()
+        with mock.patch('academia.routes.mailer.send', side_effect=spy):
+            self.assertEqual(self.call('POST', f'/api/users/{rita_id}/approve', {'batchIds': []}, self.admin_a)[0], 200)
+        self.assertEqual([m[0] for m in sent], ['rita@x.com'])
+        self.assertIn('approved', sent[0][1])
+
     def test_02e_a_new_request_is_told_to_the_principal_and_the_super_admin(self):
         sent = []
         with mock.patch('academia.routes.mailer.send', side_effect=lambda to, subject, body, html=None: sent.append((to, subject, body)) or True):
