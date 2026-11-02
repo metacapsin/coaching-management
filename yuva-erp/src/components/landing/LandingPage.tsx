@@ -24,7 +24,7 @@ import {
 import { DemoRequestForm } from './DemoRequestForm';
 import { AuthPage } from '../auth/AuthPage';
 import { Carousel } from './Carousel';
-import { LangToggle, useLang } from '../../i18n/LangContext';
+import { useLang } from '../../i18n/LangContext';
 import { SITE_INFO, SCREENSHOTS, TESTIMONIALS } from '../../data/siteInfo';
 import { CountUp, FloatingButtons, Reveal, prefersReducedMotion, useTicker } from './LandingMotion';
 
@@ -239,7 +239,6 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
             ))}
           </nav>
           <div className="flex items-center gap-2">
-            <LangToggle className="text-slate-200" />
             <button type="button" onClick={openRegister} className="px-2.5 sm:px-3.5 py-2 text-xs sm:text-sm font-semibold text-white bg-[#1565c0] hover:bg-[#0d47a1] rounded-lg transition-colors">
               {tr('Add coaching')}
             </button>

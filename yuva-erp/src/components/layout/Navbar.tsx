@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useAuth, accountLabel } from '../../Context/AuthContext';
 import { ThemeToggle } from '../ui/ThemeToggle';
-import { LangToggle, useLang } from '../../i18n/LangContext';
+import { useLang } from '../../i18n/LangContext';
 import { downloadFromServer } from '../utils/api';
 import { canManageInstitute } from '../../Context/Access';
 import type { TabId } from '../../Context/Access';
@@ -325,7 +325,6 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Right side actions */}
         <div className="ml-auto flex items-center gap-2 sm:gap-3 shrink-0">
-          <LangToggle className="text-slate-600" />
           <ThemeToggle />
 
           {/* Save status */}

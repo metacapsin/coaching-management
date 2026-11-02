@@ -6,7 +6,6 @@ const auth = { signIn: vi.fn(), signUp: vi.fn(), registerStudent: vi.fn(), regis
 vi.mock('../Context/AuthContext', () => ({ useAuth: () => auth }));
 
 import { LandingPage } from '../components/landing/LandingPage';
-import { LangProvider } from '../i18n/LangContext';
 
 afterEach(cleanup);
 
@@ -107,23 +106,6 @@ describe('the public website', () => {
     expect(form.queryByRole('heading', { name: 'Register your coaching' })).toBeNull();
     fireEvent.click(screen.getAllByRole('button', { name: 'Add coaching' })[0]);
     expect(form.getByRole('heading', { name: 'Register your coaching' })).not.toBeNull();
-  });
-
-  it('the language button turns the page into Hindi and back, and the choice is remembered', () => {
-    localStorage.removeItem('academiaos.lang');
-    render(
-      <LangProvider>
-        <LandingPage />
-      </LangProvider>
-    );
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('Run your whole coaching');
-    fireEvent.click(screen.getByRole('button', { name: 'हिंदी में देखें' }));
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('अपनी पूरी कोचिंग चलाएँ');
-    expect(screen.getByRole('button', { name: 'सुपर एडमिन' })).not.toBeNull();
-    expect(localStorage.getItem('academiaos.lang')).toBe('hi');
-    fireEvent.click(screen.getByRole('button', { name: 'Switch to English' }));
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('Run your whole coaching');
-    localStorage.removeItem('academiaos.lang');
   });
 
   it('the slider of a day moves with the arrows, and the gallery shows the screens of the app', () => {
