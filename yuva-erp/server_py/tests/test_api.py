@@ -784,6 +784,7 @@ class Coachings(unittest.TestCase):
         self.assertEqual((status, data['notified']), (200, 'sent'))
         self.assertEqual([m[0] for m in sent], ['eta@x.com'])
         self.assertIn('added', sent[0][1])
+        self.assertIn('http', sent[0][2])
         self.call('POST', f'/api/super/orgs/{data["org"]["id"]}/reject', {}, self.sup)
 
     def test_02f_the_people_of_a_coaching_get_their_emails(self):
@@ -802,6 +803,8 @@ class Coachings(unittest.TestCase):
         self.assertIn('Teach#12345', tina[2])  # the first password the principal chose
         self.assertIn('portal=member', tina[2])  # the button opens the teacher / student form
         self.assertIn('rita@x.com', [m[0] for m in sent])  # "we received your request"
+        for m in sent:
+            self.assertIn('http', m[2], m[1])  # every email has a link (and a button)
         self.assertIn('a@x.com', [m[0] for m in sent])  # the principal: "a teacher asks to join"
         # the principal approves her: she is told
         rita_id = next(u['id'] for u in self.call('GET', '/api/sync', None, self.admin_a)[1]['users'] if u['email'] == 'rita@x.com')
@@ -810,6 +813,7 @@ class Coachings(unittest.TestCase):
             self.assertEqual(self.call('POST', f'/api/users/{rita_id}/approve', {'batchIds': []}, self.admin_a)[0], 200)
         self.assertEqual([m[0] for m in sent], ['rita@x.com'])
         self.assertIn('approved', sent[0][1])
+        self.assertIn('http', sent[0][2])  # every email has a link
 
     def test_02e_a_new_request_is_told_to_the_principal_and_the_super_admin(self):
         sent = []

@@ -422,6 +422,7 @@ def register_teacher():
         'We received your request',
         [f'Thank you! The principal of {coaching} will check your request to join as a teacher. You will get an email when it is approved.'],
         details=[('Coaching', coaching), ('Subject', user.get('subject'))],
+        button=('Visit AcademiaOS', _site_url()),
         name=user.get('name'),
     )
     _tell_principals(
@@ -785,6 +786,7 @@ def reject_user(user_id):
         'Your request was not approved',
         ['Sorry, the principal could not approve your request. You can ask the principal of the coaching for help.'],
         details=[('Coaching', coaching)],
+        button=('Visit AcademiaOS', _site_url()),
         accent=email_template.RED,
         name=target.get('name'),
     )
