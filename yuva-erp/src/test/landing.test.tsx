@@ -3,6 +3,11 @@ import { act } from '@testing-library/react';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 // The sign in form in the top part reads the sign in state: a fake one
 const auth = { signIn: vi.fn(), signUp: vi.fn(), registerStudent: vi.fn(), registerTeacher: vi.fn(), hasUsers: true, hasSuper: true };
+vi.mock('../data/siteInfo', async importOriginal => {
+  const real = await importOriginal<typeof import('../data/siteInfo')>();
+  // two pages have an address, the others are empty
+  return { ...real, SOCIAL: real.SOCIAL.map(x => (x.key === 'facebook' || x.key === 'instagram' ? { ...x, url: `https://example.com/${x.key}` } : x)) };
+});
 vi.mock('../Context/AuthContext', () => ({ useAuth: () => auth }));
 
 import { LandingPage } from '../components/landing/LandingPage';
@@ -142,5 +147,14 @@ describe('the public website', () => {
     expect(onContinue).toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Sign Out' }));
     expect(onSignOut).toHaveBeenCalled();
+  });
+
+  it('the footer shows the address and a round button only for the social pages that have an address', () => {
+    render(<LandingPage />);
+    const footer = within(document.querySelector('footer') as HTMLElement);
+    expect(footer.getByText('Vijay Chowk, Laxmi Nagar, East Delhi, Delhi 110092, India')).not.toBeNull();
+    expect(footer.getByRole('link', { name: 'Facebook' }).getAttribute('href')).toBe('https://example.com/facebook');
+    expect(footer.getByRole('link', { name: 'Instagram' })).not.toBeNull();
+    expect(footer.queryByRole('link', { name: 'LinkedIn' })).toBeNull();
   });
 });

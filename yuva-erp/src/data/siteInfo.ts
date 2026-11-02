@@ -5,8 +5,19 @@ export const SITE_INFO = {
   company: 'Bytechnik',
   email: '',
   phone: '',
-  address: ''
+  address: 'Vijay Chowk, Laxmi Nagar, East Delhi, Delhi 110092, India'
 };
+
+// The round buttons under the text of the footer. Only the ones with a real address (url) are shown, so fill in the
+// pages of the company and leave the others empty. key: facebook, x, linkedin, instagram, medium, reviews.
+export const SOCIAL: { key: 'facebook' | 'x' | 'linkedin' | 'instagram' | 'medium' | 'reviews'; label: string; url: string }[] = [
+  { key: 'facebook', label: 'Facebook', url: '' },
+  { key: 'x', label: 'X', url: '' },
+  { key: 'linkedin', label: 'LinkedIn', url: '' },
+  { key: 'instagram', label: 'Instagram', url: '' },
+  { key: 'medium', label: 'Medium', url: '' },
+  { key: 'reviews', label: 'Reviews', url: '' }
+];
 
 // Real quotes of real coachings (with their permission). While this list is empty the page shows no testimonials.
 export const TESTIMONIALS: { quote: string; name: string; role: string }[] = [];

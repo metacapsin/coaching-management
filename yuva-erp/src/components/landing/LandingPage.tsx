@@ -19,13 +19,18 @@ import {
   ChevronDown,
   Check,
   Lock,
-  Eye
+  Eye,
+  Facebook,
+  Twitter,
+  Linkedin,
+  Instagram,
+  Star
 } from 'lucide-react';
 import { DemoRequestForm } from './DemoRequestForm';
 import { AuthPage } from '../auth/AuthPage';
 import { Carousel } from './Carousel';
 import { useLang } from '../../i18n/LangContext';
-import { SITE_INFO, SCREENSHOTS, TESTIMONIALS } from '../../data/siteInfo';
+import { SITE_INFO, SOCIAL, SCREENSHOTS, TESTIMONIALS } from '../../data/siteInfo';
 import { CountUp, FloatingButtons, Reveal, prefersReducedMotion, useTicker } from './LandingMotion';
 
 // The public website of AcademiaOS: what it is, how it works, who uses it. It is shown before sign in.
@@ -153,6 +158,15 @@ const WHY_CARDS = [
   { icon: Smartphone, title: 'Nothing to install', text: 'Open it in a browser on a phone or a computer.' },
   { icon: BarChart3, title: 'Numbers at a glance', text: 'Today’s absentees, pending fees, new admissions and profit on one dashboard.' }
 ];
+
+const SOCIAL_ICON: Record<string, React.ReactNode> = {
+  facebook: <Facebook className="w-5 h-5" />,
+  x: <Twitter className="w-5 h-5" />,
+  linkedin: <Linkedin className="w-5 h-5" />,
+  instagram: <Instagram className="w-5 h-5" />,
+  medium: <span className="font-serif font-bold text-lg leading-none">M</span>,
+  reviews: <Star className="w-5 h-5" />
+};
 
 const Logo: React.FC<{ className?: string }> = ({ className = '' }) => (
   <a href="#top" className={`flex items-center gap-2.5 ${className}`}>
@@ -595,6 +609,23 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
             <p className="text-sm text-sky-100/70 mt-4 leading-relaxed">
               {tr('Coaching institute management: admissions, fees, attendance, exams and reports for principals, teachers, students and parents.')}
             </p>
+            {SOCIAL.some(x => x.url) && (
+              <div className="mt-5 flex flex-wrap gap-3" aria-label="Social pages">
+                {SOCIAL.filter(x => x.url).map(x => (
+                  <a
+                    key={x.key}
+                    href={x.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={x.label}
+                    title={x.label}
+                    className="w-11 h-11 rounded-full bg-white/10 hover:bg-sky-400/25 text-sky-300 hover:text-white flex items-center justify-center shadow-md shadow-black/20 transition-colors"
+                  >
+                    {SOCIAL_ICON[x.key]}
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
           <div>
             <h4 className="text-base font-semibold text-white">{tr('Product')}</h4>
