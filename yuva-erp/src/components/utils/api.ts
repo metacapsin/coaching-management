@@ -383,6 +383,10 @@ export const resetSuperPassword = (email: string, newPassword: string) =>
 export const requestPasswordReset = (email: string) =>
   request<{ ok: true }>('POST', '/auth/forgot-password', { email }, { auth: false });
 
+// the 6-digit code that was emailed after "Forgot your password?", and the new password
+export const resetPasswordWithCode = (email: string, code: string, password: string) =>
+  request<{ ok: true }>('POST', '/auth/reset-with-code', { email, code, password }, { auth: false });
+
 // ---------- coachings (sign-up pages) ----------
 
 export interface PublicCoaching {

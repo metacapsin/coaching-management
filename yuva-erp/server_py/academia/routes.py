@@ -11,6 +11,7 @@ import hmac
 import json
 import os
 import re
+import secrets
 from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, Response, current_app, g, request
@@ -214,9 +215,56 @@ def forgot_password():
     if target and (target.get('status') or 'active') == 'active':
         s = root().for_org(target.get('orgId') or DEFAULT_ORG)
         target['resetRequestedAt'] = datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z')
+        code = None
+        if target['role'] != 'super':  # the Super Admin has an own way (on the server computer)
+            code = f'{secrets.randbelow(1_000_000):06d}'
+            target['resetCodeHash'] = auth.sha256_hex(f'{code}:{target["id"]}')
+            target['resetCodeExpires'] = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat(timespec='seconds')
+            target['resetCodeTries'] = 0
         s.save_user(target)
         s.bump()
         s.audit(None, 'password-reset-requested', email)
+        if code:  # also by email: the person can set a new password at once with this code
+            mailer.send(
+                target['email'],
+                'Your AcademiaOS password reset code',
+                f'Hello {target.get("name") or ""},\n\nYour code to set a new password is {code}.\nIt works for 15 minutes. '
+                'If you did not ask for it, you can ignore this email.\n\nAcademiaOS',
+            )
+    return ok()
+
+
+@route('/api/auth/reset-with-code', ['POST'])
+def reset_with_code():
+    """Sets a new password with the code that was emailed. The same answer for every wrong input."""
+    limit_registrations()
+    b = body()
+    email = text(b.get('email')).lower()
+    code = text(b.get('code'), 12)
+    target = root().user_by_email(email) if email else None
+    wrong = HttpError(400, 'The code is wrong or has expired. Ask for a new code.')
+    if not target or not target.get('resetCodeHash') or target['role'] == 'super':
+        raise wrong
+    expired = datetime.fromisoformat(target.get('resetCodeExpires') or '1970-01-01T00:00:00+00:00') < datetime.now(timezone.utc)
+    s = root().for_org(target.get('orgId') or DEFAULT_ORG)
+    tries = int(target.get('resetCodeTries') or 0)
+    good = hmac.compare_digest(auth.sha256_hex(f'{code}:{target["id"]}'), target['resetCodeHash'])
+    if expired or tries >= 5 or not good:
+        target['resetCodeTries'] = tries + 1
+        if expired or tries + 1 >= 5:  # too many tries or too late: this code is dead
+            for key in ('resetCodeHash', 'resetCodeExpires', 'resetCodeTries'):
+                target.pop(key, None)
+        s.save_user(target)
+        raise wrong
+    check_password(b.get('password'))
+    auth.set_password(target, b['password'])
+    for key in ('resetCodeHash', 'resetCodeExpires', 'resetCodeTries', 'resetRequestedAt', 'mustChangePassword'):
+        target.pop(key, None)
+    s.save_user(target)
+    auth.destroy_sessions_of(root(), target['id'])
+    limiters()['login'].reset(f'{client_ip()}|{email}')
+    s.bump()
+    s.audit(target, 'password-reset-by-email', email)
     return ok()
 
 
@@ -912,6 +960,21 @@ def register_coaching():
     limit_registrations()
     org, user = _new_coaching(body(), 'pending')
     root().for_org(PLATFORM_ORG).audit(None, 'coaching-requested', f'{org["name"]} ({user["email"]})')
+    # the principal knows the request arrived, and the Super Admin knows there is something to approve
+    mailer.send(
+        user['email'],
+        f'We received your request for {org["name"]}',
+        f'Hello {user.get("name") or ""},\n\nWe received your request to add {org["name"]} on AcademiaOS. '
+        'The Super Admin will check it. You will get an email as soon as it is approved or rejected.\n\nAcademiaOS',
+    )
+    for admin in root().for_org(PLATFORM_ORG).users_all():
+        if admin['role'] == 'super':
+            mailer.send(
+                admin['email'],
+                f'New coaching request: {org["name"]}',
+                f'{org["name"]} ({org.get("city") or "no city"}) asked to join AcademiaOS. Principal: {user.get("name")} ({user["email"]}). '
+                'Open the Coachings page and press Approve or Reject.\n\nAcademiaOS',
+            )
     return ok()
 
 

@@ -126,6 +126,9 @@ To send automatically later, a gateway can be connected at `sendNotification` in
 This needs an SMTP account in `server_py/.env` (a free Gmail with an app password works, see `.env.example`). Without it nothing is emailed and the
 Super Admin sees a "Send on WhatsApp" button with the same message.
 
+**Other emails (same SMTP account).** A coaching that registers gets "we received your request" and the Super Admin gets "new request".
+"Forgot your password?" emails a 6-digit code (15 minutes, 5 tries) so the person sets a new password without waiting for the principal.
+
 ## Going online (HTTPS)
 
 Put a reverse proxy such as [Caddy](https://caddyserver.com) in front of the server:

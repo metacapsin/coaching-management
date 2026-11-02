@@ -3,7 +3,7 @@ import { PasswordInput } from '../ui/PasswordInput';
 import { useAuth } from '../../Context/AuthContext';
 import { useLang } from '../../i18n/LangContext';
 import type { Portal } from '../../Context/AuthContext';
-import { ApiError, requestPasswordReset, resetSuperPassword } from '../utils/api';
+import { ApiError, requestPasswordReset, resetPasswordWithCode, resetSuperPassword } from '../utils/api';
 import { RegisterCoachingForm } from './CoachingForms';
 import { MemberSignup } from './MemberSignup';
 import { ThemeToggle } from '../ui/ThemeToggle';
@@ -23,22 +23,44 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
-// "Forgot your password?": tells the principal, who then sets a new password in Team & Access
+// "Forgot your password?": a 6-digit code is emailed (when the server can send email) and the person sets a new password
+// right here; the principal also sees the request in Team & Access and can set a password for the person.
 const ForgotPassword: React.FC<{ initialEmail: string }> = ({ initialEmail }) => {
   const { t } = useLang();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState(initialEmail);
-  const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [step, setStep] = useState<'ask' | 'code' | 'done'>('ask');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
   const send = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
-    setState('sending');
+    setBusy(true);
+    setError('');
     try {
       await requestPasswordReset(email.trim());
-      setState('sent');
+      setStep('code');
     } catch {
-      setState('error');
+      setError('Could not send the request. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const setNew = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      await resetPasswordWithCode(email.trim(), code.trim(), password);
+      setStep('done');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not set the password. Please try again.');
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -50,29 +72,41 @@ const ForgotPassword: React.FC<{ initialEmail: string }> = ({ initialEmail }) =>
     );
   }
 
+  const inputCls = 'w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500';
+  const primary = 'px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-lg';
+
   return (
-    <form onSubmit={send} className="mt-4 p-3 rounded-lg border border-slate-200 bg-slate-50 space-y-2">
-      {state === 'sent' ? (
-        <p className="text-xs text-emerald-700">
-          Request sent. If this email has an account, the principal will see it and give you a new password.
-        </p>
-      ) : (
+    <form onSubmit={step === 'ask' ? send : setNew} className="mt-4 p-3 rounded-lg border border-slate-200 bg-slate-50 space-y-2">
+      {step === 'done' ? (
+        <p className="text-xs text-emerald-700">{t('Your password is changed. Sign in with the new password.')}</p>
+      ) : step === 'code' ? (
         <>
-          <p className="text-xs text-slate-600">Enter your email. The principal gets a request and sets a new password for you.</p>
-          <input
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          {state === 'error' && <p className="text-xs text-rose-600">Could not send the request. Please try again.</p>}
+          <p className="text-xs text-slate-600">
+            {t('If this email has an account, a 6-digit code was sent to it (it works for 15 minutes). The principal also got your request.')}
+          </p>
+          <input inputMode="numeric" maxLength={6} value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))} placeholder={t('6-digit code')} className={inputCls} />
+          <input type="password" autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t('At least 8 characters, letters and numbers')} className={inputCls} />
+          {error && <p className="text-xs text-rose-600">{t(error)}</p>}
           <div className="flex gap-2 justify-end">
             <button type="button" onClick={() => setOpen(false)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">
-              Cancel
+              {t('Cancel')}
             </button>
-            <button type="submit" disabled={state === 'sending'} className="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-lg">
-              {state === 'sending' ? 'Sending...' : 'Send request'}
+            <button type="submit" disabled={busy || code.length !== 6 || !password} className={primary}>
+              {busy ? t('Sending...') : t('Set new password')}
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="text-xs text-slate-600">{t('Enter your email. We send a code to set a new password, and the principal gets a request too.')}</p>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" className={inputCls} />
+          {error && <p className="text-xs text-rose-600">{t(error)}</p>}
+          <div className="flex gap-2 justify-end">
+            <button type="button" onClick={() => setOpen(false)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">
+              {t('Cancel')}
+            </button>
+            <button type="submit" disabled={busy} className={primary}>
+              {busy ? t('Sending...') : t('Send code')}
             </button>
           </div>
         </>

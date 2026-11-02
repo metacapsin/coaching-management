@@ -290,6 +290,14 @@ export const HI: Record<string, string> = {
   'Every receipt, the pending dues and the total collected, with search and CSV download.': 'हर रसीद, बाक़ी रकम और कुल जमा, खोज और CSV डाउनलोड के साथ।',
   'All students with their batch, fee status and contact, ready to search and filter.': 'सभी छात्र बैच, फ़ीस की स्थिति और संपर्क के साथ, खोज और फ़िल्टर के लिए तैयार।',
 
+  'Your password is changed. Sign in with the new password.': 'आपका पासवर्ड बदल गया। नए पासवर्ड से साइन इन करें।',
+  'If this email has an account, a 6-digit code was sent to it (it works for 15 minutes). The principal also got your request.': 'अगर इस ईमेल का खाता है तो उस पर 6 अंकों का कोड भेजा गया है (15 मिनट चलता है)। प्रिंसिपल को भी आपका अनुरोध मिला।',
+  '6-digit code': '6 अंकों का कोड',
+  'Set new password': 'नया पासवर्ड सेट करें',
+  'Enter your email. We send a code to set a new password, and the principal gets a request too.': 'अपना ईमेल लिखें। नया पासवर्ड सेट करने का कोड भेजा जाता है, और प्रिंसिपल को भी अनुरोध मिलता है।',
+  'Send code': 'कोड भेजें',
+  'Could not send the request. Please try again.': 'अनुरोध नहीं भेजा जा सका। फिर कोशिश करें।',
+
   // ---- app: side menu and page titles
   'Dashboard': 'डैशबोर्ड',
   'Admissions & Students': 'एडमिशन और छात्र',

@@ -11,6 +11,10 @@ from unittest import mock
 
 import mongomock
 
+# the tests must never send a real email, even when server_py/.env has the email settings
+for _key in ('SMTP_HOST', 'SMTP_USER', 'SMTP_PASSWORD'):
+    os.environ[_key] = ''
+
 from academia import create_app
 from academia.auth import basic_hash, hash_password
 from academia.legacy import import_legacy
@@ -745,6 +749,41 @@ class Coachings(unittest.TestCase):
         with mock.patch.dict(os.environ, {'SMTP_HOST': '', 'SMTP_USER': '', 'SMTP_PASSWORD': ''}):
             self.assertFalse(mailer.configured())
             self.assertFalse(mailer.send('a@b.com', 'hi', 'text'))
+
+    def test_02d_a_forgotten_password_is_set_with_the_emailed_code(self):
+        import re
+        sent = []
+        with mock.patch('academia.routes.mailer.send', side_effect=lambda to, subject, body: sent.append((to, subject, body)) or True):
+            self.assertEqual(self.call('POST', '/api/auth/forgot-password', {'email': 'a@x.com'})[0], 200)
+            self.assertEqual(self.call('POST', '/api/auth/forgot-password', {'email': 'nobody@x.com'})[0], 200)  # the same answer, nobody can search emails
+        self.assertEqual([m[0] for m in sent], ['a@x.com'])
+        code = re.search(r'is (\d{6})', sent[0][2]).group(1)
+        wrong = '000000' if code != '000000' else '111111'
+        self.assertEqual(self.call('POST', '/api/auth/reset-with-code', {'email': 'a@x.com', 'code': wrong, 'password': 'NewPass#456'})[0], 400)
+        self.assertEqual(self.call('POST', '/api/auth/reset-with-code', {'email': 'a@x.com', 'code': code, 'password': 'short'})[0], 400)  # a weak password is refused
+        self.assertEqual(self.call('POST', '/api/auth/reset-with-code', {'email': 'a@x.com', 'code': code, 'password': 'NewPass#456'})[0], 200)
+        self.assertEqual(self.login('a@x.com')[0], 401)  # the old password is gone
+        self.assertEqual(self.call('POST', '/api/auth/login', {'email': 'a@x.com', 'password': 'NewPass#456', 'remember': False, 'portal': 'admin'})[0], 200)
+        # a code works once
+        self.assertEqual(self.call('POST', '/api/auth/reset-with-code', {'email': 'a@x.com', 'code': code, 'password': 'Other#7890'})[0], 400)
+        # put the password back for the tests that follow
+        with mock.patch('academia.routes.mailer.send', side_effect=lambda to, subject, body: sent.append((to, subject, body)) or True):
+            self.call('POST', '/api/auth/forgot-password', {'email': 'a@x.com'})
+        code = re.search(r'is (\d{6})', sent[-1][2]).group(1)
+        self.assertEqual(self.call('POST', '/api/auth/reset-with-code', {'email': 'a@x.com', 'code': code, 'password': PASSWORD})[0], 200)
+        status, data = self.login('a@x.com')
+        self.assertEqual(status, 200)
+        self.__class__.admin_a = data['token']  # the reset signed the old sessions out
+
+    def test_02e_a_new_request_is_told_to_the_principal_and_the_super_admin(self):
+        sent = []
+        with mock.patch('academia.routes.mailer.send', side_effect=lambda to, subject, body: sent.append((to, subject)) or True):
+            self.assertEqual(self.call('POST', '/api/public/register-coaching', self.coaching('Zeta', 'z@x.com'))[0], 200)
+        self.assertIn('z@x.com', [m[0] for m in sent])
+        self.assertIn('super@x.com', [m[0] for m in sent])
+        zeta = next(o['id'] for o in self.call('GET', '/api/super/orgs', token=self.sup)[1]['orgs'] if o['name'] == 'Zeta')
+        self.call('POST', f'/api/super/orgs/{zeta}/reject', {}, self.sup)
+
 
     def test_03_an_added_coaching_waits_for_the_approval(self):
         # "Add coaching" only sends a request: nobody can sign in before the Approve
