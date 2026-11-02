@@ -87,7 +87,7 @@ export const superApi = {
   reject: (id: string, reason = '') => superRequest<Decision>('POST', `/super/orgs/${id}/reject`, { reason }),
   suspend: (id: string) => superRequest<unknown>('POST', `/super/orgs/${id}/suspend`, {}),
   activate: (id: string) => superRequest<unknown>('POST', `/super/orgs/${id}/activate`, {}),
-  remove: (id: string, confirmName: string) => superRequest<unknown>('DELETE', `/super/orgs/${id}`, { confirmName }),
+  remove: (id: string, confirmName: string, password: string) => superRequest<unknown>('DELETE', `/super/orgs/${id}`, { confirmName, password }),
   resetAdminPassword: (id: string, newPassword: string) =>
     superRequest<unknown>('POST', `/super/orgs/${id}/reset-admin-password`, { newPassword }),
   changePassword: (currentPassword: string, newPassword: string) =>

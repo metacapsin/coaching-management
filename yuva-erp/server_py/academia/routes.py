@@ -1399,18 +1399,40 @@ def super_reject_org(org_id):
 
 @route('/api/super/orgs/<org_id>', ['DELETE'], 'super')
 def super_delete_org(org_id):
-    """Deletes a coaching with ALL its data. The super admin has to type the name of the coaching."""
+    """Deletes a coaching with ALL its data. The Super Admin has to type the name of the coaching and the own password
+    (so somebody who finds a signed in screen cannot delete a coaching), and every Super Admin gets an email about it."""
     org = _get_org(org_id)
     if org['id'] == DEFAULT_ORG:
         raise HttpError(400, 'The first coaching cannot be deleted.')
     if text(body().get('confirmName')) != org['name']:
         raise HttpError(400, 'Type the exact name of the coaching to delete it.')
+    limiter, key = limiters()['login'], f'delete|{g.user["id"]}'
+    wait = limiter.check(key)
+    if wait is not None:
+        raise HttpError(429, 'Too many wrong passwords. Please wait a few minutes.')
+    password = body().get('password')
+    if not isinstance(password, str) or not auth.verify_password(g.user, password):
+        limiter.fail(key)
+        raise HttpError(403, 'Your password is wrong. Type the password you sign in with.')
+    limiter.reset(key)
     tenant = root().for_org(org['id'])
     for u in tenant.users_all():
         auth.destroy_sessions_of(root(), u['id'])
     tenant.drop_org_data()
     root().org_remove(org['id'])
     g.store.audit(g.user, 'coaching-delete', org['name'])
+    for admin in root().for_org(PLATFORM_ORG).users_all():
+        if admin['role'] == 'super':
+            _mail(
+                admin['email'],
+                f'Coaching deleted: {org["name"]}',
+                'A coaching was deleted',
+                ['A coaching and all its data were deleted. If this was not you or another Super Admin, change your password now.'],
+                details=[('Coaching', org['name']), ('Deleted by', g.user.get('name')), ('Account', g.user.get('email'))],
+                button=('Sign in as Super Admin', _login_link('super')),
+                accent=email_template.RED,
+                name=admin.get('name'),
+            )
     return ok()
 
 

@@ -743,7 +743,7 @@ class Coachings(unittest.TestCase):
         self.assertEqual(self.call('POST', '/api/public/register-coaching', self.coaching('Nomail', 'no@x.com'))[0], 200)
         self.call('POST', f'/api/super/orgs/{org_id("Nomail")}/reject', {}, self.sup)
         # the two coachings of this test are removed again, the next tests count on the coachings that were there
-        self.call('DELETE', f'/api/super/orgs/{org_id("Mailco")}', {'confirmName': 'Mailco'}, self.sup)
+        self.call('DELETE', f'/api/super/orgs/{org_id("Mailco")}', {'confirmName': 'Mailco', 'password': PASSWORD}, self.sup)
 
     def test_02c_without_an_email_service_nothing_is_sent_and_nothing_breaks(self):
         from academia import mailer
@@ -915,7 +915,10 @@ class Coachings(unittest.TestCase):
         self.assertEqual(self.login('g@x.com')[0], 401)  # the request and its account are gone
 
         self.assertEqual(self.call('DELETE', f'/api/super/orgs/{self.org_b}', {'confirmName': 'wrong'}, self.sup)[0], 400)
-        self.assertEqual(self.call('DELETE', f'/api/super/orgs/{self.org_b}', {'confirmName': 'Beta'}, self.sup)[0], 200)
+        # the name is right but the password is missing or wrong: nothing is deleted
+        self.assertEqual(self.call('DELETE', f'/api/super/orgs/{self.org_b}', {'confirmName': 'Beta'}, self.sup)[0], 403)
+        self.assertEqual(self.call('DELETE', f'/api/super/orgs/{self.org_b}', {'confirmName': 'Beta', 'password': 'Wrong#12345'}, self.sup)[0], 403)
+        self.assertEqual(self.call('DELETE', f'/api/super/orgs/{self.org_b}', {'confirmName': 'Beta', 'password': PASSWORD}, self.sup)[0], 200)
         self.assertEqual(self.login('b@x.com', 'Fresh12345')[0], 401)
         self.assertIn(self.call('DELETE', '/api/super/orgs/default', {'confirmName': 'x'}, self.sup)[0], (400, 404))
 
