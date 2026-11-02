@@ -71,6 +71,7 @@ them on a temporary database in your real cluster (it is dropped afterwards).
 - Can add **another Super Admin** (so two people can help each other when one forgets the password: "Set new password" for the other, who then chooses an own one) and remove one. Nobody of a coaching can. A Super Admin who is alone can reset the password on the server computer ("Forgot your password?").
 - Keeps the **subscription** of every coaching: the monthly fee, payments ("Record a payment" moves the paid-until date on)
   and a Paid / Payment due badge; the top shows the income of this month.
+  (The Super Admin page does not show the subscription now; the server keeps the part, only the page was cleared.)
 - Switch a coaching off or on, edit it, delete it (the name must be typed), set a new password for its principal
   (the principal then has to choose an own password at the next sign in), and read the platform activity log.
 - Never sees a coaching's data (students, fees, exams...). To enter a coaching the Super Admin needs the

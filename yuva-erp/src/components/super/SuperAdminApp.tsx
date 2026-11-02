@@ -15,7 +15,6 @@ import {
   Trash2,
   Lock,
   Search,
-  Wallet,
   UserPlus,
   History,
   Users,
@@ -135,12 +134,11 @@ const AddCoachingModal: React.FC<{ onClose: () => void; onDone: (name: string) =
 const EditModal: React.FC<{ org: OrgSummary; onClose: () => void; onDone: () => void }> = ({ org, onClose, onDone }) => {
   const [name, setName] = useState(org.name);
   const [city, setCity] = useState(org.city);
-  const [fee, setFee] = useState(String(org.monthlyFee || ''));
   const [error, setError] = useState('');
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await superApi.edit(org.id, { name: name.trim(), city: city.trim(), monthlyFee: Number(fee) || 0 });
+      await superApi.edit(org.id, { name: name.trim(), city: city.trim() });
       onDone();
       onClose();
     } catch (err) {
@@ -157,10 +155,6 @@ const EditModal: React.FC<{ org: OrgSummary; onClose: () => void; onDone: () => 
         <div>
           <label className="block text-xs font-medium text-slate-700 mb-1">City / area</label>
           <input value={city} onChange={e => setCity(e.target.value)} className={inputCls} />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">Monthly fee this coaching pays you (₹)</label>
-          <input type="number" min="0" value={fee} onChange={e => setFee(e.target.value)} placeholder="0 = free" className={inputCls} />
         </div>
         {error && <p className="text-xs text-rose-600">{error}</p>}
         <div className="flex justify-end gap-2">
@@ -290,101 +284,6 @@ const MyPasswordModal: React.FC<{ onClose: () => void; onDone: (msg: string) => 
           </button>
         </div>
       </form>
-    </ModalShell>
-  );
-};
-
-const PaymentModal: React.FC<{ orgs: OrgSummary[]; onClose: () => void; onDone: (msg: string) => void }> = ({ orgs, onClose, onDone }) => {
-  const [orgId, setOrgId] = useState(orgs[0]?.id ?? '');
-  const org = orgs.find(o => o.id === orgId) ?? orgs[0];
-  const [amount, setAmount] = useState(String(orgs[0]?.monthlyFee || ''));
-  const [months, setMonths] = useState('1');
-  const [note, setNote] = useState('');
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    if (!org) return;
-    setBusy(true);
-    try {
-      const res = await superApi.recordPayment(org.id, { amount: Number(amount), months: Number(months) || 1, note: note.trim() });
-      onDone(`Payment of ₹${Number(amount).toLocaleString('en-IN')} saved. ${org.name} is paid until ${formatDate(res.org.paidUntil || '')}.`);
-      onClose();
-    } catch (err) {
-      setError(errText(err));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <ModalShell title="Premium plan" subtitle="Unlock or extend the premium of a coaching" icon={Wallet} iconClass="bg-emerald-600" width="sm" onClose={onClose}>
-      {!org ? (
-        <p className="p-6 text-sm text-slate-500">There is no approved coaching yet. Approve a coaching first.</p>
-      ) : (
-      <form onSubmit={submit} className="p-6 space-y-4">
-        <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">Coaching</label>
-          <select
-            value={org.id}
-            onChange={e => {
-              setOrgId(e.target.value);
-              setAmount(String(orgs.find(o => o.id === e.target.value)?.monthlyFee || ''));
-            }}
-            className={inputCls}
-          >
-            {orgs.map(o => (
-              <option key={o.id} value={o.id}>
-                {o.name}
-                {o.city ? ` · ${o.city}` : ''}
-              </option>
-            ))}
-          </select>
-        </div>
-        <p className="text-xs text-slate-500">
-          Money this coaching paid you for using the platform.
-          {org.paidUntil ? ` Paid until ${formatDate(org.paidUntil)}.` : ' Nothing paid yet (free plan).'}
-        </p>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Amount (₹)</label>
-            <input type="number" min="0" autoFocus value={amount} onChange={e => setAmount(e.target.value)} className={inputCls} />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">For how many months</label>
-            <input type="number" min="1" max="36" value={months} onChange={e => setMonths(e.target.value)} className={inputCls} />
-          </div>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">Note (optional)</label>
-          <input value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. UPI, ref 1234" className={inputCls} />
-        </div>
-        {org.payments.length > 0 && (
-          <ul className="text-[11px] text-slate-500 divide-y divide-slate-100 border border-slate-200 rounded-lg">
-            {org.payments.slice(0, 4).map(p => (
-              <li key={p.id} className="px-3 py-1.5 flex justify-between">
-                <span>
-                  {formatDate(p.date)} · {p.months} month{p.months === 1 ? '' : 's'}
-                  {p.note ? ` · ${p.note}` : ''}
-                </span>
-                <span className="font-mono">₹{p.amount.toLocaleString('en-IN')}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-        {error && <p className="text-xs text-rose-600">{error}</p>}
-        <div className="flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">
-            Cancel
-          </button>
-          <button type="submit" disabled={busy} className="px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 rounded-lg">
-            {busy ? 'Saving...' : 'Save payment'}
-          </button>
-        </div>
-      </form>
-      )}
     </ModalShell>
   );
 };
@@ -758,12 +657,11 @@ const ActivityPanel: React.FC = () => {
 // ---------- the dashboard ----------
 
 const Dashboard: React.FC<{ user: AuthUser; onSignOut: () => void }> = ({ user, onSignOut }) => {
-  const { orgs, income, error, loaded, reload } = useOrgs(true);
+  const { orgs, error, loaded, reload } = useOrgs(true);
   const [notice, setNotice] = useState<{ type: 'ok' | 'error'; text: string; wa?: string } | null>(null);
   const [modal, setModal] = useState<
     | { kind: 'add' }
     | { kind: 'edit' | 'password' | 'delete' | 'enter'; org: OrgSummary }
-    | { kind: 'premium' }
     | { kind: 'mine' }
     | null
   >(null);
@@ -885,7 +783,7 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
             onClick={() =>
               downloadCsv(
                 `coachings-${toLocalISODate()}.csv`,
-                ['Coaching', 'City', 'Status', 'Principal', 'Principal email', 'Principal phone', 'Students', 'Accounts', 'Monthly fee', 'Paid until', 'Plan', 'Since'],
+                ['Coaching', 'City', 'Status', 'Principal', 'Principal email', 'Principal phone', 'Students', 'Accounts', 'Since'],
                 orgs.map(o => [
                   o.name,
                   o.city,
@@ -895,9 +793,6 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
                   o.admin?.phone ?? '',
                   o.students,
                   o.accounts,
-                  o.monthlyFee,
-                  o.paidUntil ?? '',
-                  o.subscription,
                   o.createdAt.slice(0, 10)
                 ])
               )
@@ -907,13 +802,6 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
           >
             <Download className="w-4 h-4" />
             Download list (CSV)
-          </button>
-          <button
-            onClick={() => setModal({ kind: 'premium' })}
-            className="px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm flex items-center gap-1.5"
-          >
-            <Wallet className="w-4 h-4" />
-            Premium
           </button>
           <button
             onClick={() => setModal({ kind: 'add' })}
@@ -942,7 +830,7 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
       )}
       {error && !loaded && <p className="mb-4 text-xs text-rose-600">{error}</p>}
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {stat('Coachings', orgs.filter(o => o.status !== 'pending').length, 'text-slate-900', () => {
           setFilter('all');
           listRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -962,7 +850,6 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
           listRef.current?.scrollIntoView({ behavior: 'smooth' });
         })}
         {stat('Students in all', totalStudents)}
-        {stat('Income this month', `₹${income.thisMonth.toLocaleString('en-IN')}`, 'text-emerald-700')}
       </div>
 
       <div ref={pendingRef}>
@@ -1097,19 +984,6 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
                       <div className="text-lg font-bold">{o.accounts}</div>
                     </div>
                   </div>
-                  {o.status !== 'pending' && (
-                    <div className="flex items-center justify-between gap-2 text-[11px]">
-                      <span className="text-slate-500">
-                        {o.monthlyFee ? `₹${o.monthlyFee.toLocaleString('en-IN')} / month` : 'Free plan'}
-                        {o.paidUntil ? ` · until ${formatDate(o.paidUntil)}` : ''}
-                      </span>
-                      {o.subscription !== 'free' && (
-                        <span className={`font-semibold px-1.5 py-0.5 rounded ${o.subscription === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-                          {o.subscription === 'paid' ? 'Paid' : 'Payment due'}
-                        </span>
-                      )}
-                    </div>
-                  )}
                   <div className="text-[11px] text-slate-400">
                     {o.city || 'City not given'} · since {formatDate(o.createdAt)}
                   </div>
@@ -1187,7 +1061,6 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
           reload();
           setTimeout(() => pendingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 400);
         }} />}
-      {modal?.kind === 'premium' && <PaymentModal orgs={orgs.filter(o => o.status !== 'pending')} onClose={() => setModal(null)} onDone={msg => { flash('ok', msg); reload(); }} />}
       {modal?.kind === 'edit' && <EditModal org={modal.org} onClose={() => setModal(null)} onDone={() => { flash('ok', 'Saved.'); reload(); }} />}
       {modal?.kind === 'password' && <PasswordModal org={modal.org} onClose={() => setModal(null)} onDone={msg => flash('ok', msg)} />}
       {modal?.kind === 'delete' && <DeleteModal org={modal.org} onClose={() => setModal(null)} onDone={msg => { flash('ok', msg); reload(); }} />}
