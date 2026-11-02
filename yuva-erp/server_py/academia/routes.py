@@ -17,7 +17,7 @@ from datetime import datetime, timedelta, timezone
 from flask import Blueprint, Response, current_app, g, request
 from pymongo.errors import DuplicateKeyError
 
-from . import auth, mailer
+from . import auth, email_template, mailer
 from .errors import HttpError
 from .rollno import next_roll_number
 from .scope import apply_changes, scope_institute
@@ -225,11 +225,14 @@ def forgot_password():
         s.bump()
         s.audit(None, 'password-reset-requested', email)
         if code:  # also by email: the person can set a new password at once with this code
-            mailer.send(
+            _mail(
                 target['email'],
                 'Your AcademiaOS password reset code',
-                f'Hello {target.get("name") or ""},\n\nYour code to set a new password is {code}.\nIt works for 15 minutes. '
-                'If you did not ask for it, you can ignore this email.\n\nAcademiaOS',
+                'Your password reset code',
+                ['Use this code to set a new password. It works for 15 minutes.'],
+                code=code,
+                note='If you did not ask for it, you can ignore this email.',
+                name=target.get('name'),
             )
     return ok()
 
@@ -961,19 +964,26 @@ def register_coaching():
     org, user = _new_coaching(body(), 'pending')
     root().for_org(PLATFORM_ORG).audit(None, 'coaching-requested', f'{org["name"]} ({user["email"]})')
     # the principal knows the request arrived, and the Super Admin knows there is something to approve
-    mailer.send(
+    _mail(
         user['email'],
         f'We received your request for {org["name"]}',
-        f'Hello {user.get("name") or ""},\n\nWe received your request to add {org["name"]} on AcademiaOS. '
-        'The Super Admin will check it. You will get an email as soon as it is approved or rejected.\n\nAcademiaOS',
+        'We received your request',
+        ['Thank you! The Super Admin will check your request now.'],
+        details=[('Coaching', org['name']), ('City', org.get('city'))],
+        note='You will get an email as soon as your request is approved or rejected.',
+        name=user.get('name'),
     )
     for admin in root().for_org(PLATFORM_ORG).users_all():
         if admin['role'] == 'super':
-            mailer.send(
+            _mail(
                 admin['email'],
                 f'New coaching request: {org["name"]}',
-                f'{org["name"]} ({org.get("city") or "no city"}) asked to join AcademiaOS. Principal: {user.get("name")} ({user["email"]}). '
-                'Open the Coachings page and press Approve or Reject.\n\nAcademiaOS',
+                'New coaching request',
+                ['A new coaching asked to join AcademiaOS and waits for your decision. Sign in as Super Admin and press Approve or Reject on the Coachings page.'],
+                details=[('Coaching', org['name']), ('City', org.get('city')), ('Principal', user.get('name')), ('Email', user['email']), ('Mobile', user.get('phone'))],
+                button=('Open the Coachings page', _site_url()),
+                note='The principal is told by email about your decision.',
+                name=admin.get('name'),
             )
     return ok()
 
@@ -1295,6 +1305,17 @@ def super_record_payment(org_id):
     return {'org': _org_summary(org)}
 
 
+def _site_url():
+    """The address of this site for the links in emails: PUBLIC_URL if set, else the address the request came to."""
+    return (os.environ.get('PUBLIC_URL') or request.host_url).rstrip('/')
+
+
+def _mail(to, subject, heading, lines, **look):
+    """Sends a good looking email (HTML card with the plain text next to it). Returns (handed over, plain text)."""
+    plain, html = email_template.render(heading, lines, **look)
+    return bool(mailer.send(to, subject, plain, html)), plain
+
+
 def _principal_of(org):
     """The first principal (administrator) of a coaching: the person who asked for it."""
     for u in root().for_org(org['id']).users_all():
@@ -1303,13 +1324,11 @@ def _principal_of(org):
     return None
 
 
-def _tell_principal(org, principal, subject, lines):
+def _tell_principal(org, principal, subject, heading, lines, **look):
     """Emails the principal about the decision. Returns 'sent', 'no-email' (email is not set up on the server) or 'none'."""
     if not principal:
         return {'notified': 'none'}
-    greeting = f'Hello {principal.get("name") or ""},'.replace(' ,', ',')
-    text = '\n\n'.join([greeting, *lines, 'AcademiaOS'])
-    sent = bool(principal.get('email')) and mailer.send(principal['email'], subject, text)
+    sent, text = _mail(principal.get('email') or '', subject, heading, lines, name=principal.get('name'), **look)
     # `message` and `phone` let the Super Admin send the same words on WhatsApp when no email could be sent
     return {'notified': 'sent' if sent else 'no-email', 'message': text, 'phone': principal.get('phone') or ''}
 
@@ -1322,10 +1341,13 @@ def super_approve_org(org_id):
         org,
         _principal_of(org),
         f'Your coaching {org["name"]} is approved',
+        'Your coaching is approved',
         [
-            f'Good news! Your request for {org["name"]} on AcademiaOS is approved.',
-            'You can sign in now with your email and password as Coaching Admin and start adding programs, batches and students.',
+            'Good news! You can sign in now with your email and password as Coaching Admin. Start with a program and a batch, then admit your first student.',
         ],
+        details=[('Coaching', org['name']), ('City', org.get('city'))],
+        button=('Sign in to AcademiaOS', _site_url()),
+        accent=email_template.GREEN,
     )
     return {'org': _org_summary(org), **notified}
 
@@ -1355,11 +1377,16 @@ def super_reject_org(org_id):
     root().for_org(org['id']).drop_org_data()
     root().org_remove(org['id'])
     g.store.audit(g.user, 'coaching-reject', org['name'])
-    lines = [f'Sorry, your request for {org["name"]} on AcademiaOS was not approved.']
-    if reason:
-        lines.append(f'Reason: {reason}')
-    lines.append('You can register again with correct details, or contact us for help.')
-    notified = _tell_principal(org, principal, f'Your coaching request for {org["name"]} was not approved', lines)
+    notified = _tell_principal(
+        org,
+        principal,
+        f'Your coaching request for {org["name"]} was not approved',
+        'Your request was not approved',
+        ['Sorry, the Super Admin could not approve your request. You can register again with correct details, or contact us for help.'],
+        details=[('Coaching', org['name']), ('Reason', reason)],
+        button=('Register again', _site_url()),
+        accent=email_template.RED,
+    )
     return {'ok': True, **notified}
 
 

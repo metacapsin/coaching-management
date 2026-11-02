@@ -725,7 +725,8 @@ class Coachings(unittest.TestCase):
         with mock.patch('academia.routes.mailer.send', return_value=True) as send:
             status, data = self.call('POST', f'/api/super/orgs/{org_id("Mailco")}/approve', token=self.sup)
         self.assertEqual((status, data['notified']), (200, 'sent'))
-        to, subject, body = send.call_args[0]
+        to, subject, body, html = send.call_args[0]
+        self.assertIn('<html', html)  # a good looking version next to the plain text
         self.assertEqual(to, 'mail@x.com')
         self.assertIn('approved', subject)
         self.assertIn('You can sign in now', body)
@@ -753,11 +754,11 @@ class Coachings(unittest.TestCase):
     def test_02d_a_forgotten_password_is_set_with_the_emailed_code(self):
         import re
         sent = []
-        with mock.patch('academia.routes.mailer.send', side_effect=lambda to, subject, body: sent.append((to, subject, body)) or True):
+        with mock.patch('academia.routes.mailer.send', side_effect=lambda to, subject, body, html=None: sent.append((to, subject, body)) or True):
             self.assertEqual(self.call('POST', '/api/auth/forgot-password', {'email': 'a@x.com'})[0], 200)
             self.assertEqual(self.call('POST', '/api/auth/forgot-password', {'email': 'nobody@x.com'})[0], 200)  # the same answer, nobody can search emails
         self.assertEqual([m[0] for m in sent], ['a@x.com'])
-        code = re.search(r'is (\d{6})', sent[0][2]).group(1)
+        code = re.search(r'Your code: (\d{6})', sent[0][2]).group(1)
         wrong = '000000' if code != '000000' else '111111'
         self.assertEqual(self.call('POST', '/api/auth/reset-with-code', {'email': 'a@x.com', 'code': wrong, 'password': 'NewPass#456'})[0], 400)
         self.assertEqual(self.call('POST', '/api/auth/reset-with-code', {'email': 'a@x.com', 'code': code, 'password': 'short'})[0], 400)  # a weak password is refused
@@ -767,9 +768,9 @@ class Coachings(unittest.TestCase):
         # a code works once
         self.assertEqual(self.call('POST', '/api/auth/reset-with-code', {'email': 'a@x.com', 'code': code, 'password': 'Other#7890'})[0], 400)
         # put the password back for the tests that follow
-        with mock.patch('academia.routes.mailer.send', side_effect=lambda to, subject, body: sent.append((to, subject, body)) or True):
+        with mock.patch('academia.routes.mailer.send', side_effect=lambda to, subject, body, html=None: sent.append((to, subject, body)) or True):
             self.call('POST', '/api/auth/forgot-password', {'email': 'a@x.com'})
-        code = re.search(r'is (\d{6})', sent[-1][2]).group(1)
+        code = re.search(r'Your code: (\d{6})', sent[-1][2]).group(1)
         self.assertEqual(self.call('POST', '/api/auth/reset-with-code', {'email': 'a@x.com', 'code': code, 'password': PASSWORD})[0], 200)
         status, data = self.login('a@x.com')
         self.assertEqual(status, 200)
@@ -777,10 +778,14 @@ class Coachings(unittest.TestCase):
 
     def test_02e_a_new_request_is_told_to_the_principal_and_the_super_admin(self):
         sent = []
-        with mock.patch('academia.routes.mailer.send', side_effect=lambda to, subject, body: sent.append((to, subject)) or True):
+        with mock.patch('academia.routes.mailer.send', side_effect=lambda to, subject, body, html=None: sent.append((to, subject, body)) or True):
             self.assertEqual(self.call('POST', '/api/public/register-coaching', self.coaching('Zeta', 'z@x.com'))[0], 200)
         self.assertIn('z@x.com', [m[0] for m in sent])
         self.assertIn('super@x.com', [m[0] for m in sent])
+        super_mail = next(m for m in sent if m[0] == 'super@x.com')
+        self.assertIn('z@x.com', super_mail[2])  # who asked
+        self.assertIn('Approve or Reject', super_mail[2])  # what to do
+        self.assertIn('http', super_mail[2])  # where to go
         zeta = next(o['id'] for o in self.call('GET', '/api/super/orgs', token=self.sup)[1]['orgs'] if o['name'] == 'Zeta')
         self.call('POST', f'/api/super/orgs/{zeta}/reject', {}, self.sup)
 

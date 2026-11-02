@@ -31,13 +31,15 @@ def configured():
     return bool(s['host'] and s['user'] and s['password'])
 
 
-def _deliver(to, subject, text):
+def _deliver(to, subject, text, html=None):
     s = _settings()
     msg = EmailMessage()
     msg['From'] = s['sender']
     msg['To'] = to
     msg['Subject'] = subject
     msg.set_content(text)
+    if html:
+        msg.add_alternative(html, subtype='html')  # programs that show HTML use this, the others show the plain text
     try:
         with smtplib.SMTP(s['host'], s['port'], timeout=15) as smtp:
             smtp.starttls()
@@ -47,9 +49,9 @@ def _deliver(to, subject, text):
         print(f'[mail] could not send to {to}: {err}')
 
 
-def send(to, subject, text):
+def send(to, subject, text, html=None):
     """Sends in the background. Returns True when an email was handed over, False when email is not set up."""
     if not to or not configured():
         return False
-    threading.Thread(target=_deliver, args=(to, subject, text), daemon=True).start()
+    threading.Thread(target=_deliver, args=(to, subject, text, html), daemon=True).start()
     return True
