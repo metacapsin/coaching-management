@@ -1,4 +1,4 @@
-// node server_node/src/migrate.ts [path]
+// node backend/src/migrate.ts [path]
 //
 // Moves the accounts and the institute data of the older Node server (server/data/db.json) into MongoDB.
 // The old file is only read, never changed. It refuses to run when MongoDB already has accounts,

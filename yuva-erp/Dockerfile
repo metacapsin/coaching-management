@@ -2,19 +2,18 @@
 # Used by Render (Runtime: Docker). The database (MongoDB Atlas) stays outside; its address comes in MONGODB_URI.
 
 FROM node:24-slim AS web
-WORKDIR /app
-ENV MONGOMS_DISABLE_POSTINSTALL=1
-COPY package.json package-lock.json ./
+WORKDIR /app/frontend
+COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
-COPY . .
+COPY frontend .
 RUN npm run build
 
 FROM node:24-slim
-WORKDIR /app
+WORKDIR /app/backend
 ENV NODE_ENV=production
-COPY package.json package-lock.json ./
+COPY backend/package.json backend/package-lock.json ./
 RUN npm ci --omit=dev
-COPY server_node/src server_node/src
-COPY --from=web /app/dist dist
-ENV DIST_DIR=/app/dist TRUST_PROXY=1
-CMD ["node", "server_node/src/index.ts"]
+COPY backend/src src
+COPY --from=web /app/frontend/dist /app/frontend/dist
+ENV DIST_DIR=/app/frontend/dist TRUST_PROXY=1
+CMD ["node", "src/index.ts"]

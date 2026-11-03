@@ -6,7 +6,7 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
+const root = path.join(path.dirname(fileURLToPath(import.meta.url)));
 const serverOnly = process.argv.includes('--server-only');
 
 let children = [];
@@ -29,13 +29,13 @@ const run = (name, command, args, cwd = root) => {
 };
 
 if (process.argv.includes('--test')) {
-  const test = spawn(process.execPath, ['--test', 'server_node/tests/*.test.ts'], { cwd: root, stdio: 'inherit' });
+  const test = spawn(process.execPath, ['--test', 'tests/*.test.ts'], { cwd: path.join(root, 'backend'), stdio: 'inherit' });
   test.on('exit', code => process.exit(code ?? 1));
 } else {
-  children = [run('server (Node + MongoDB)', process.execPath, ['server_node/src/index.ts'])];
+  children = [run('server (Node + MongoDB)', process.execPath, ['src/index.ts'], path.join(root, 'backend'))];
   if (!serverOnly) {
     // --strictPort: if port 3000 is taken Vite stops, instead of moving to a port where /api would reach another server
-    children.push(run('app', process.execPath, ['node_modules/vite/bin/vite.js', '--port=3000', '--strictPort', '--host=0.0.0.0']));
+    children.push(run('app', process.execPath, ['node_modules/vite/bin/vite.js', '--port=3000', '--strictPort', '--host=0.0.0.0'], path.join(root, 'frontend')));
   }
   process.on('SIGINT', stopAll);
   process.on('SIGTERM', stopAll);

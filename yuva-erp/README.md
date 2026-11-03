@@ -5,8 +5,8 @@ approves coachings; every **coaching** has its own principal and its own data: a
 attendance, fees, expenses and profit, exams, batches, timetable, notices, study material, reports and
 parent messages. One coaching can never see the data of another.
 
-- Front end: React + Vite + Tailwind (`src/`)
-- Back end: Node.js (Express) + MongoDB (`server_node/`, TypeScript). Everything is stored in your MongoDB database.
+- Front end: React + Vite + Tailwind (`frontend/src/`)
+- Back end: Node.js (Express) + MongoDB (`backend/`, TypeScript). Everything is stored in your MongoDB database.
 - No paid API key is needed. WhatsApp messages open through `wa.me` links (see "Messages").
 
 ## Run it
@@ -14,7 +14,7 @@ parent messages. One coaching can never see the data of another.
 You need [Node.js](https://nodejs.org) 22.18 or newer (24 is best) and a MongoDB connection string
 (MongoDB Atlas free cluster, or a local MongoDB).
 
-1. Create `server_node/.env` (it is not part of git; copy `server_node/.env.example`):
+1. Create `backend/.env` (it is not part of git; copy `backend/.env.example`):
 
    ```
    MONGODB_URI=<your connection string>
@@ -24,7 +24,7 @@ You need [Node.js](https://nodejs.org) 22.18 or newer (24 is best) and a MongoDB
 2. Install once:
 
    ```bash
-   npm install
+   npm run setup
    ```
 
 3. Start everything:
@@ -48,7 +48,7 @@ npm run test:ui  # the screens and helpers (Vitest)
 npm run test:all # both
 ```
 
-Runs the server tests (`server_node/tests/`) on an in-memory MongoDB: nothing real is touched and no email is sent.
+Runs the server tests (`backend/tests/`) on an in-memory MongoDB: nothing real is touched and no email is sent.
 The first run downloads a MongoDB program once (about 800 MB, kept in your user folder).
 
 ## How people sign in (one page, three tabs)
@@ -107,7 +107,7 @@ The first run downloads a MongoDB program once (about 800 MB, kept in your user 
 | Institute Profile | Principal | Letterhead with a **logo** (side menu, receipts, report cards), "queue fee reminders by itself once a day", backup and restore, clean start |
 
 A new coaching opens with sample data so every screen can be seen at once (`AUTO_DEMO_FOR_NEW_COACHING` in
-`src/Context/InstituteContext.tsx`; "Delete all data" in the Institute Profile clears it for real use).
+`frontend/src/Context/InstituteContext.tsx`; "Delete all data" in the Institute Profile clears it for real use).
 
 ## Backups
 
@@ -119,10 +119,10 @@ itself (one automatic copy a day, the last 14 are kept, plus "Backup now").
 
 The app has no WhatsApp/SMS gateway (that needs a paid account). Messages to parents are opened as a ready-made
 WhatsApp chat on the computer. Bulk messages go to a queue ("Waiting to be sent"); press "Send now" on each one.
-To send automatically later, a gateway can be connected at `sendNotification` in `src/Context/InstituteContext.tsx`.
+To send automatically later, a gateway can be connected at `sendNotification` in `frontend/src/Context/InstituteContext.tsx`.
 
 **Approval emails.** When the Super Admin approves or rejects a coaching, the principal gets an email (a reason can be written for a rejection).
-This needs an SMTP account in `server_node/.env` (a free Gmail with an app password works, see `.env.example`). Without it nothing is emailed and the
+This needs an SMTP account in `backend/.env` (a free Gmail with an app password works, see `.env.example`). Without it nothing is emailed and the
 Super Admin sees a "Send on WhatsApp" button with the same message.
 
 **Other emails (same SMTP account).** A coaching that registers gets "we received your request" and the Super Admin gets "new request".
@@ -150,6 +150,6 @@ Caddy gets the HTTPS certificate by itself. In MongoDB Atlas, allow the server's
 
 ## Older Python server
 
-The server was first written in Python (Flask). It was replaced by the Node server in `server_node/`, which uses the same MongoDB collections,
+The server was first written in Python (Flask). It was replaced by the Node server in `backend/`, which uses the same MongoDB collections,
 password hashes and sessions, so the same database and logins work. The old code is in the git history (commit `9f594be`).
 To try the emails without sending them, set `MAIL_LOG=./mail.log`.

@@ -1,10 +1,10 @@
-// Settings. Values come from environment variables, or from server_node/.env (not part of git).
+// Settings. Values come from environment variables, or from backend/.env (not part of git).
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..'); // server_node/
+export const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..'); // backend/
 export const PROJECT = path.join(ROOT, '..'); // yuva-erp/
 
 /** Reads KEY=VALUE lines. Variables that are already set are not replaced. */
@@ -42,7 +42,7 @@ export function settings() {
     host: env.DB_HOST || '0.0.0.0',
     // hosting services (Render...) tell the program its port in PORT
     port: parseInt(env.DB_PORT || env.PORT || '3001', 10),
-    distDir: env.DIST_DIR || path.join(PROJECT, 'dist'),
-    legacyFile: path.join(PROJECT, 'server', 'data', 'db.json'),
+    distDir: env.DIST_DIR || path.join(PROJECT, 'frontend', 'dist'),
+    legacyFile: path.join(ROOT, 'data', 'db.json'),
   };
 }

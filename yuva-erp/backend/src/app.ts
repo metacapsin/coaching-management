@@ -41,7 +41,7 @@ async function prepareDns(uri: string): Promise<void> {
 
 /** Opens the MongoDB database named in the settings. */
 export async function connect(cfg: Settings): Promise<{ db: Db; client: MongoClient }> {
-  if (!cfg.mongodbUri) throw new Error('MONGODB_URI is not set. Put it in server_node/.env (see .env.example).');
+  if (!cfg.mongodbUri) throw new Error('MONGODB_URI is not set. Put it in backend/.env (see .env.example).');
   await prepareDns(cfg.mongodbUri);
   const client = new MongoClient(cfg.mongodbUri, { serverSelectionTimeoutMS: 15000 });
   await client.connect();

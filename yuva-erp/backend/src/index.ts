@@ -1,4 +1,4 @@
-// node server_node/src/index.ts   starts the server on http://localhost:3001 (the same address the Python server used).
+// node backend/src/index.ts   starts the server on http://localhost:3001 (the same address the Python server used).
 
 import fs from 'node:fs';
 import { createApp, connect } from './app.ts';
@@ -13,7 +13,7 @@ async function main(): Promise<void> {
   } catch (err) {
     console.log('Could not start: cannot connect to MongoDB.');
     console.log(`  ${(err as Error).name}: ${String((err as Error).message).slice(0, 300)}`);
-    console.log('Check MONGODB_URI in server_node/.env and, for MongoDB Atlas, Network Access (allow your IP address).');
+    console.log('Check MONGODB_URI in backend/.env and, for MongoDB Atlas, Network Access (allow your IP address).');
     process.exit(1);
   }
   const { app, root } = await createApp(connection.db, cfg.distDir);

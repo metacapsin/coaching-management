@@ -1,6 +1,6 @@
 // Sends an email through any SMTP service (a free Gmail account works: SMTP_HOST=smtp.gmail.com and an "app password").
 //
-// Settings (environment or server_node/.env): SMTP_HOST, SMTP_PORT (default 587), SMTP_USER, SMTP_PASSWORD, SMTP_FROM (default SMTP_USER).
+// Settings (environment or backend/.env): SMTP_HOST, SMTP_PORT (default 587), SMTP_USER, SMTP_PASSWORD, SMTP_FROM (default SMTP_USER).
 // Without them nothing is sent and `configured()` is false, so the app tells the person that no email was sent.
 //
 // Emails are sent one after the other by one background worker (a service like Gmail can refuse two logins at the same moment),

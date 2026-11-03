@@ -1,6 +1,7 @@
 node_modules
-dist
+**/node_modules
+**/dist
 .git
 **/.env*
-server_node/tests
-server/data
+backend/tests
+backend/data
