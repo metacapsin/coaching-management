@@ -9,7 +9,3 @@ coverage/
 
 server/data/
 
-# Python backend
-server_py/.venv/
-__pycache__/
-*.pyc

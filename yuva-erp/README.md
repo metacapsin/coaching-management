@@ -148,8 +148,8 @@ Caddy gets the HTTPS certificate by itself. In MongoDB Atlas, allow the server's
   open the coaching card (principal's email and password), look around, "Back to Super Admin".
 - Change the Atlas password if it was ever shared, and never put the connection string in code or git.
 
-## Moving from the older Python server
+## Older Python server
 
-The Node server uses the same MongoDB collections, password hashes and sessions, so the same database and the same logins work.
-It also reads `server_py/.env` if `server_node/.env` is missing. To try the emails without sending them, set `MAIL_LOG=./mail.log`.
-The old Python code is still in `server_py/` until it is removed.
+The server was first written in Python (Flask). It was replaced by the Node server in `server_node/`, which uses the same MongoDB collections,
+password hashes and sessions, so the same database and logins work. The old code is in the git history (commit `9f594be`).
+To try the emails without sending them, set `MAIL_LOG=./mail.log`.

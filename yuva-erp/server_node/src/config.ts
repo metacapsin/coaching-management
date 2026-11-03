@@ -1,5 +1,4 @@
 // Settings. Values come from environment variables, or from server_node/.env (not part of git).
-// While the Python server folder still exists, its .env is read too (the same MongoDB address), so nothing has to be copied.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -32,7 +31,6 @@ export function loadDotenv(file: string): void {
 export function loadEnvFiles(): void {
   if (process.env.ACADEMIA_NO_DOTENV === '1') return; // the tests must never read the real .env files
   loadDotenv(path.join(ROOT, '.env'));
-  loadDotenv(path.join(PROJECT, 'server_py', '.env'));
 }
 
 export function settings() {

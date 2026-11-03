@@ -2,6 +2,5 @@ node_modules
 dist
 .git
 **/.env*
-server_py
 server_node/tests
 server/data
