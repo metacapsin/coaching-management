@@ -6,15 +6,15 @@ attendance, fees, expenses and profit, exams, batches, timetable, notices, study
 parent messages. One coaching can never see the data of another.
 
 - Front end: React + Vite + Tailwind (`src/`)
-- Back end: Flask + MongoDB (`server_py/`). Everything is stored in your MongoDB database.
+- Back end: Node.js (Express) + MongoDB (`server_node/`, TypeScript). Everything is stored in your MongoDB database.
 - No paid API key is needed. WhatsApp messages open through `wa.me` links (see "Messages").
 
 ## Run it
 
-You need [Node.js](https://nodejs.org) 18+, Python 3.10+ and a MongoDB connection string
+You need [Node.js](https://nodejs.org) 22.18 or newer (24 is best) and a MongoDB connection string
 (MongoDB Atlas free cluster, or a local MongoDB).
 
-1. Create `server_py/.env` (it is not part of git; see `.env.example`):
+1. Create `server_node/.env` (it is not part of git; copy `server_node/.env.example`):
 
    ```
    MONGODB_URI=<your connection string>
@@ -25,8 +25,6 @@ You need [Node.js](https://nodejs.org) 18+, Python 3.10+ and a MongoDB connectio
 
    ```bash
    npm install
-   python -m venv server_py/.venv
-   server_py/.venv/Scripts/pip install -r server_py/requirements.txt
    ```
 
 3. Start everything:
@@ -45,13 +43,13 @@ changes the IP often; "Allow access from anywhere" is the easy way for a demo, r
 ### Tests
 
 ```bash
-npm test         # the server (Python)
+npm test         # the server (Node, in-memory MongoDB)
 npm run test:ui  # the screens and helpers (Vitest)
 npm run test:all # both
 ```
 
-Runs the Python tests (in-memory MongoDB, nothing real is touched). Set `ACADEMIA_TEST_REAL=1` to run
-them on a temporary database in your real cluster (it is dropped afterwards).
+Runs the server tests (`server_node/tests/`) on an in-memory MongoDB: nothing real is touched and no email is sent.
+The first run downloads a MongoDB program once (about 800 MB, kept in your user folder).
 
 ## How people sign in (one page, three tabs)
 
@@ -124,7 +122,7 @@ WhatsApp chat on the computer. Bulk messages go to a queue ("Waiting to be sent"
 To send automatically later, a gateway can be connected at `sendNotification` in `src/Context/InstituteContext.tsx`.
 
 **Approval emails.** When the Super Admin approves or rejects a coaching, the principal gets an email (a reason can be written for a rejection).
-This needs an SMTP account in `server_py/.env` (a free Gmail with an app password works, see `.env.example`). Without it nothing is emailed and the
+This needs an SMTP account in `server_node/.env` (a free Gmail with an app password works, see `.env.example`). Without it nothing is emailed and the
 Super Admin sees a "Send on WhatsApp" button with the same message.
 
 **Other emails (same SMTP account).** A coaching that registers gets "we received your request" and the Super Admin gets "new request".
@@ -149,3 +147,9 @@ Caddy gets the HTTPS certificate by itself. In MongoDB Atlas, allow the server's
 - Show it in this order: create the Super Admin, register a coaching (second tab), approve it as Super Admin,
   open the coaching card (principal's email and password), look around, "Back to Super Admin".
 - Change the Atlas password if it was ever shared, and never put the connection string in code or git.
+
+## Moving from the older Python server
+
+The Node server uses the same MongoDB collections, password hashes and sessions, so the same database and the same logins work.
+It also reads `server_py/.env` if `server_node/.env` is missing. To try the emails without sending them, set `MAIL_LOG=./mail.log`.
+The old Python code is still in `server_py/` until it is removed.

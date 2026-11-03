@@ -17,7 +17,7 @@ Which modules are complete, which screens (UI) exist, what is still missing, and
 | 2b | Coaching Admin sign in, "Register your coaching", forgot password | tab "Coaching Admin" | `/api/public/register-coaching`, `/api/auth/forgot-password` | yes |
 | 2c | Teacher / Student sign in and "Create an account" (teacher request, new student, admitted student) | tab "Teacher / Student" | `/api/auth/register-teacher`, `register-student`, `register-new-student` | yes |
 | 2d | Forced own password after a reset or a principal-made account | `ForcePasswordChange.tsx` | `change-password` | yes |
-| 3 | **Separate coachings** (nobody sees another's data) | (rule in every screen) | `server_py/academia/store.py`, `routes.py` | tests (8) |
+| 3 | **Separate coachings** (nobody sees another's data) | (rule in every screen) | `server_node/src/store.ts`, `routes.ts` | tests (8) |
 | 4 | **Dashboard** ("Today" strip, KPIs, fee chart, follow-ups, notices) | `DashboardView.tsx` | `GET /api/sync` | yes |
 | 5 | **Admissions and Students** (admission, search, edit, ID card, dossier, Timeline, student login) | `AdmissionsView.tsx`, `AdmissionModal.tsx`, `StudentDetailModal.tsx`, `StudentLoginCard.tsx` | `PUT /api/institute` + `POST /api/users` | yes |
 | 6 | **Enquiries** (leads, follow-ups, WhatsApp, one-click Admit) | `EnquiriesView.tsx` | `PUT /api/institute` | yes |
@@ -65,10 +65,10 @@ Which modules are complete, which screens (UI) exist, what is still missing, and
 
 ## 3. Where the API is
 
-All API code: `server_py/academia/routes.py` (50 routes). Who may call: public, any signed-in user, principal (admin), Super Admin.
+All API code: `server_node/src/routes.ts` and `routesSuper.ts` (50 routes). Who may call: public, any signed-in user, principal (admin), Super Admin.
 How the data modules (students, fees, attendance, exams, enquiries, expenses...) talk to the server: **two routes**, not one route per module:
 
-* `GET /api/sync?since=<version>`: the browser asks for the data it may see (the server sends each role only its own part; `server_py/academia/scope.py`).
+* `GET /api/sync?since=<version>`: the browser asks for the data it may see (the server sends each role only its own part; `server_node/src/scope.ts`).
 * `PUT /api/institute`: the browser sends only what changed, record by record (`{ students: { upsert: [...], remove: [...] } }`). The server checks the role again before it writes.
 
 Every other route is about accounts, coachings, backups and photos:
@@ -87,9 +87,9 @@ Every other route is about accounts, coachings, backups and photos:
 | Screens (React) | `src/components/views/`, `modals/`, `auth/`, `super/`, `layout/`, `ui/` |
 | Data and actions of the screens | `src/Context/InstituteContext.tsx`, `AuthContext.tsx`, `Access.ts` (who sees which page) |
 | Talking to the server | `src/components/utils/api.ts`, `src/components/super/superApi.ts` |
-| Backend start | `server_py/run.py` |
-| Backend code | `server_py/academia/` (`routes.py`, `store.py`, `scope.py`, `auth.py`) |
-| Tests | `server_py/tests/test_api.py` (run `npm test`) |
+| Backend start | `server_node/src/index.ts` (Node + Express + MongoDB) |
+| Backend code | `server_node/src/` (`routes.ts`, `routesSuper.ts`, `store.ts`, `scope.ts`, `auth.ts`, `mailer.ts`) |
+| Tests | `server_node/tests/` (71 tests, run `npm test`) |
 
 ## Website extras
 
