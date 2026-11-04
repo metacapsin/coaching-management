@@ -1,4 +1,4 @@
-// The API routes, part 2: the Super Admin (coachings, payments, other Super Admins), student photos and backups.
+// The API routes, part 2: the Super Admin (coachings, payments; there is only ONE Super Admin), student photos and backups.
 
 import * as auth from './auth.ts';
 import { GREEN, RED } from './emailTemplate.ts';
@@ -191,55 +191,6 @@ route('/api/super/forgot-password', ['POST'], 'public', async (c) => {
   await platform.saveUser(target);
   await auth.destroySessionsOf(c.root, target.id);
   await platform.audit(target, 'super-password-reset', 'On the server computer');
-  return ok();
-});
-
-// ---------- the Super Admins themselves ----------
-// More than one Super Admin can exist, so they can help each other (for example when one forgot the password).
-// Only a Super Admin can add, reset or remove another; nobody of a coaching can.
-
-route('/api/super/admins', ['GET'], 'super', async (c) => ({
-  admins: (await c.store.usersAll()).map((u) => ({ id: u.id, name: u.name, email: u.email, createdAt: u.createdAt ?? null, you: u.id === c.user.id })),
-}));
-
-route('/api/super/admins', ['POST'], 'super', async (c) => {
-  const b = c.body();
-  const name = text(b.name);
-  const email = text(b.email).toLowerCase();
-  if (!name) throw new HttpError(400, 'Please enter the full name.');
-  checkEmail(email);
-  checkPassword(b.password);
-  if (await emailTaken(c, email)) throw new HttpError(409, 'An account with this email already exists.');
-  // the new Super Admin has to choose an own password at the first sign in
-  const user = auth.buildUser({ name, email, password: b.password, role: 'super' }, 'active');
-  user.mustChangePassword = true;
-  await addUserOrConflict(c, user);
-  await c.store.audit(c.user, 'super-admin-add', email);
-  return { admin: { id: user.id, name, email } };
-});
-
-/** A Super Admin sets a new password for ANOTHER Super Admin (the own password is changed with "change password"). */
-route('/api/super/admins/<admin_id>/reset-password', ['POST'], 'super', async (c) => {
-  const target = await c.store.userById(c.req.params.admin_id);
-  if (!target) throw new HttpError(404, 'Super Admin not found.');
-  if (target.id === c.user.id) throw new HttpError(400, 'Use "Change my password" for your own password.');
-  const next = c.body().newPassword;
-  checkPassword(next);
-  auth.setPassword(target, next);
-  target.mustChangePassword = true;
-  await c.store.saveUser(target);
-  await auth.destroySessionsOf(c.root, target.id);
-  await c.store.audit(c.user, 'super-admin-password', target.email);
-  return ok();
-});
-
-route('/api/super/admins/<admin_id>', ['DELETE'], 'super', async (c) => {
-  const target = await c.store.userById(c.req.params.admin_id);
-  if (!target) throw new HttpError(404, 'Super Admin not found.');
-  if (target.id === c.user.id) throw new HttpError(400, 'You cannot remove yourself.');
-  await c.store.removeUser(target.id);
-  await auth.destroySessionsOf(c.root, target.id);
-  await c.store.audit(c.user, 'super-admin-remove', target.email);
   return ok();
 });
 

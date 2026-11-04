@@ -55,14 +55,6 @@ export interface NewCoaching {
   password: string;
 }
 
-export interface SuperAdminRow {
-  id: string;
-  name: string;
-  email: string;
-  createdAt?: string;
-  you: boolean;
-}
-
 export interface Decision {
   notified?: 'sent' | 'no-email' | 'none';
   message?: string;
@@ -70,10 +62,6 @@ export interface Decision {
 }
 
 export const superApi = {
-  admins: () => superRequest<{ admins: SuperAdminRow[] }>('GET', '/super/admins').then(r => r.admins),
-  addAdmin: (input: { name: string; email: string; password: string }) => superRequest<unknown>('POST', '/super/admins', input),
-  resetAdmin: (id: string, newPassword: string) => superRequest<unknown>('POST', `/super/admins/${id}/reset-password`, { newPassword }),
-  removeAdmin: (id: string) => superRequest<unknown>('DELETE', `/super/admins/${id}`),
   audit: () => superRequest<{ entries: ActivityEntry[] }>('GET', '/super/audit?limit=100').then(r => r.entries),
   leads: () => superRequest<{ leads: DemoLead[] }>('GET', '/super/leads').then(r => r.leads),
   removeLead: (id: string) => superRequest<unknown>('DELETE', `/super/leads/${id}`),

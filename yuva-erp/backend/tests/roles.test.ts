@@ -339,9 +339,8 @@ describe('Super Admin recovery: only on the server computer', () => {
   });
 });
 
-describe('Super Admins: two can help each other', () => {
+describe('Super Admins: there is only one', () => {
   let one = '';
-  let two = '';
   let principal = '';
   const s = withServer(async (api) => {
     one = (await api.call('POST', '/api/super/setup', { name: 'One', email: 'one@x.com', password: PASSWORD }))[1].token;
@@ -350,46 +349,19 @@ describe('Super Admins: two can help each other', () => {
     principal = await tokenOf(api, 'p@x.com', 'admin');
   });
   const call = (...a: Parameters<Api['call']>) => s.api.call(...a);
-  const login = (email: string, password: string) => call('POST', '/api/auth/login', { email, password, portal: 'super' });
 
-  it('1 only a super admin adds one', async () => {
+  it('1 a second Super Admin cannot be created, not by setup and not by the Super Admin', async () => {
+    // setup works once only
+    const again = await call('POST', '/api/super/setup', { name: 'Two', email: 'two@x.com', password: PASSWORD });
+    assert.equal(again[0], 409);
+    // the routes that added, reset and removed other Super Admins do not exist anymore
     const added = { name: 'Two', email: 'two@x.com', password: 'Temp12345pw' };
-    assert.equal((await call('POST', '/api/super/admins', added, principal))[0], 403); // a principal cannot
-    assert.equal((await call('POST', '/api/super/admins', added))[0], 401); // nobody signed in cannot
-    assert.equal((await call('POST', '/api/super/admins', { ...added, password: 'weak' }, one))[0], 400);
-    assert.equal((await call('POST', '/api/super/admins', { ...added, email: 'p@x.com' }, one))[0], 409);
-    assert.equal((await call('POST', '/api/super/admins', added, one))[0], 200);
-    const [status, data] = await login('two@x.com', 'Temp12345pw');
-    assert.equal(status, 200);
-    assert.ok(data.user.mustChangePassword); // chooses an own password first
-    two = data.token;
-    const names = (await call('GET', '/api/super/admins', null, one))[1].admins.map((a: any) => a.name);
-    assert.deepEqual(names.sort(), ['One', 'Two']);
-    assert.equal((await call('GET', '/api/super/admins', null, principal))[0], 403);
-  });
-
-  it('2 they help each other with a forgotten password', async () => {
-    const admins = (await call('GET', '/api/super/admins', null, one))[1].admins;
-    const oneId = admins.find((a: any) => a.name === 'One').id;
-    const twoId = admins.find((a: any) => a.name === 'Two').id;
-    // Two forgot the password: One sets a new one
-    assert.equal((await call('POST', `/api/super/admins/${twoId}/reset-password`, { newPassword: 'Fresh12345pw' }, principal))[0], 403);
-    assert.equal((await call('POST', `/api/super/admins/${twoId}/reset-password`, { newPassword: 'weak' }, one))[0], 400);
-    assert.equal((await call('POST', `/api/super/admins/${twoId}/reset-password`, { newPassword: 'Fresh12345pw' }, one))[0], 200);
-    assert.equal((await call('GET', '/api/auth/me', null, two))[0], 401); // signed out
-    assert.equal((await login('two@x.com', 'Temp12345pw'))[0], 401);
-    assert.ok((await login('two@x.com', 'Fresh12345pw'))[1].user.mustChangePassword);
-    // the own password has its own button
-    assert.equal((await call('POST', `/api/super/admins/${oneId}/reset-password`, { newPassword: 'Other12345pw' }, one))[0], 400);
-  });
-
-  it('3 removing', async () => {
-    const admins = (await call('GET', '/api/super/admins', null, one))[1].admins;
-    const oneId = admins.find((a: any) => a.name === 'One').id;
-    const twoId = admins.find((a: any) => a.name === 'Two').id;
-    assert.equal((await call('DELETE', `/api/super/admins/${oneId}`, null, one))[0], 400); // not yourself
-    assert.equal((await call('DELETE', `/api/super/admins/${twoId}`, null, principal))[0], 403);
-    assert.equal((await call('DELETE', `/api/super/admins/${twoId}`, null, one))[0], 200);
-    assert.equal((await login('two@x.com', 'Fresh12345pw'))[0], 401);
+    for (const token of [one, principal, '']) {
+      assert.equal((await call('POST', '/api/super/admins', added, token || undefined))[0] >= 400, true);
+      assert.notEqual((await call('POST', '/api/super/admins', added, token || undefined))[0], 200);
+    }
+    assert.equal((await call('GET', '/api/super/admins', null, one))[0], 404);
+    // no account with the role super was made
+    assert.equal((await call('POST', '/api/auth/login', { email: 'two@x.com', password: 'Temp12345pw', portal: 'super' }))[0], 401);
   });
 });
