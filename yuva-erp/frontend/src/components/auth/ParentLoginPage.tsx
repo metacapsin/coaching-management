@@ -179,12 +179,16 @@ const SeparateLoginPage: React.FC<{ kind: 'parent' | 'staff' }> = ({ kind }) => 
             </>
           )}
 
-          <p className="mt-6 text-xs text-center">
-            <a href="/" className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-800">
-              <ArrowLeft className="w-3.5 h-3.5" />
+          <div className="mt-8 pt-6 border-t border-slate-200">
+            <p className="text-[11px] uppercase tracking-wider text-slate-400 text-center mb-3">Not {kind === 'staff' ? 'front desk staff' : 'a parent'}?</p>
+            <a
+              href="/"
+              className="w-full py-2.5 px-4 text-sm font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
               {look.other}
             </a>
-          </p>
+          </div>
         </div>
       </div>
     </div>
