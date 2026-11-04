@@ -6,13 +6,11 @@ import type { Portal } from '../../Context/AuthContext';
 import { ApiError, requestPasswordReset, resetPasswordWithCode, resetSuperPassword } from '../utils/api';
 import { RegisterCoachingForm } from './CoachingForms';
 import { MemberSignup } from './MemberSignup';
-import { ParentSignup } from './ParentSignup';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import {
   GraduationCap,
   ShieldCheck,
   Crown,
-  Heart,
   Users,
   Mail,
   Lock,
@@ -27,7 +25,7 @@ import type { LucideIcon } from 'lucide-react';
 
 // "Forgot your password?": a 6-digit code is emailed (when the server can send email) and the person sets a new password
 // right here; the principal also sees the request in Team & Access and can set a password for the person.
-const ForgotPassword: React.FC<{ initialEmail: string }> = ({ initialEmail }) => {
+export const ForgotPassword: React.FC<{ initialEmail: string }> = ({ initialEmail }) => {
   const { t } = useLang();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState(initialEmail);
@@ -190,12 +188,11 @@ const SuperForgotPassword: React.FC<{ initialEmail: string }> = ({ initialEmail 
 };
 
 // Three logins on one page: the Super Admin (manages the coachings), the coaching admin (principal) and the teachers and
-// students (their accounts are made by the principal of their coaching, inside the app: no sign-up here).
+// students. The parents have an own page (/parent, see ParentLoginPage), linked below the form.
 const PORTALS: { id: Portal; label: string; icon: LucideIcon; blurb: string }[] = [
   { id: 'super', label: 'Super Admin', icon: Crown, blurb: 'Approves coachings and manages all of them.' },
   { id: 'admin', label: 'Coaching Admin', icon: ShieldCheck, blurb: 'Principal or front desk of one coaching, with its own data.' },
-  { id: 'member', label: 'Teacher / Student', icon: Users, blurb: 'Teacher or student: sign in here, or create your account.' },
-  { id: 'parent', label: 'Parent', icon: Heart, blurb: 'Parent: follow the attendance, fees, tests and results of your child.' }
+  { id: 'member', label: 'Teacher / Student', icon: Users, blurb: 'Teacher or student: sign in here, or create your account.' }
 ];
 
 const FEATURES = [
@@ -258,7 +255,7 @@ const Field: React.FC<{
 const portalOfLink = (): Portal | null => {
   try {
     const wanted = new URLSearchParams(window.location.search).get('portal');
-    return wanted === 'super' || wanted === 'admin' || wanted === 'member' || wanted === 'parent' ? wanted : null;
+    return wanted === 'super' || wanted === 'admin' || wanted === 'member' ? wanted : null;
   } catch {
     return null;
   }
@@ -432,14 +429,12 @@ export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }>
               : registering
               ? t('The Super Admin checks your request. After approval you sign in here as Coaching Admin.')
               : memberSignup
-              ? portal === 'parent'
-                ? 'For parents. Choose the coaching of your child first.'
-                : t('For teachers and students. Choose your coaching first.')
+              ? t('For teachers and students. Choose your coaching first.')
               : t('Sign in as {x} to continue.').replace('{x}', t(activePortal.label))}
           </p>
 
           {/* The two logins */}
-          <div className="mt-6 grid grid-cols-[repeat(4,minmax(0,1fr))] gap-1 bg-slate-100 p-1 rounded-lg">
+          <div className="mt-6 grid grid-cols-[repeat(3,minmax(0,1fr))] gap-1 bg-slate-100 p-1 rounded-lg">
             {PORTALS.map(p => {
               const Icon = p.icon;
               return (
@@ -479,7 +474,7 @@ export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }>
           {registering ? (
             <RegisterCoachingForm onClose={() => setRegistering(false)} />
           ) : memberSignup ? (
-            portal === 'parent' ? <ParentSignup onClose={() => setMemberSignup(false)} /> : <MemberSignup onClose={() => setMemberSignup(false)} />
+            <MemberSignup onClose={() => setMemberSignup(false)} />
           ) : (
             <form onSubmit={handleSubmit} noValidate className="mt-5 space-y-4">
               {createSuper && (
@@ -598,13 +593,13 @@ export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }>
             </div>
           )}
 
-          {portal === 'parent' && !memberSignup && (
-            <div className="mt-5 text-sm text-slate-600 text-center">
-              {t('New parent?')}{' '}
-              <button type="button" onClick={() => setMemberSignup(true)} className="font-semibold text-blue-600 hover:underline">
-                {t('Create an account')}
-              </button>
-            </div>
+          {!registering && !memberSignup && !createSuper && (
+            <p className="mt-4 text-xs text-slate-500 text-center">
+              Are you a parent?{' '}
+              <a href="/parent" className="font-semibold text-blue-600 hover:underline">
+                Parent login
+              </a>
+            </p>
           )}
 
           {portal === 'super' && !createSuper && <SuperForgotPassword initialEmail={email} />}

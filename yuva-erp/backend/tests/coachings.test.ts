@@ -248,7 +248,7 @@ describe('Coachings', () => {
     assert.deepEqual([data.sent, data.noEmail], [1, 1]);
     assert.deepEqual(mail.sent.map((m) => m[0]), ['k1parent@x.com']);
     assert.ok(mail.sent[0][2].includes('Unit Test 9') && mail.sent[0][2].includes('Motion, Force') && mail.sent[0][2].includes('2026-12-01'));
-    assert.ok(mail.sent[0][2].includes('portal=parent'), 'the button opens the Parent sign in');
+    assert.ok(mail.sent[0][2].includes('/parent'), 'the button opens the Parent sign in');
     assert.equal((await call('POST', '/api/exams/notice-email', { examId: 'nope' }, adminA))[0], 404);
     assert.equal((await call('POST', '/api/exams/notice-email', { examId: 'ex9' }, null))[0], 401);
     await call('PUT', '/api/institute', { changes: { students: { remove: ['k1', 'k2'] }, exams: { remove: ['ex9'] } } }, adminA);
@@ -267,7 +267,7 @@ describe('Coachings', () => {
       mail.stop();
     }
     assert.deepEqual(mail.sent.map((m) => m[0]), ['abparent@x.com']);
-    assert.ok(mail.sent[0][2].includes('Absent Kid') && mail.sent[0][2].includes(today) && mail.sent[0][2].includes('portal=parent'));
+    assert.ok(mail.sent[0][2].includes('Absent Kid') && mail.sent[0][2].includes(today) && mail.sent[0][2].includes('/parent'));
     mail = captureMail();
     try {
       await call('PUT', '/api/institute', roll('present'), adminA);

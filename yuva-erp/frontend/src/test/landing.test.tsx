@@ -11,6 +11,7 @@ vi.mock('../data/siteInfo', async importOriginal => {
 vi.mock('../Context/AuthContext', () => ({ useAuth: () => auth }));
 
 import { LandingPage } from '../components/landing/LandingPage';
+import { ParentLoginPage } from '../components/auth/ParentLoginPage';
 
 afterEach(cleanup);
 
@@ -158,12 +159,19 @@ describe('the public website', () => {
     expect(footer.queryByRole('link', { name: 'LinkedIn' })).toBeNull();
   });
 
-  it('a parent has an own tab to sign in, and can create an account', () => {
+  it('the parents have no tab in the main sign in, but a link to their own page', () => {
     render(<LandingPage />);
     const form = within(document.getElementById('signin') as HTMLElement);
-    fireEvent.click(form.getByRole('button', { name: 'Parent' }));
-    expect(form.getByRole('button', { name: /Sign In as Parent/ })).not.toBeNull();
-    fireEvent.click(form.getByRole('button', { name: 'Create an account' }));
-    expect(form.getByText('Choose the coaching of your child to go on.')).not.toBeNull();
+    expect(form.queryByRole('button', { name: 'Parent' })).toBeNull();
+    expect(form.getByRole('link', { name: 'Parent login' }).getAttribute('href')).toBe('/parent');
+  });
+
+  it('the parent page signs in as a parent, and can create an account', () => {
+    render(<ParentLoginPage />);
+    expect(screen.getByRole('heading', { name: 'Parent login' })).not.toBeNull();
+    expect(screen.getByRole('button', { name: /Sign In as Parent/ })).not.toBeNull();
+    expect(screen.getByRole('link', { name: /Teacher, student or coaching login/ }).getAttribute('href')).toBe('/');
+    fireEvent.click(screen.getByRole('button', { name: 'Create an account' }));
+    expect(screen.getByText('Choose the coaching of your child to go on.')).not.toBeNull();
   });
 });

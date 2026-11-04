@@ -149,6 +149,8 @@ export class Ctx {
 
   /** The link of the buttons in emails: the website, with the sign in form of that kind of person ready and in view. */
   loginLink(portal = 'admin'): string {
+    // the parents have an own page, the others a tab of the main sign in
+    if (portal === 'parent') return `${this.siteUrl()}/parent`;
     return `${this.siteUrl()}/?portal=${portal}#signin`;
   }
 }
