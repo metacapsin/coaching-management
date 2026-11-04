@@ -192,18 +192,17 @@ route('/api/auth/login', ['POST'], 'public', async (c) => {
   // Signing in to one chosen coaching (from its card): only an account of THAT coaching is let in.
   // The answer is the same as for a wrong password, so nothing is revealed about other coachings.
   const wanted = b.orgId;
-  if (typeof wanted === 'string' && wanted && (found.orgId !== wanted || !['admin', 'staff'].includes(found.role))) {
+  if (typeof wanted === 'string' && wanted && (found.orgId !== wanted || found.role !== 'admin')) {
     fail();
     await s.audit(found, 'login-failed', 'wrong coaching');
     throw invalid();
   }
 
-  // five logins: 'super' (super admin), 'admin' (principal of a coaching), 'staff' (its front desk, an own page /staff),
-  // 'member' (teacher, student), 'parent' (the parent of a student, an own page /parent)
+  // four logins: 'super' (super admin), 'admin' (principal of a coaching), 'member' (teacher, student),
+  // 'parent' (the parent of a student, an own page /parent)
   const isParent = found.role === 'student' && Boolean(found.isParent);
   let portalOk: boolean;
   if (portal === 'admin') portalOk = found.role === 'admin';
-  else if (portal === 'staff') portalOk = found.role === 'staff'; // the page of the front desk
   else if (portal === 'member') portalOk = ['teacher', 'student'].includes(found.role) && !isParent; // the "Teacher / Student" tab
   else if (portal === 'parent') portalOk = isParent; // the "Parent" tab
   else portalOk = found.role === portal;
@@ -211,7 +210,7 @@ route('/api/auth/login', ['POST'], 'public', async (c) => {
     throw new HttpError(
       403,
       found.role === 'staff'
-        ? 'This is a Front Desk Staff account. Please use the Staff login page (the “Staff login” button under the sign in form).'
+        ? 'This kind of account (front desk staff) does not exist anymore. Please ask the principal to make you a new account.'
         : isParent
         ? 'This is a Parent account. Please use the Parent login page (the “Parent login” button under the sign in form).'
         : `This is a ${roleLabel(found.role)} account. Please use the “${portalLabel(found.role, isParent)}” tab to sign in.`,
@@ -514,7 +513,7 @@ const UPI_ID = /^[A-Za-z0-9._-]{2,}@[A-Za-z][A-Za-z0-9.-]{1,}$/;
 /** The office emails the parent of a student that the fee is not fully paid. When the coaching wrote its UPI id (Institute
  * Profile) the email has a "Pay now" button: it opens the pay page of the site, which opens the UPI app with the amount filled. */
 route('/api/fees/notice-email', ['POST'], 'user', async (c) => {
-  if (!['admin', 'staff'].includes(c.user.role)) throw new HttpError(403, 'Only the principal or the front desk can send a fee notice.');
+  if (c.user.role !== 'admin') throw new HttpError(403, 'Only the principal can send a fee notice.');
   const s = c.store;
   const student = (await s.find('students')).find((x: any) => x.id === c.body().studentId);
   if (!student) throw new HttpError(404, 'Student not found.');
@@ -557,7 +556,7 @@ route('/api/fees/notice-email', ['POST'], 'user', async (c) => {
 /** The office tells the parents of a batch about a test that is coming (date, subject, marks, what it covers). Every parent with
  * an email gets it; the others are counted, the office tells them by WhatsApp. */
 route('/api/exams/notice-email', ['POST'], 'user', async (c) => {
-  if (!['admin', 'staff'].includes(c.user.role)) throw new HttpError(403, 'Only the principal or the front desk can send a test notice.');
+  if (c.user.role !== 'admin') throw new HttpError(403, 'Only the principal can send a test notice.');
   const s = c.store;
   const exam = (await s.find('exams')).find((x: any) => x.id === c.body().examId);
   if (!exam) throw new HttpError(404, 'Test not found.');
@@ -607,7 +606,7 @@ route('/api/sync', ['GET'], 'user', async (c) => {
   const out: any = { changed: true, version, user: auth.publicUser(c.user), institute: await scopeInstitute(c.user, s) };
   const org = await c.root.orgGet(s.org);
   if (org) out.org = { id: org.id, name: org.name, city: org.city ?? '' };
-  if (c.user.role === 'admin' || c.user.role === 'staff') out.users = (await s.usersAll()).map(auth.publicUser);
+  if (c.user.role === 'admin') out.users = (await s.usersAll()).map(auth.publicUser);
   return out;
 });
 
@@ -674,7 +673,7 @@ route('/api/users', ['POST'], 'admin', async (c) => {
   const b = c.body();
   const email = text(b.email).toLowerCase();
   const role = b.role;
-  if (!['admin', 'staff', 'teacher', 'student'].includes(role)) throw new HttpError(400, 'Choose a valid role.');
+  if (!['admin', 'teacher', 'student'].includes(role)) throw new HttpError(400, 'Choose a valid role.');
   if (!text(b.name)) throw new HttpError(400, 'Please enter the full name.');
   checkEmail(email);
   checkPassword(b.password);
@@ -765,22 +764,6 @@ route('/api/users/<user_id>/batches', ['PUT'], 'admin', async (c) => {
   await s.saveUser(target);
   await s.bump();
   await s.audit(c.user, 'user-batches', target.email);
-  return ok();
-});
-
-route('/api/users/<user_id>/role', ['PUT'], 'admin', async (c) => {
-  const s = c.store;
-  const role = c.body().role;
-  if (!['admin', 'staff'].includes(role)) throw new HttpError(400, 'Only Administrator or Front Desk Staff can be assigned here.');
-  const target = await s.userById(c.req.params.user_id);
-  if (!target) throw new HttpError(404, 'User not found.');
-  if (['teacher', 'student'].includes(target.role)) throw new HttpError(400, 'Teacher and student roles cannot be changed.');
-  if (target.id === c.user.id) throw new HttpError(400, 'You cannot change your own role.');
-  if (target.role === 'admin' && role !== 'admin' && (await s.adminCount()) <= 1) throw new HttpError(400, 'At least one administrator is required.');
-  target.role = role;
-  await s.saveUser(target);
-  await s.bump();
-  await s.audit(c.user, 'user-role', `${target.email} -> ${roleLabel(role)}`);
   return ok();
 });
 

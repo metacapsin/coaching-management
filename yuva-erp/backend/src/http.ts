@@ -149,8 +149,8 @@ export class Ctx {
 
   /** The link of the buttons in emails: the website, with the sign in form of that kind of person ready and in view. */
   loginLink(portal = 'admin'): string {
-    // the parents and the front desk have an own page, the others a tab of the main sign in
-    if (portal === 'parent' || portal === 'staff') return `${this.siteUrl()}/${portal}`;
+    // the parents have an own page, the others a tab of the main sign in
+    if (portal === 'parent') return `${this.siteUrl()}/parent`;
     return `${this.siteUrl()}/?portal=${portal}#signin`;
   }
 }
@@ -304,12 +304,11 @@ export async function coachingName(c: Ctx, s: Store): Promise<string> {
 
 /** Which tab of the sign in form a kind of person uses. */
 export const portalOf = (role: string, isParent = false): string =>
-  role === 'student' && isParent ? 'parent' : role === 'teacher' || role === 'student' ? 'member' : role === 'staff' ? 'staff' : 'admin';
+  role === 'student' && isParent ? 'parent' : role === 'teacher' || role === 'student' ? 'member' : 'admin';
 
 const ROLE_WORDS: Record<string, [string, string]> = {
   teacher: ['a teacher', 'You can take the attendance and enter the marks of your batches, and share notices and study material.'],
   student: ['a student', 'You can see your attendance, fees, results, notices and study material.'],
-  staff: ['front desk staff', 'You can handle admissions, enquiries, fees, attendance, exams and notices.'],
   admin: ['an administrator', 'You can manage the whole coaching.'],
 };
 

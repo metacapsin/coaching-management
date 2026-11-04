@@ -38,7 +38,7 @@ const TAB_META: Record<TabId, { title: string; subtitle: string }> = {
   exams: { title: 'Exams & Results', subtitle: 'Tests, marks, ranks and report cards' },
   batches: { title: 'Batches & Timetable', subtitle: 'Batches, faculty and weekly schedule' },
   notifications: { title: 'Parent Broadcasts', subtitle: 'WhatsApp / SMS alerts and logs' },
-  team: { title: 'Team & Access', subtitle: 'Staff accounts, roles and your password' },
+  team: { title: 'Team & Access', subtitle: 'Teacher and student accounts, and your password' },
   settings: { title: 'Institute Profile', subtitle: 'Profile, backup and data tools' },
   enquiries: { title: 'Enquiries', subtitle: 'Admission leads and follow-ups' },
   notices: { title: 'Notice Board', subtitle: 'Announcements for students and batches' },

@@ -63,7 +63,7 @@ const WHY_TABS: { id: string; label: string; title: string; text: string; points
     label: 'Everybody has a login',
     title: 'Principal, teacher, student and parent',
     text: 'Each person signs in on the same page and sees only what belongs to them: the principal runs the coaching, the teacher takes attendance, the student and the parent follow the progress.',
-    points: ['Principal and front desk run the office', 'Teachers mark attendance and marks of their batches', 'Students and parents see attendance, fees, results']
+    points: ['The principal runs the office', 'Teachers mark attendance and marks of their batches', 'Students and parents see attendance, fees, results']
   },
   {
     id: 'daily',
@@ -84,7 +84,7 @@ const WHY_TABS: { id: string; label: string; title: string; text: string; points
 const STEPS = [
   { n: '01', title: 'Register your coaching', text: 'Send a request from the sign in page with the name of your coaching and the principal. The Super Admin approves it.' },
   { n: '02', title: 'Add programs and batches', text: 'Write down your programs with their fees. Add a batch to a program while you admit the first student, or in Batches.' },
-  { n: '03', title: 'Admit students and add teachers', text: 'Admission gives the student a login. Add teachers, front desk staff and the parents of your students.' },
+  { n: '03', title: 'Admit students and add teachers', text: 'Admission gives the student a login. Add teachers and the parents of your students.' },
   { n: '04', title: 'Run the day', text: 'Attendance, fees, tests, notices and study material, with reports and reminders for every month.' }
 ];
 
@@ -105,8 +105,7 @@ const FEATURES: { icon: React.ElementType; title: string; text: string }[] = [
 
 const ROLES: { who: string; sees: string[] }[] = [
   { who: 'Super Admin', sees: ['Approves or rejects coachings', 'Subscription and payments of each coaching', 'Switch a coaching on or off', 'Never sees the students and fees inside'] },
-  { who: 'Principal', sees: ['Everything of the own coaching', 'Fees, expenses, salaries and profit', 'Adds teachers, staff, students and parents', 'Backups and the institute profile'] },
-  { who: 'Front desk', sees: ['Admissions, enquiries and fees', 'Attendance, exams and notices', 'No expenses and no settings'] },
+  { who: 'Principal', sees: ['Everything of the own coaching', 'Fees, expenses, salaries and profit', 'Adds teachers, students and parents', 'Backups and the institute profile'] },
   { who: 'Teacher', sees: ['Only the own batches', 'Attendance and marks of those batches', 'Notices and study material'] },
   { who: 'Student', sees: ['Own attendance, fees and results', 'Notices, study material, library', 'Marks homework as done'] },
   { who: 'Parent', sees: ['The child’s attendance, fees and results', 'Notices and study material', 'Read only'] }
@@ -120,7 +119,7 @@ const SECURITY: { icon: React.ElementType; title: string; text: string }[] = [
 ];
 
 const FAQ: { q: string; a: string }[] = [
-  { q: 'Who can use AcademiaOS?', a: 'Any coaching institute: the principal, the front desk, the teachers, the students and their parents. The Super Admin runs the platform for many coachings.' },
+  { q: 'Who can use AcademiaOS?', a: 'Any coaching institute: the principal, the teachers, the students and their parents. The Super Admin runs the platform for many coachings.' },
   { q: 'Does one coaching see the data of another?', a: 'No. Every coaching has its own data and its own principal login. Not even the Super Admin opens the data inside a coaching without the principal’s login.' },
   { q: 'How do I start?', a: 'Choose "Register your coaching" on the sign in page. After the Super Admin approves it you sign in, add a program, and admit the first student. The dashboard shows these steps.' },
   { q: 'Can the students and parents sign in?', a: 'Yes. The principal makes the logins (a student’s login is made together with the admission). They see only their own data, read only.' },
@@ -145,7 +144,7 @@ const HERO_SLIDES: { a: string; b: string; text: string }[] = [
 
 const DAY: { title: string; text: string }[] = [
   { title: 'Morning: the roll call', text: 'The teacher opens the batch on a phone and marks who is present. The parent of an absent student gets a message ready to send.' },
-  { title: 'Noon: new admissions', text: 'The front desk admits a student, takes the first fee and prints the receipt. The student’s login is made in the same step.' },
+  { title: 'Noon: new admissions', text: 'The principal admits a student, takes the first fee and prints the receipt. The student’s login is made in the same step.' },
   { title: 'Afternoon: tests and marks', text: 'Schedule a test, enter the marks, and the ranks and report cards are ready to print.' },
   { title: 'Evening: fees and notices', text: 'See who still has to pay, remind them, and send a notice or homework to a batch.' },
   { title: 'Month end: reports', text: 'Fees collected, expenses, salaries and profit. Download the reports as CSV.' }
@@ -515,7 +514,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
           <SectionHead kicker="At a glance" title={<>{tr('What is inside, ')}<span className="text-sky-400">{tr('in short')}</span></>} />
           <Reveal stagger className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {([
-              [6, '', 'kinds of sign in', 'Super Admin, principal, front desk, teacher, student, parent'],
+              [5, '', 'kinds of sign in', 'Super Admin, principal, teacher, student, parent'],
               [12, '', 'areas of work', 'From admission to reports'],
               [1, '', 'daily backup', 'Kept automatically'],
               [100, '%', 'separate data', 'For every coaching']
@@ -630,7 +629,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
             <h4 className="text-base font-semibold text-white">{tr('Who signs in')}</h4>
             <ul className="mt-4 space-y-2.5 text-sm text-sky-100/70">
               <li>{tr('Super Admin')}</li>
-              <li>{tr('Coaching Admin (principal and front desk)')}</li>
+              <li>{tr('Coaching Admin (the principal)')}</li>
               <li>{tr('Teacher, student and parent')}</li>
             </ul>
             {(SITE_INFO.email || SITE_INFO.phone || SITE_INFO.address) && (

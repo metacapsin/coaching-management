@@ -867,7 +867,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     updateSalary(id, { lastPaidMonth: month });
   };
 
-  // ----- library (the principal and the front desk add the books; everybody reads) -----
+  // ----- library (the principal adds the books; everybody reads) -----
 
   const addBook = (data: Omit<Book, 'id'>) => {
     const book: Book = { ...data, id: uid('book') };

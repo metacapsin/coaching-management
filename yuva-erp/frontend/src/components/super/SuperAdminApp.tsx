@@ -299,7 +299,7 @@ const EnterModal: React.FC<{ org: OrgSummary; onClose: () => void }> = ({ org, o
     e.preventDefault();
     setError('');
     setBusy(true);
-    // Only the principal (or staff) of THIS coaching is let in; the server checks it, not this screen
+    // Only the principal of THIS coaching is let in; the server checks it, not this screen
     const result = await signIn({ email: email.trim(), password, remember: false, portal: 'admin', orgId: org.id });
     setBusy(false);
     if (!result.ok) setError(result.error || 'Could not sign in.');

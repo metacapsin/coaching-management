@@ -17,7 +17,7 @@ const inputClass = (hasError = false) =>
     hasError ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300'
   }`;
 
-// Write or edit a notice. Office staff can write for everybody; a teacher only for their own batches.
+// Write or edit a notice. The principal can write for everybody; a teacher only for their own batches.
 export const NoticeModal: React.FC<NoticeModalProps> = ({ notice, onClose, onSaved }) => {
   const { batches, addAnnouncement, updateAnnouncement } = useInstitute();
   const { user } = useAuth();

@@ -6,10 +6,8 @@ describe('who may open which page', () => {
     for (const tab of ['dashboard', 'students', 'fees', 'expenses', 'settings', 'team'] as const) expect(canAccessTab('admin', tab)).toBe(true);
   });
 
-  it('keeps expenses and settings away from the front desk staff', () => {
-    expect(canAccessTab('staff', 'fees')).toBe(true);
-    expect(canAccessTab('staff', 'expenses')).toBe(false);
-    expect(canAccessTab('staff', 'settings')).toBe(false);
+  it('keeps expenses, settings and the accounts away from a teacher', () => {
+    for (const tab of ['expenses', 'settings', 'fees', 'students'] as const) expect(canAccessTab('teacher', tab)).toBe(false);
   });
 
   it('gives a teacher only the classroom pages', () => {
@@ -30,7 +28,6 @@ describe('who may open which page', () => {
 
   it('knows who manages a coaching', () => {
     expect(canManageInstitute('admin')).toBe(true);
-    expect(canManageInstitute('staff')).toBe(true);
     expect(canManageInstitute('teacher')).toBe(false);
     expect(canManageInstitute('super')).toBe(false);
   });

@@ -56,7 +56,7 @@ The first run downloads a MongoDB program once (about 800 MB, kept in your user 
 | Tab | Who | What |
 | --- | --- | --- |
 | **Super Admin** | The person who manages all coachings | First time: create the account (only on the server computer, only once). Then sign in. |
-| **Coaching Admin** | The principal (and office staff) of one coaching | Sign in. A new coaching clicks "Register your coaching" and waits for the Super Admin's approval. |
+| **Coaching Admin** | The principal of one coaching | Sign in. A new coaching clicks "Register your coaching" and waits for the Super Admin's approval. |
 | **Teacher / Student** | People of a coaching | Sign in, or "Create an account" (choose the coaching first): a **teacher** sends a request the principal approves; a **student** registers new (roll number is automatic) or proves an admission with the roll number and mobile. The principal can also make accounts (Team & Access, or the "Add Teacher" button). |
 
 ### The Super Admin
@@ -82,29 +82,28 @@ The first run downloads a MongoDB program once (about 800 MB, kept in your user 
 - Every coaching has its own collections (data, backups, activity log, photos). Accounts are checked against the coaching.
 - A principal cannot delete, switch off, approve or rename a coaching; only the Super Admin can (the server answers 403).
 - Passwords are hashed (scrypt), sign in is throttled, sign-ups are limited, sessions end when a coaching is switched off.
-- Teachers see only their batches, students only their own record, staff do not see the expenses or the institute profile.
+- Teachers see only their batches, students only their own record. There is no front desk role: the principal does the whole office work and can add every teacher and student at any time.
 - Security headers are sent (no framing, no sniffing). For HTTPS see "Going online".
 
 ## What a coaching can do
 
 | Screen | Who | What |
 | --- | --- | --- |
-| Dashboard | Principal, staff | A "Today" strip (collected, absent, follow-ups, overdue), numbers, fee chart, notices, quick buttons (Add Teacher, New Admission) |
-| Enquiries | Principal, staff | Leads, follow-up dates, WhatsApp, one-click "Admit" (open enquiries are shown first) |
-| Admissions & Students | Principal, staff | Admission, search, edit, ID card, receipts, archive, and a **Timeline** of everything about a student |
-| Fees & Invoicing | Principal, staff | Receipts, cancel receipt, overdue accounts ("Queue reminders for all" in one click), programs and standard fees |
+| Dashboard | Principal | A "Today" strip (collected, absent, follow-ups, overdue), numbers, fee chart, notices, quick buttons (Add Teacher, New Admission) |
+| Enquiries | Principal | Leads, follow-up dates, WhatsApp, one-click "Admit" (open enquiries are shown first) |
+| Admissions & Students | Principal | Admission, search, edit, ID card, receipts, archive, and a **Timeline** of everything about a student |
+| Fees & Invoicing | Principal | Receipts, cancel receipt, overdue accounts ("Queue reminders for all" in one click), programs and standard fees |
 | **Expenses & Profit** | Principal only | Write down salary, rent and bills; profit = fees collected minus expenses, per month. A **Salaries** tab lists teachers and staff with the monthly salary: "Pay" writes the expense for the month |
-| Attendance | Principal, staff, teacher | Roll call per batch, absent alerts |
-| Exams | Principal, staff, teacher | Tests, marks (press Enter to go to the next student), ranks, report cards, admit cards |
+| Attendance | Principal, teacher | Roll call per batch, absent alerts |
+| Exams | Principal, teacher | Tests, marks (press Enter to go to the next student), ranks, report cards, admit cards |
 | Notice Board, Study Material | Everybody | Notices and homework per batch. A student marks homework as done; the teacher sees "7 of 30 done" |
-| Reports | Principal, staff | Fees, attendance, exam results, admissions (profit and loss for the principal); CSV and print |
-| Parent Broadcasts | Principal, staff | Templates and a message queue |
-| Team & Access | Principal | Teacher, staff and student accounts, batches, password reset |
+| Reports | Principal | Fees, attendance, exam results, admissions (profit and loss for the principal); CSV and print |
+| Parent Broadcasts | Principal | Templates and a message queue |
+| Team & Access | Principal | Teacher, student and parent accounts, batches, password reset |
 | **Public website** | Everybody | The first page before sign in: what AcademiaOS is, how it works, features, who uses it, security, FAQ and a "Book a demo" form. The sign in form (3 tabs) sits in the top part of the same page, so there is no separate login page. The Super Admin reads the demo requests on the platform page |
 | **Parent login** | Parent | A parent signs in on an own page, `/parent` (link under the main sign in form), or creates an account there, and sees the child's attendance, fees, results and notices (read only). The principal can also make it in the student's Dossier |
-| **Front desk staff login** | Front desk | Own page `/staff` (link under the main sign in form). Made by the principal in Team & Access. Admissions, enquiries, attendance, fees, exams and notices; not expenses, salaries, settings or accounts |
 | **Staff attendance** | Principal only | Tab in Expenses & Profit: teachers and staff present / half day / leave / absent, with a month count |
-| **Library** | Everybody reads; principal and front desk add | Books shared with a link (PDF, Drive, website): students and teachers press Read and it opens online |
+| **Library** | Everybody reads; the principal adds | Books shared with a link (PDF, Drive, website): students and teachers press Read and it opens online |
 | Institute Profile | Principal | Letterhead with a **logo** (side menu, receipts, report cards), "queue fee reminders by itself once a day", backup and restore, clean start |
 
 A new coaching opens with sample data so every screen can be seen at once (`AUTO_DEMO_FOR_NEW_COACHING` in

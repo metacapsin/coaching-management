@@ -27,14 +27,12 @@ const tokenOf = async (api: Api, email: string, portal: string, password = PASSW
 
 describe('Expenses: for the principal only', () => {
   let admin = '';
-  let staff = '';
   let teacher = '';
   const s = withServer(async (api) => {
     admin = (await api.call('POST', '/api/auth/setup', { name: 'P', email: 'p@x.com', password: PASSWORD }))[1].token;
-    for (const [role, email] of [['staff', 's@x.com'], ['teacher', 't@x.com']]) {
+    for (const [role, email] of [['teacher', 't@x.com']]) {
       await api.call('POST', '/api/users', { name: role, email, password: PASSWORD, role, batchIds: ['b1'] }, admin);
     }
-    staff = await tokenOf(api, 's@x.com', 'staff');
     teacher = await tokenOf(api, 't@x.com', 'teacher');
   });
   const call = (...a: Parameters<Api['call']>) => s.api.call(...a);
@@ -49,15 +47,11 @@ describe('Expenses: for the principal only', () => {
     assert.equal((await call('GET', '/api/sync', null, admin))[1].institute.salaries.length, 1);
   });
 
-  it('2 staff and teachers neither see nor change them', async () => {
-    const staffView = (await call('GET', '/api/sync', null, staff))[1].institute;
-    assert.ok(!('expenses' in staffView));
-    assert.ok(!('salaries' in staffView));
+  it('2 teachers neither see nor change them', async () => {
     assert.deepEqual((await call('GET', '/api/sync', null, teacher))[1].institute.salaries, []);
-    assert.equal((await call('PUT', '/api/institute', { changes: { salaries: { remove: ['sal1'] } } }, staff))[0], 403);
+    assert.equal((await call('PUT', '/api/institute', { changes: { salaries: { remove: ['sal1'] } } }, teacher))[0], 403);
     assert.deepEqual((await call('GET', '/api/sync', null, teacher))[1].institute.expenses, []);
     const change = { changes: { expenses: { remove: ['x1'] } } };
-    assert.equal((await call('PUT', '/api/institute', change, staff))[0], 403);
     assert.equal((await call('PUT', '/api/institute', change, teacher))[0], 403);
     assert.equal((await call('GET', '/api/sync', null, admin))[1].institute.expenses.length, 1);
   });
@@ -66,10 +60,8 @@ describe('Expenses: for the principal only', () => {
     const row = { id: 'sat1', date: '2026-10-29', records: { sal1: 'leave' }, updatedAt: '' };
     assert.equal((await call('PUT', '/api/institute', { changes: { staffAttendance: { upsert: [row] } } }, admin))[0], 200);
     assert.deepEqual((await call('GET', '/api/sync', null, admin))[1].institute.staffAttendance[0].records, { sal1: 'leave' });
-    assert.ok(!('staffAttendance' in (await call('GET', '/api/sync', null, staff))[1].institute));
     assert.deepEqual((await call('GET', '/api/sync', null, teacher))[1].institute.staffAttendance, []);
     const change = { changes: { staffAttendance: { remove: ['sat1'] } } };
-    assert.equal((await call('PUT', '/api/institute', change, staff))[0], 403);
     assert.equal((await call('PUT', '/api/institute', change, teacher))[0], 403);
   });
 
@@ -88,7 +80,7 @@ describe('Expenses: for the principal only', () => {
     const change = (body: any, tok = token) => call('POST', '/api/auth/change-email', body, tok);
     assert.equal((await change({ currentPassword: 'wrong', newEmail: 'new@x.com' }))[0], 400); // the password is asked
     assert.equal((await change({ currentPassword: PASSWORD, newEmail: 'not-an-email' }))[0], 400);
-    assert.equal((await change({ currentPassword: PASSWORD, newEmail: 's@x.com' }))[0], 409); // taken by the staff account
+    assert.equal((await change({ currentPassword: PASSWORD, newEmail: 'p@x.com' }))[0], 409); // taken by the principal
     assert.equal((await change({ currentPassword: PASSWORD, newEmail: 'T@x.com' }))[0], 400); // the same
     const [status, data] = await change({ currentPassword: PASSWORD, newEmail: 'Teacher.New@X.com' });
     assert.deepEqual([status, data.user.email], [200, 'teacher.new@x.com']);
@@ -147,30 +139,28 @@ describe('Homework: a student marks it as done, nobody can fake it', () => {
   });
 });
 
-describe('Library: the office adds the books, everybody reads them', () => {
+describe('Library: the principal adds the books, everybody reads them', () => {
   let admin = '';
-  let staff = '';
   let teacher = '';
   let student = '';
   const s = withServer(async (api) => {
     admin = (await api.call('POST', '/api/auth/setup', { name: 'P', email: 'p@x.com', password: PASSWORD }))[1].token;
     await api.call('PUT', '/api/institute', { changes: { batches: { upsert: BATCHES }, students: { upsert: STUDENTS } } }, admin);
-    for (const [role, email] of [['staff', 's@x.com'], ['teacher', 't@x.com']]) {
+    for (const [role, email] of [['teacher', 't@x.com']]) {
       await api.call('POST', '/api/users', { name: role, email, password: PASSWORD, role, batchIds: ['b1'] }, admin);
     }
     await api.call('POST', '/api/users', { name: 'Alice', email: 'alice@x.com', password: PASSWORD, role: 'student', studentId: 's1' }, admin);
-    staff = await tokenOf(api, 's@x.com', 'staff');
     teacher = await tokenOf(api, 't@x.com', 'member');
     student = await tokenOf(api, 'alice@x.com', 'member');
   });
   const call = (...a: Parameters<Api['call']>) => s.api.call(...a);
 
-  it('1 the office adds books and everybody reads them', async () => {
+  it('1 the principal adds books and everybody reads them', async () => {
     const book = { id: 'bk1', title: 'Physics', author: 'A', category: 'Physics', description: '', url: 'https://example.com/physics.pdf' };
     assert.equal((await call('PUT', '/api/institute', { changes: { books: { upsert: [book] } } }, admin))[0], 200);
     const second = { ...book, id: 'bk2', title: 'Chemistry' };
-    assert.equal((await call('PUT', '/api/institute', { changes: { books: { upsert: [second] } } }, staff))[0], 200); // the front desk too
-    for (const token of [admin, staff, teacher, student]) {
+    assert.equal((await call('PUT', '/api/institute', { changes: { books: { upsert: [second] } } }, admin))[0], 200);
+    for (const token of [admin, teacher, student]) {
       const view = (await call('GET', '/api/sync', null, token))[1].institute;
       assert.deepEqual(view.books.map((b: any) => b.title).sort(), ['Chemistry', 'Physics']);
     }
@@ -363,33 +353,5 @@ describe('Super Admins: there is only one', () => {
     assert.equal((await call('GET', '/api/super/admins', null, one))[0], 404);
     // no account with the role super was made
     assert.equal((await call('POST', '/api/auth/login', { email: 'two@x.com', password: 'Temp12345pw', portal: 'super' }))[0], 401);
-  });
-});
-
-describe('Front desk staff: an own login page', () => {
-  let admin = '';
-  const s = withServer(async (api) => {
-    admin = (await api.call('POST', '/api/auth/setup', { name: 'P', email: 'p@x.com', password: PASSWORD }))[1].token;
-    await api.call('POST', '/api/users', { name: 'Desk', email: 'desk@x.com', password: PASSWORD, role: 'staff' }, admin);
-  });
-  const call = (...a: Parameters<Api['call']>) => s.api.call(...a);
-  const login = (email: string, portal: string) => call('POST', '/api/auth/login', { email, password: PASSWORD, portal });
-
-  it('1 the staff signs in on the staff page only, the principal on the admin tab only', async () => {
-    const wrong = await login('desk@x.com', 'admin');
-    assert.equal(wrong[0], 403);
-    assert.ok(wrong[1].error.includes('Staff login'), 'the message says where to go');
-    const ok = await login('desk@x.com', 'staff');
-    assert.equal(ok[0], 200);
-    assert.equal(ok[1].user.role, 'staff');
-    assert.equal((await login('p@x.com', 'staff'))[0], 403);
-    assert.equal((await login('p@x.com', 'admin'))[0], 200);
-  });
-
-  it('2 the staff sees the office data but not the money of the coaching, and cannot make accounts', async () => {
-    const staff = (await login('desk@x.com', 'staff'))[1].token;
-    assert.equal((await call('GET', '/api/sync', null, staff))[0], 200);
-    assert.equal((await call('POST', '/api/users', { name: 'X', email: 'x@x.com', password: PASSWORD, role: 'staff' }, staff))[0], 403);
-    assert.equal((await call('PUT', '/api/institute', { changes: { expenses: { upsert: [{ id: 'e1', title: 'Rent', amount: 5, date: '2026-01-01', category: 'Rent' }] } } }, staff))[0] >= 400, true);
   });
 });

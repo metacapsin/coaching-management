@@ -80,7 +80,7 @@ export interface SyncPayload {
   changed: true;
   version: number;
   user: AuthUser;
-  users?: AuthUser[]; // only for the principal and front desk staff
+  users?: AuthUser[]; // only for the principal
   org?: { id: string; name: string; city: string }; // the coaching this account belongs to
   institute: InstituteData;
 }

@@ -28,18 +28,18 @@ import {
 
 type Cell = boolean | string;
 
-const PERMISSIONS: { label: string; admin: Cell; staff: Cell; teacher: Cell; student: Cell }[] = [
-  { label: 'Institute dashboard & analytics', admin: true, staff: true, teacher: false, student: false },
-  { label: 'Admissions & all student records', admin: true, staff: true, teacher: false, student: false },
-  { label: 'Daily attendance', admin: true, staff: true, teacher: 'Own batches', student: false },
-  { label: 'Exams & marks entry', admin: true, staff: true, teacher: 'Own batches', student: false },
-  { label: 'Fee collection & receipts', admin: true, staff: true, teacher: false, student: 'View own' },
-  { label: 'Batches & timetable management', admin: true, staff: true, teacher: false, student: false },
-  { label: 'Parent broadcasts', admin: true, staff: true, teacher: false, student: false },
-  { label: 'Teacher dashboard', admin: false, staff: false, teacher: true, student: false },
-  { label: 'Student portal (own data)', admin: false, staff: false, teacher: false, student: true },
-  { label: 'Institute settings, backup & restore', admin: true, staff: false, teacher: false, student: false },
-  { label: 'Team & Access (accounts, approvals)', admin: true, staff: false, teacher: false, student: false }
+const PERMISSIONS: { label: string; admin: Cell; teacher: Cell; student: Cell }[] = [
+  { label: 'Institute dashboard & analytics', admin: true, teacher: false, student: false },
+  { label: 'Admissions & all student records', admin: true, teacher: false, student: false },
+  { label: 'Daily attendance', admin: true, teacher: 'Own batches', student: false },
+  { label: 'Exams & marks entry', admin: true, teacher: 'Own batches', student: false },
+  { label: 'Fee collection & receipts', admin: true, teacher: false, student: 'View own' },
+  { label: 'Batches & timetable management', admin: true, teacher: false, student: false },
+  { label: 'Parent broadcasts', admin: true, teacher: false, student: false },
+  { label: 'Teacher dashboard', admin: false, teacher: true, student: false },
+  { label: 'Student portal (own data)', admin: false, teacher: false, student: true },
+  { label: 'Institute settings, backup & restore', admin: true, teacher: false, student: false },
+  { label: 'Team & Access (accounts, approvals)', admin: true, teacher: false, student: false }
 ];
 
 // Random password that always has letters and a digit
@@ -70,7 +70,6 @@ const inputClass =
 const ROLE_BADGE: Record<UserRole, string> = {
   super: 'bg-indigo-50 text-indigo-700 border-indigo-200',
   admin: 'bg-purple-50 text-purple-700 border-purple-200',
-  staff: 'bg-blue-50 text-blue-700 border-blue-200',
   teacher: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   student: 'bg-amber-50 text-amber-700 border-amber-200'
 };
@@ -211,7 +210,6 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
     rejectUser,
     setUserBatches,
     removeUser,
-    setUserRole,
     resetUserPassword,
     changeOwnPassword
   } = useAuth();
@@ -221,7 +219,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
 
   // Add account
   const [showAdd, setShowAdd] = useState(false);
-  const [aRole, setARole] = useState<UserRole | 'parent'>('staff');
+  const [aRole, setARole] = useState<UserRole | 'parent'>('teacher');
   const [aName, setAName] = useState('');
   const [aEmail, setAEmail] = useState('');
   const [aPhone, setAPhone] = useState('');
@@ -292,7 +290,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
 
   // ----- Add account -----
   const openAdd = () => {
-    setARole('staff');
+    setARole('teacher');
     setAName('');
     setAEmail('');
     setAPhone('');
@@ -434,12 +432,6 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
     if (result.ok) showNotice('success', `${removeTarget.name} has been removed.`);
     else showNotice('error', result.error);
     setRemoveTarget(null);
-  };
-
-  const handleRoleChange = async (target: AuthUser, role: UserRole) => {
-    const result = await setUserRole(target.id, role);
-    if (result.ok) showNotice('success', `${target.name} is now ${roleLabel(role)}.`);
-    else showNotice('error', result.error);
   };
 
   const handleCopyCredentials = async () => {
@@ -635,7 +627,6 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
             />
             <span className="text-xs text-slate-500">
               {members.filter(u => u.role === 'admin').length} Principal ·{' '}
-              {members.filter(u => u.role === 'staff').length} Staff ·{' '}
               {members.filter(u => u.role === 'teacher').length} Teachers ·{' '}
               {members.filter(u => u.role === 'student' && !u.isParent).length} Students ·{' '}
               {members.filter(u => u.isParent).length} Parents
@@ -679,20 +670,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
                       </td>
 
                       <td className="p-3.5">
-                        {member.role === 'admin' || member.role === 'staff' ? (
-                          <select
-                            value={member.role}
-                            disabled={isMe}
-                            onChange={e => handleRoleChange(member, e.target.value as UserRole)}
-                            title={isMe ? 'You cannot change your own role' : 'Change role'}
-                            className="px-2 py-1.5 text-xs border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white disabled:bg-slate-50 disabled:text-slate-500"
-                          >
-                            <option value="admin">Principal (Administrator)</option>
-                            <option value="staff">Front Desk Staff</option>
-                          </select>
-                        ) : (
-                          <RoleBadge role={member.role} parent={member.isParent} />
-                        )}
+                        <RoleBadge role={member.role} parent={member.isParent} />
                       </td>
 
                       <td className="p-3.5 text-slate-600">
@@ -712,7 +690,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
                             <div className="text-[11px] text-slate-400">{linkedStudent?.grade || ''}</div>
                           </div>
                         )}
-                        {(member.role === 'admin' || member.role === 'staff') && <span className="text-slate-300">—</span>}
+                        {member.role === 'admin' && <span className="text-slate-300">—</span>}
                       </td>
 
                       <td className="p-3.5 text-slate-500">{formatDate(member.createdAt)}</td>
@@ -881,7 +859,6 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
                 <tr>
                   <th className="p-3">Feature</th>
                   <th className="p-3 text-center">Principal</th>
-                  <th className="p-3 text-center">Staff</th>
                   <th className="p-3 text-center">Teacher</th>
                   <th className="p-3 text-center">Student</th>
                 </tr>
@@ -891,7 +868,6 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
                   <tr key={p.label}>
                     <td className="p-3 text-slate-700">{p.label}</td>
                     <td className="p-3 text-center">{renderCell(p.admin)}</td>
-                    <td className="p-3 text-center">{renderCell(p.staff)}</td>
                     <td className="p-3 text-center">{renderCell(p.teacher)}</td>
                     <td className="p-3 text-center">{renderCell(p.student)}</td>
                   </tr>
@@ -906,7 +882,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
       {showAdd && (
         <Modal
           title="Add Account"
-          subtitle="Create a login for staff, a teacher or a student."
+          subtitle="Create a login for a teacher, a student or a parent."
           onClose={() => setShowAdd(false)}
         >
           <form onSubmit={handleAdd} className="space-y-4">
@@ -927,17 +903,14 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
                 }}
                 className={`${inputClass} bg-white`}
               >
-                <option value="staff">Front Desk Staff</option>
                 <option value="teacher">Teacher</option>
                 <option value="student">Student</option>
                 <option value="parent">Parent</option>
                 <option value="admin">Principal (Administrator)</option>
               </select>
               <p className="text-[11px] text-slate-400 mt-1">
-                {aRole === 'staff'
-                  ? 'Front desk: admissions, enquiries, attendance, fees and notices. Not the expenses, salaries or settings. Signs in at "Staff login" (button below the main sign in form).'
-                  : aRole === 'parent'
-                  ? 'Parents sign in at "Parent login" (below the main sign in form).'
+                {aRole === 'parent'
+                  ? 'Parents sign in at "Parent login" (button below the main sign in form).'
                   : 'Teachers, students and the principal sign in on the main sign in form.'}
               </p>
             </div>

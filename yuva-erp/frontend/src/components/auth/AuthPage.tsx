@@ -12,7 +12,6 @@ import {
   ShieldCheck,
   Crown,
   Heart,
-  UserCog,
   ArrowRight,
   Users,
   Mail,
@@ -600,27 +599,17 @@ export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }>
             <div className="mt-6">
               <div className="flex items-center gap-3 text-[11px] uppercase tracking-wider text-slate-400">
                 <span className="h-px flex-1 bg-slate-200" />
-                Other logins
+                Parent?
                 <span className="h-px flex-1 bg-slate-200" />
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-2.5">
-                <a
-                  href="/parent"
-                  className="group flex items-center justify-center gap-2 py-2.5 px-3 text-sm font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 rounded-lg shadow-xs transition-colors"
-                >
-                  <Heart className="w-4 h-4" />
-                  Parent login
-                  <ArrowRight className="w-3.5 h-3.5 opacity-60 transition-transform group-hover:translate-x-0.5" />
-                </a>
-                <a
-                  href="/staff"
-                  className="group flex items-center justify-center gap-2 py-2.5 px-3 text-sm font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 hover:border-amber-300 rounded-lg shadow-xs transition-colors"
-                >
-                  <UserCog className="w-4 h-4" />
-                  Staff login
-                  <ArrowRight className="w-3.5 h-3.5 opacity-60 transition-transform group-hover:translate-x-0.5" />
-                </a>
-              </div>
+              <a
+                href="/parent"
+                className="group mt-3 flex items-center justify-center gap-2 py-2.5 px-3 text-sm font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 rounded-lg shadow-xs transition-colors"
+              >
+                <Heart className="w-4 h-4" />
+                Parent login
+                <ArrowRight className="w-3.5 h-3.5 opacity-60 transition-transform group-hover:translate-x-0.5" />
+              </a>
             </div>
           )}
 

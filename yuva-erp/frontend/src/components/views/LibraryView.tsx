@@ -78,7 +78,7 @@ const BookModal: React.FC<{ book: Book | null; onClose: () => void }> = ({ book,
   );
 };
 
-// The library: books the institute shares to read online. Everybody reads; the principal and the front desk add and remove.
+// The library: books the institute shares to read online. Everybody reads; the principal adds and removes.
 export const LibraryView: React.FC = () => {
   const { books, deleteBook } = useInstitute();
   const { user } = useAuth();

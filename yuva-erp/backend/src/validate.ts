@@ -43,7 +43,6 @@ export const newId = (prefix: string): string => `${prefix}-${Date.now()}-${cryp
 export function roleLabel(role: string): string {
   const labels: Record<string, string> = {
     admin: 'Principal (Administrator)',
-    staff: 'Front Desk Staff',
     teacher: 'Teacher',
     student: 'Student',
     super: 'Super Admin',

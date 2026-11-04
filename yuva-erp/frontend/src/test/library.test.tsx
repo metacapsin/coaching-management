@@ -23,7 +23,7 @@ afterEach(cleanup);
 
 describe('library', () => {
   it('everybody who studies or teaches can open the page, the Super Admin cannot', () => {
-    for (const role of ['admin', 'staff', 'teacher', 'student'] as const) expect(canAccessTab(role, 'library')).toBe(true);
+    for (const role of ['admin', 'teacher', 'student'] as const) expect(canAccessTab(role, 'library')).toBe(true);
     expect(canAccessTab('super', 'library')).toBe(false);
   });
 

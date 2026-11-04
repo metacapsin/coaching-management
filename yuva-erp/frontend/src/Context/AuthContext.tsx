@@ -21,7 +21,7 @@ import type { AuthUser } from '../components/utils/api';
 export type { UserRole } from './Access';
 export type { AuthUser, AccountStatus } from '../components/utils/api';
 
-export type Portal = 'super' | 'admin' | 'staff' | 'member' | 'parent';
+export type Portal = 'super' | 'admin' | 'member' | 'parent';
 
 export type AuthResult = { ok: true } | { ok: false; error: string };
 
@@ -71,7 +71,7 @@ interface AuthContextType {
   retryConnection: () => void;
 
   user: AuthUser | null;
-  users: AuthUser[]; // filled for the principal and front desk staff
+  users: AuthUser[]; // filled for the principal
   hasUsers: boolean;
   hasSuper: boolean; // false until the Super Admin was created
   isAdmin: boolean;
@@ -100,7 +100,6 @@ interface AuthContextType {
   rejectUser: (id: string) => Promise<AuthResult>;
   setUserBatches: (id: string, batchIds: string[]) => Promise<AuthResult>;
   removeUser: (id: string) => Promise<AuthResult>;
-  setUserRole: (id: string, role: UserRole) => Promise<AuthResult>;
   resetUserPassword: (id: string, newPassword: string) => Promise<AuthResult>;
 
   // Any signed-in user
@@ -118,8 +117,6 @@ export const roleLabel = (role?: UserRole) => {
       return 'Super Admin';
     case 'admin':
       return 'Principal (Administrator)';
-    case 'staff':
-      return 'Front Desk Staff';
     case 'teacher':
       return 'Teacher';
     case 'student':
@@ -352,12 +349,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const removeUser = useCallback((id: string) => changeAccounts(() => request('DELETE', `/users/${id}`)), []);
 
-  // Only between Administrator and Front Desk Staff. Teacher / student roles are fixed.
-  const setUserRole = useCallback(
-    (id: string, role: UserRole) => changeAccounts(() => request('PUT', `/users/${id}/role`, { role })),
-    []
-  );
-
   const resetUserPassword = useCallback(
     (id: string, newPassword: string) => changeAccounts(() => request('POST', `/users/${id}/reset-password`, { newPassword })),
     []
@@ -411,7 +402,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         rejectUser,
         setUserBatches,
         removeUser,
-        setUserRole,
         resetUserPassword,
         changeOwnPassword,
         changeOwnEmail

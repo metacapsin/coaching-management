@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertCircle, ArrowLeft, CheckCircle2, GraduationCap, Heart, Loader2, Lock, Mail, UserCog } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CheckCircle2, GraduationCap, Heart, Loader2, Lock, Mail } from 'lucide-react';
 import { PasswordInput } from '../ui/PasswordInput';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { useAuth } from '../../Context/AuthContext';
@@ -13,18 +13,18 @@ const cls = 'w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-lg 
 
 type Look = {
   portal: Portal;
-  name: string; // "Parent", "Front Desk Staff"
+  name: string; // "Parent"
   icon: LucideIcon;
   brandSub: string;
   headline: string;
   subtitle: string;
   points: string[];
   accent: string; // tailwind background of the round logo
-  signup: boolean; // a parent can create an account; the staff is added by the principal
+  signup: boolean; // a parent can create an account
   other: string; // text of the link back to the main sign in
 };
 
-const LOOKS: Record<'parent' | 'staff', Look> = {
+const LOOKS: Record<'parent', Look> = {
   parent: {
     portal: 'parent',
     name: 'Parent',
@@ -36,27 +36,14 @@ const LOOKS: Record<'parent' | 'staff', Look> = {
     accent: 'bg-rose-500',
     signup: true,
     other: 'Teacher, student or coaching login'
-  },
-  staff: {
-    portal: 'staff',
-    name: 'Front Desk Staff',
-    icon: UserCog,
-    brandSub: 'Front Desk',
-    headline: 'The office of your coaching, in one place.',
-    subtitle: 'Sign in with the email and password that the principal made for you.',
-    points: ['Admissions, enquiries and the student list', 'Daily attendance and fee collection', 'Fee notices and test notices to the parents', 'Money of the coaching (expenses, salaries) stays with the principal'],
-    accent: 'bg-amber-500',
-    signup: false,
-    other: 'Principal, teacher or student login'
   }
 };
 
-// The own page of the parents (/parent) and of the front desk staff (/staff): not tabs of the main sign in. A parent can create an
-// account (roll number of the child and the parent mobile number that was given at admission); the staff account is made by the principal.
+// The own page of the parents (/parent), not a tab of the main sign in. A parent can create an account (roll number of the child
+// and the parent mobile number that was given at admission).
 export const ParentLoginPage: React.FC = () => <SeparateLoginPage kind="parent" />;
-export const StaffLoginPage: React.FC = () => <SeparateLoginPage kind="staff" />;
 
-const SeparateLoginPage: React.FC<{ kind: 'parent' | 'staff' }> = ({ kind }) => {
+const SeparateLoginPage: React.FC<{ kind: 'parent' }> = ({ kind }) => {
   const look = LOOKS[kind];
   const Icon = look.icon;
   const { signIn } = useAuth();
@@ -180,7 +167,7 @@ const SeparateLoginPage: React.FC<{ kind: 'parent' | 'staff' }> = ({ kind }) => 
           )}
 
           <div className="mt-8 pt-6 border-t border-slate-200">
-            <p className="text-[11px] uppercase tracking-wider text-slate-400 text-center mb-3">Not {kind === 'staff' ? 'front desk staff' : 'a parent'}?</p>
+            <p className="text-[11px] uppercase tracking-wider text-slate-400 text-center mb-3">Not a parent?</p>
             <a
               href="/"
               className="w-full py-2.5 px-4 text-sm font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-2"

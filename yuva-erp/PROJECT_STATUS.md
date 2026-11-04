@@ -43,7 +43,7 @@ Which modules are complete, which screens (UI) exist, what is still missing, and
 | 26 | **Change own login email** (all roles) | `ChangeEmailForm.tsx` | `POST /api/auth/change-email` | tests + browser |
 | 27 | **Automatic screen tests** (login page, theme, pager, pop-up, access rules, helpers, library) | `frontend/src/test/` | `npm run test:ui` | 33 tests |
 | 28 | **Library** (books shared with a link; everybody reads, the office adds) | `LibraryView.tsx` | `PUT /api/institute`, list `books` | tests + browser |
-| 29 | **Parent login** on an own page `/parent` and **Front desk staff login** on `/staff` (the child's data only, read only; the principal makes it in the student's Dossier) | `StudentLoginCard.tsx` (parent), `Studentportalview.tsx` | `POST /api/users` with `isParent` | tests + browser |
+| 29 | **Parent login** on an own page `/parent` (the child's data only, read only; the principal makes it in the student's Dossier) | `StudentLoginCard.tsx` (parent), `Studentportalview.tsx` | `POST /api/users` with `isParent` | tests + browser |
 | 30 | **Birthdays** on the dashboard (today and the next 7 days) | `DashboardView.tsx` | `dateOfBirth` of the student | tests + browser |
 | 31 | **Staff attendance** (teachers and staff: present, half day, leave, absent; month count; CSV) | `StaffAttendancePanel.tsx` (tab in Expenses) | list `staffAttendance` (principal only) | tests + browser |
 | 32 | **More reports**: Batch comparison, Fees by student, Attendance by student; attendance CSV of a day | `ReportsView.tsx`, `AttendanceView.tsx` | `GET /api/sync` | browser |

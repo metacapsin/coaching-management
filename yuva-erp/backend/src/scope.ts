@@ -1,7 +1,6 @@
 // Who may see and change which institute data.
 //
 //   admin    everything
-//   staff    everything except the institute profile (settings) and the expenses (money the coaching spends)
 //   teacher  only their own batches: attendance and test marks, study material and notices for those batches
 //   student  only their own record, attendance, fees, results, timetable, notices and study material (read only)
 //
@@ -32,12 +31,12 @@ export async function scopeInstitute(user: any, store: Store): Promise<any> {
   const present = await store.present();
   const profile = await store.profile();
 
-  if (role === 'admin' || role === 'staff') {
+  if (role === 'admin') {
     // Only what exists. A missing list lets the first admin browser add the starting data.
     const out: any = {};
     if (profile !== null) out.profile = profile;
     for (const name of LISTS) {
-      if (present.has(name) && (role === 'admin' || !PRINCIPAL_ONLY.has(name))) out[name] = await store.find(name);
+      if (present.has(name)) out[name] = await store.find(name);
     }
     return out;
   }
