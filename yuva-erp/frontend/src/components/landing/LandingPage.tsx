@@ -26,7 +26,6 @@ import {
   Instagram,
   Star
 } from 'lucide-react';
-import { DemoRequestForm } from './DemoRequestForm';
 import { AuthPage } from '../auth/AuthPage';
 import { Carousel } from './Carousel';
 import { useLang } from '../../i18n/LangContext';
@@ -575,30 +574,6 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
         </div>
       </section>
 
-      {/* Demo request */}
-      <section id="demo" className="scroll-mt-16 bg-gradient-to-br from-[#1b2c3c] to-[#0f1b26] py-20">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 grid lg:grid-cols-2 gap-10 items-start">
-          <Reveal>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-400">{'— '}{tr('Book a demo')}{' —'}</p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mt-3 tracking-tight">{tr('See how it works for ')}<span className="text-sky-400">{tr('your coaching')}</span></h2>
-            <p className="text-sky-100/80 mt-4 leading-relaxed">
-              {tr('Tell us who you are and we will get back to you to show AcademiaOS and answer your questions. Already have a coaching here? Sign in directly.')}
-            </p>
-            <ul className="mt-6 space-y-2 text-sm text-slate-300">
-              {['A walk through of the app with your own questions', 'Help to register your coaching', 'No payment is asked on this page'].map(item => (
-                <li key={item} className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-400" />
-                  {tr(item)}
-                </li>
-              ))}
-            </ul>
-          </Reveal>
-          <Reveal>
-            <DemoRequestForm />
-          </Reveal>
-        </div>
-      </section>
-
       <FloatingButtons onAddCoaching={openRegister} />
 
       {/* Footer */}
@@ -642,7 +617,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
           <div>
             <h4 className="text-base font-semibold text-white">{tr('Get started')}</h4>
             <ul className="mt-4 space-y-2.5 text-sm">
-              {[['#top', 'Sign in'], ['#top', 'Register your coaching'], ['#demo', 'Book a demo'], ['#faq', 'FAQ']].map(([h, l]) => (
+              {[['#top', 'Sign in'], ['#top', 'Register your coaching'], ['#faq', 'FAQ']].map(([h, l]) => (
                 <li key={l}>
                   <a href={h} className="text-sky-100/70 hover:text-white">
                     {tr(l)}

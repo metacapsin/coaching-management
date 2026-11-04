@@ -30,7 +30,7 @@ describe('the public website', () => {
 
   it('has the sections a visitor looks for', () => {
     render(<LandingPage />);
-    for (const id of ['why', 'how', 'features', 'roles', 'security', 'faq', 'demo']) expect(document.getElementById(id)).not.toBeNull();
+    for (const id of ['why', 'how', 'features', 'roles', 'security', 'faq']) expect(document.getElementById(id)).not.toBeNull();
     expect(screen.getByText('Everything a coaching needs,', { exact: false })).not.toBeNull();
     // the footer leads back up to the sign in form
     expect(within(document.querySelector('footer') as HTMLElement).getByRole('link', { name: 'Sign in' }).getAttribute('href')).toBe('#top');
@@ -53,20 +53,6 @@ describe('the public website', () => {
     expect(screen.getByText(/needs a paid gateway/)).not.toBeNull();
     fireEvent.click(q);
     expect(q.getAttribute('aria-expanded')).toBe('false');
-  });
-
-  it('the demo form asks for the missing details before it sends anything', () => {
-    render(<LandingPage />);
-    fireEvent.click(screen.getByRole('button', { name: /Send my request/ }));
-    expect(screen.getByRole('alert').textContent).toBe('Please write your name.');
-    fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'Ravi' } });
-    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'not-an-email' } });
-    fireEvent.click(screen.getByRole('button', { name: /Send my request/ }));
-    expect(screen.getByRole('alert').textContent).toBe('Please write a valid email.');
-    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ravi@example.com' } });
-    fireEvent.change(screen.getByLabelText('Mobile number'), { target: { value: '123' } });
-    fireEvent.click(screen.getByRole('button', { name: /Send my request/ }));
-    expect(screen.getByRole('alert').textContent).toBe('Please write a 10-digit mobile number.');
   });
 
   it('the message at the top changes by itself and a dot chooses one', () => {
