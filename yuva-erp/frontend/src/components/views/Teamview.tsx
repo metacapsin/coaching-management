@@ -848,34 +848,36 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
           </form>
         </div>
 
-        {/* Role permissions */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-          <div className="p-4 border-b border-slate-200 bg-slate-50/50">
-            <h3 className="text-sm font-semibold text-slate-900">What each role can do</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead className="border-b border-slate-200 text-slate-600 font-semibold uppercase">
-                <tr>
-                  <th className="p-3">Feature</th>
-                  <th className="p-3 text-center">Principal</th>
-                  <th className="p-3 text-center">Teacher</th>
-                  <th className="p-3 text-center">Student</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {PERMISSIONS.map(p => (
-                  <tr key={p.label}>
-                    <td className="p-3 text-slate-700">{p.label}</td>
-                    <td className="p-3 text-center">{renderCell(p.admin)}</td>
-                    <td className="p-3 text-center">{renderCell(p.teacher)}</td>
-                    <td className="p-3 text-center">{renderCell(p.student)}</td>
+        {/* Role permissions: only the principal sees it (a teacher or a student was added by the principal) */}
+        {isAdmin && (
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-slate-200 bg-slate-50/50">
+              <h3 className="text-sm font-semibold text-slate-900">What each role can do</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead className="border-b border-slate-200 text-slate-600 font-semibold uppercase">
+                  <tr>
+                    <th className="p-3">Feature</th>
+                    <th className="p-3 text-center">Principal</th>
+                    <th className="p-3 text-center">Teacher</th>
+                    <th className="p-3 text-center">Student</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {PERMISSIONS.map(p => (
+                    <tr key={p.label}>
+                      <td className="p-3 text-slate-700">{p.label}</td>
+                      <td className="p-3 text-center">{renderCell(p.admin)}</td>
+                      <td className="p-3 text-center">{renderCell(p.teacher)}</td>
+                      <td className="p-3 text-center">{renderCell(p.student)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Add account modal */}
