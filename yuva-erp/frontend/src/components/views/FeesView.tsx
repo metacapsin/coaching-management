@@ -5,7 +5,7 @@ import { CourseModal } from '../modals/CourseModal';
 import { CancelReceiptModal } from '../modals/CancelReceiptModal';
 import { Pager } from '../ui/Pager';
 import { usePaged } from '../utils/usePaged';
-import { daysBetween, downloadCsv, fillTemplate, formatDate, openWhatsApp, plural, toLocalISODate } from '../utils/helpers';
+import { daysBetween, downloadCsv, fillTemplate, formatDate, openWhatsApp, payPageLink, plural, toLocalISODate, withPayLink } from '../utils/helpers';
 import {
   CreditCard,
   Search,
@@ -106,14 +106,17 @@ export const FeesView: React.FC<FeesViewProps> = ({
   const reminderText = (item: DefaulterRow) => {
     const template = templates.find(t => t.type === 'fee_due') || templates[0];
     if (!template) return null;
-    return fillTemplate(template.templateBody, {
-      parent_name: item.student.parentName,
-      student_name: item.student.name,
-      currency: profile.currencySymbol,
-      due_amount: item.due.toLocaleString('en-IN'),
-      due_date: item.student.nextDueDate ? formatDate(item.student.nextDueDate) : 'at the earliest',
-      batch_name: item.batchName || 'Class'
-    });
+    return withPayLink(
+      fillTemplate(template.templateBody, {
+        parent_name: item.student.parentName,
+        student_name: item.student.name,
+        currency: profile.currencySymbol,
+        due_amount: item.due.toLocaleString('en-IN'),
+        due_date: item.student.nextDueDate ? formatDate(item.student.nextDueDate) : 'at the earliest',
+        batch_name: item.batchName || 'Class'
+      }),
+      payPageLink(profile, item.student.name, item.due)
+    );
   };
 
   // One click: a reminder for every account shown goes to the message queue ("Waiting to be sent"). Whoever

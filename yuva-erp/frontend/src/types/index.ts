@@ -151,6 +151,7 @@ export interface InstituteProfile {
   currencySymbol: string;
   academicYear: string;
   signatoryTitle: string;
+  upiId?: string; // where parents pay the fee (UPI id like name@bank): the "Pay now" link of a fee notice goes there
   logo?: string; // a small picture (data URL) for the letterhead
   autoFeeReminders?: boolean; // queue the reminders of the overdue fees once a day
   lastAutoReminderDate?: string; // the day it was done (YYYY-MM-DD)

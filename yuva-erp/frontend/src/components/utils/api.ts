@@ -379,6 +379,10 @@ export const updateOwnDetails = (details: { name?: string; phone?: string; subje
 export const resetSuperPassword = (email: string, newPassword: string) =>
   request<{ ok: true }>('POST', '/super/forgot-password', { email, newPassword }, { auth: false });
 
+// Emails the parent of a student the notice that the fee is not fully paid (with a Pay now button when the coaching has a UPI id)
+export const emailFeeNotice = (studentId: string) =>
+  request<{ notified: 'sent' | 'no-email' | 'none' }>('POST', '/fees/notice-email', { studentId });
+
 // Tells the principal that somebody forgot the password (the answer is always the same)
 export const requestPasswordReset = (email: string) =>
   request<{ ok: true }>('POST', '/auth/forgot-password', { email }, { auth: false });

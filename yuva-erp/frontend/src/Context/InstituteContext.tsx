@@ -48,7 +48,7 @@ import {
   initialMaterials
 } from '../data/mockData';
 import { nextRollNumber } from '../components/utils/rollNo';
-import { toLocalISODate, toLocalDateTime, uid, fillTemplate, formatDate } from '../components/utils/helpers';
+import { toLocalISODate, toLocalDateTime, uid, fillTemplate, formatDate, payPageLink, withPayLink } from '../components/utils/helpers';
 
 export const DEFAULT_PHOTO = '/avatar.svg';
 
@@ -1057,14 +1057,17 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           recipientPhone: st.parentPhone,
           studentName: st.name,
           studentId: st.id,
-          content: fillTemplate(template.templateBody, {
-            parent_name: st.parentName,
-            student_name: st.name,
-            currency: profile.currencySymbol,
-            due_amount: due.toLocaleString('en-IN'),
-            due_date: formatDate(st.nextDueDate),
-            batch_name: batchName
-          }),
+          content: withPayLink(
+            fillTemplate(template.templateBody, {
+              parent_name: st.parentName,
+              student_name: st.name,
+              currency: profile.currencySymbol,
+              due_amount: due.toLocaleString('en-IN'),
+              due_date: formatDate(st.nextDueDate),
+              batch_name: batchName
+            }),
+            payPageLink(profile, st.name, due)
+          ),
           status: 'pending'
         });
       }

@@ -24,6 +24,22 @@ export const toWhatsAppNumber = (phone: string, defaultCountryCode = '91'): stri
   return digits;
 };
 
+// A UPI id looks like name@bank
+export const isUpiId = (value: string) => /^[A-Za-z0-9._-]{2,}@[A-Za-z][A-Za-z0-9.-]{1,}$/.test((value || '').trim());
+
+// The link of the "Pay now" page for a fee notice: /pay opens in the browser of the parent and has one button that opens
+// the UPI app (GPay, PhonePe, Paytm...) with the coaching, the amount and the note already written. Empty when the
+// coaching has not written its UPI id yet or nothing is due.
+export const payPageLink = (profile: { upiId?: string; name: string }, studentName: string, amount: number): string => {
+  const upi = (profile.upiId || '').trim();
+  if (!isUpiId(upi) || !(amount > 0)) return '';
+  const query = new URLSearchParams({ pa: upi, pn: profile.name, am: String(Math.round(amount * 100) / 100), sn: studentName });
+  return `${window.location.origin}/pay?${query.toString()}`;
+};
+
+// A message with the "Pay now" link under it (the message stays as it is when there is no link)
+export const withPayLink = (message: string, link: string) => (link ? `${message}\n\nPay now: ${link}` : message);
+
 export const openWhatsApp = (phone: string, text: string) => {
   window.open(`https://wa.me/${toWhatsAppNumber(phone)}?text=${encodeURIComponent(text)}`, '_blank');
 };

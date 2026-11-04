@@ -203,6 +203,37 @@ describe('Coachings', () => {
     assert.ok(mail2.sent[0][2].includes('http')); // every email has a link
   });
 
+  it('02h the office emails the parent a fee notice, with a Pay now button when the UPI id is written', async () => {
+    const base = { id: 'fs1', rollNo: '01', name: 'Fee Student', email: '', phone: '9811122233', parentName: 'Fee Parent', parentEmail: 'feeparent@x.com', parentPhone: '9811100000', grade: 'Class 12', courseId: 'c1', batchId: 'b1', targetExam: 'JEE', dateOfAdmission: '2026-11-01', status: 'active', photoUrl: '/avatar.svg', address: '', totalFees: 50000, discount: 0, feePaid: 10000 };
+    assert.equal((await call('PUT', '/api/institute', { changes: { students: { upsert: [base] } } }, adminA))[0], 200);
+    let mail = captureMail();
+    try {
+      const [status, data] = await call('POST', '/api/fees/notice-email', { studentId: 'fs1' }, adminA);
+      assert.deepEqual([status, data.notified], [200, 'sent']);
+    } finally {
+      mail.stop();
+    }
+    assert.deepEqual(mail.sent.map((m) => m[0]), ['feeparent@x.com']);
+    assert.ok(mail.sent[0][2].includes('40,000'), 'the pending amount');
+    assert.ok(!mail.sent[0][2].includes('/pay?'), 'no UPI id yet: no Pay now link');
+    // the principal writes the UPI id: the email has the Pay now button
+    assert.equal((await call('PUT', '/api/institute', { changes: { profile: { name: 'Alpha', currencySymbol: '₹', upiId: 'alpha@okbank' } } }, adminA))[0], 200);
+    mail = captureMail();
+    try {
+      await call('POST', '/api/fees/notice-email', { studentId: 'fs1' }, adminA);
+    } finally {
+      mail.stop();
+    }
+    assert.ok(/\/pay\?pa=alpha%40okbank&pn=.*&am=40000/.test(mail.sent[0][2]), 'the Pay now link carries the UPI id and the amount');
+    // a student without a parent email, a fully paid student, and a person who may not send it
+    await call('PUT', '/api/institute', { changes: { students: { upsert: [{ ...base, id: 'fs2', parentEmail: '' }, { ...base, id: 'fs3', feePaid: 50000 }] } } }, adminA);
+    assert.equal((await call('POST', '/api/fees/notice-email', { studentId: 'fs2' }, adminA))[1].notified, 'none');
+    assert.equal((await call('POST', '/api/fees/notice-email', { studentId: 'fs3' }, adminA))[0], 400);
+    assert.equal((await call('POST', '/api/fees/notice-email', { studentId: 'fs1' }, null))[0], 401);
+    // the test leaves the coaching as it found it (the next tests count its students)
+    await call('PUT', '/api/institute', { changes: { students: { remove: ['fs1', 'fs2', 'fs3'] } } }, adminA);
+  });
+
   it('02g a coaching added by the super admin tells its principal', async () => {
     const mail = captureMail();
     let status: number, data: any;

@@ -26,7 +26,8 @@ const PROFILE_FIELDS: { key: string; label: string; mono?: boolean; wide?: boole
   { key: 'address', label: 'Campus Physical Address', wide: true },
   { key: 'website', label: 'Website' },
   { key: 'phone', label: 'Official Front-Desk Phone' },
-  { key: 'email', label: 'Admissions Inquiries Email', type: 'email' }
+  { key: 'email', label: 'Admissions Inquiries Email', type: 'email' },
+  { key: 'upiId', label: 'UPI ID to receive fees (the "Pay now" button of fee notices pays here)', mono: true, wide: true }
 ];
 
 const formatSize = (bytes: number) => (bytes > 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);

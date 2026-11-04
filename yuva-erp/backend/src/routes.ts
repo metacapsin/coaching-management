@@ -437,6 +437,53 @@ route('/api/auth/change-password', ['POST'], 'any', async (c) => {
   return ok();
 });
 
+// ---------- fee notice ----------
+
+const UPI_ID = /^[A-Za-z0-9._-]{2,}@[A-Za-z][A-Za-z0-9.-]{1,}$/;
+
+/** The office emails the parent of a student that the fee is not fully paid. When the coaching wrote its UPI id (Institute
+ * Profile) the email has a "Pay now" button: it opens the pay page of the site, which opens the UPI app with the amount filled. */
+route('/api/fees/notice-email', ['POST'], 'user', async (c) => {
+  if (!['admin', 'staff'].includes(c.user.role)) throw new HttpError(403, 'Only the principal or the front desk can send a fee notice.');
+  const s = c.store;
+  const student = (await s.find('students')).find((x: any) => x.id === c.body().studentId);
+  if (!student) throw new HttpError(404, 'Student not found.');
+  const parentEmail = text(student.parentEmail, 150).toLowerCase();
+  if (!parentEmail) return { notified: 'none' };
+  const due = Math.max(0, (Number(student.totalFees) || 0) - (Number(student.discount) || 0) - (Number(student.feePaid) || 0));
+  if (due <= 0) throw new HttpError(400, 'This student has no pending fee.');
+
+  const profile = (await s.profile()) || {};
+  const coaching = await coachingName(c, s);
+  const upi = text(profile.upiId, 80);
+  const symbol = text(profile.currencySymbol, 5) || '₹';
+  const amount = `${symbol}${due.toLocaleString('en-IN')}`;
+  const payLink = UPI_ID.test(upi)
+    ? `${c.siteUrl()}/pay?${new URLSearchParams({ pa: upi, pn: coaching, am: String(due), sn: String(student.name || '') }).toString()}`
+    : '';
+
+  const [sent] = mail(
+    parentEmail,
+    `Fee notice for ${student.name}`,
+    'The fee is not fully paid',
+    [`The fee of ${student.name} at ${coaching} is not fully paid. Please pay the pending amount at the earliest.`],
+    {
+      details: [
+        ['Student', student.name],
+        ['Pending amount', amount],
+        ['Coaching', coaching],
+      ],
+      button: payLink ? [`Pay ${amount} now`, payLink] : ['Visit AcademiaOS', c.siteUrl()],
+      note: payLink
+        ? 'The button opens your UPI app (GPay, PhonePe, Paytm...) with the amount already filled. After you pay, the office gives you a receipt.'
+        : 'Please pay at the coaching office.',
+      name: student.parentName,
+    },
+  );
+  await s.audit(c.user, 'fee-notice-email', `${student.name}: ${amount}`);
+  return { notified: sent ? 'sent' : 'no-email' };
+});
+
 /** The browser asks for changes since the version it already has. */
 route('/api/sync', ['GET'], 'user', async (c) => {
   const s = c.store;

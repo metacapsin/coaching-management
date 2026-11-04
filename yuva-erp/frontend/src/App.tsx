@@ -33,6 +33,7 @@ import { TeacherHomeView } from './components/views/Teacherhomeview';
 // Auth + layout
 import { SuperAdminApp } from './components/super/SuperAdminApp';
 import { LandingPage } from './components/landing/LandingPage';
+import { PayPage } from './components/pay/PayPage';
 import { ForcePasswordChange } from './components/auth/ForcePasswordChange';
 import { OrgLogo } from './components/ui/OrgLogo';
 import { Navbar } from './components/layout/Navbar';
@@ -186,7 +187,6 @@ function MainApp() {
           <AdmissionsView
             onOpenAdmission={() => setIsAdmissionModalOpen(true)}
             onSelectStudent={handleSelectStudent}
-            onCollectPayment={handleOpenPaymentForStudent}
           />
         );
       case 'attendance':
@@ -507,6 +507,8 @@ function AuthGate() {
 }
 
 export default function App() {
+  // the page of a parent from a fee notice: no sign in, no app
+  if (window.location.pathname === '/pay') return <PayPage />;
   return (
     <AuthProvider>
       <AuthGate />
