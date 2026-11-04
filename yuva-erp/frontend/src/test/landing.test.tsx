@@ -11,7 +11,7 @@ vi.mock('../data/siteInfo', async importOriginal => {
 vi.mock('../Context/AuthContext', () => ({ useAuth: () => auth }));
 
 import { LandingPage } from '../components/landing/LandingPage';
-import { ParentLoginPage } from '../components/auth/ParentLoginPage';
+import { ParentLoginPage, StaffLoginPage } from '../components/auth/ParentLoginPage';
 
 afterEach(cleanup);
 
@@ -150,6 +150,7 @@ describe('the public website', () => {
     const form = within(document.getElementById('signin') as HTMLElement);
     expect(form.queryByRole('button', { name: 'Parent' })).toBeNull();
     expect(form.getByRole('link', { name: 'Parent login' }).getAttribute('href')).toBe('/parent');
+    expect(form.getByRole('link', { name: 'Front desk staff login' }).getAttribute('href')).toBe('/staff');
   });
 
   it('the parent page signs in as a parent, and can create an account', () => {
@@ -159,5 +160,12 @@ describe('the public website', () => {
     expect(screen.getByRole('link', { name: /Teacher, student or coaching login/ }).getAttribute('href')).toBe('/');
     fireEvent.click(screen.getByRole('button', { name: 'Create an account' }));
     expect(screen.getByText('Choose the coaching of your child to go on.')).not.toBeNull();
+  });
+
+  it('the front desk staff page signs in as staff and has no account creation', () => {
+    render(<StaffLoginPage />);
+    expect(screen.getByRole('heading', { name: 'Front Desk Staff login' })).not.toBeNull();
+    expect(screen.getByRole('button', { name: /Sign In as Front Desk Staff/ })).not.toBeNull();
+    expect(screen.queryByRole('button', { name: 'Create an account' })).toBeNull();
   });
 });

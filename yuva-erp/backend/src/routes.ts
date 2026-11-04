@@ -198,16 +198,24 @@ route('/api/auth/login', ['POST'], 'public', async (c) => {
     throw invalid();
   }
 
-  // four logins: 'super' (super admin), 'admin' (principal and office staff of a coaching), 'member' (teacher, student),
-  // 'parent' (the parent of a student)
+  // five logins: 'super' (super admin), 'admin' (principal of a coaching), 'staff' (its front desk, an own page /staff),
+  // 'member' (teacher, student), 'parent' (the parent of a student, an own page /parent)
   const isParent = found.role === 'student' && Boolean(found.isParent);
   let portalOk: boolean;
-  if (portal === 'admin') portalOk = ['admin', 'staff'].includes(found.role);
+  if (portal === 'admin') portalOk = found.role === 'admin';
+  else if (portal === 'staff') portalOk = found.role === 'staff'; // the page of the front desk
   else if (portal === 'member') portalOk = ['teacher', 'student'].includes(found.role) && !isParent; // the "Teacher / Student" tab
   else if (portal === 'parent') portalOk = isParent; // the "Parent" tab
   else portalOk = found.role === portal;
   if (!portalOk) {
-    throw new HttpError(403, `This is a ${isParent ? 'Parent' : roleLabel(found.role)} account. Please use the “${portalLabel(found.role, isParent)}” tab to sign in.`);
+    throw new HttpError(
+      403,
+      found.role === 'staff'
+        ? 'This is a Front Desk Staff account. Please use the Staff login page (the link “Front desk staff login” under the sign in form).'
+        : isParent
+        ? 'This is a Parent account. Please use the Parent login page (the link “Parent login” under the sign in form).'
+        : `This is a ${roleLabel(found.role)} account. Please use the “${portalLabel(found.role, isParent)}” tab to sign in.`,
+    );
   }
 
   if (auth.needsUpgrade(found)) {

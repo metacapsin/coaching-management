@@ -101,7 +101,8 @@ The first run downloads a MongoDB program once (about 800 MB, kept in your user 
 | Parent Broadcasts | Principal, staff | Templates and a message queue |
 | Team & Access | Principal | Teacher, staff and student accounts, batches, password reset |
 | **Public website** | Everybody | The first page before sign in: what AcademiaOS is, how it works, features, who uses it, security, FAQ and a "Book a demo" form. The sign in form (3 tabs) sits in the top part of the same page, so there is no separate login page. The Super Admin reads the demo requests on the platform page |
-| **Parent login** | Parent | A parent signs in on the Teacher / Student tab and sees the child's attendance, fees, results and notices (read only). The principal makes it in the student's Dossier |
+| **Parent login** | Parent | A parent signs in on an own page, `/parent` (link under the main sign in form), or creates an account there, and sees the child's attendance, fees, results and notices (read only). The principal can also make it in the student's Dossier |
+| **Front desk staff login** | Front desk | Own page `/staff` (link under the main sign in form). Made by the principal in Team & Access. Admissions, enquiries, attendance, fees, exams and notices; not expenses, salaries, settings or accounts |
 | **Staff attendance** | Principal only | Tab in Expenses & Profit: teachers and staff present / half day / leave / absent, with a month count |
 | **Library** | Everybody reads; principal and front desk add | Books shared with a link (PDF, Drive, website): students and teachers press Read and it opens online |
 | Institute Profile | Principal | Letterhead with a **logo** (side menu, receipts, report cards), "queue fee reminders by itself once a day", backup and restore, clean start |

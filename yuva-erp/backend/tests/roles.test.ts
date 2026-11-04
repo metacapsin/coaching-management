@@ -34,7 +34,7 @@ describe('Expenses: for the principal only', () => {
     for (const [role, email] of [['staff', 's@x.com'], ['teacher', 't@x.com']]) {
       await api.call('POST', '/api/users', { name: role, email, password: PASSWORD, role, batchIds: ['b1'] }, admin);
     }
-    staff = await tokenOf(api, 's@x.com', 'admin');
+    staff = await tokenOf(api, 's@x.com', 'staff');
     teacher = await tokenOf(api, 't@x.com', 'teacher');
   });
   const call = (...a: Parameters<Api['call']>) => s.api.call(...a);
@@ -159,7 +159,7 @@ describe('Library: the office adds the books, everybody reads them', () => {
       await api.call('POST', '/api/users', { name: role, email, password: PASSWORD, role, batchIds: ['b1'] }, admin);
     }
     await api.call('POST', '/api/users', { name: 'Alice', email: 'alice@x.com', password: PASSWORD, role: 'student', studentId: 's1' }, admin);
-    staff = await tokenOf(api, 's@x.com', 'admin');
+    staff = await tokenOf(api, 's@x.com', 'staff');
     teacher = await tokenOf(api, 't@x.com', 'member');
     student = await tokenOf(api, 'alice@x.com', 'member');
   });
@@ -363,5 +363,33 @@ describe('Super Admins: there is only one', () => {
     assert.equal((await call('GET', '/api/super/admins', null, one))[0], 404);
     // no account with the role super was made
     assert.equal((await call('POST', '/api/auth/login', { email: 'two@x.com', password: 'Temp12345pw', portal: 'super' }))[0], 401);
+  });
+});
+
+describe('Front desk staff: an own login page', () => {
+  let admin = '';
+  const s = withServer(async (api) => {
+    admin = (await api.call('POST', '/api/auth/setup', { name: 'P', email: 'p@x.com', password: PASSWORD }))[1].token;
+    await api.call('POST', '/api/users', { name: 'Desk', email: 'desk@x.com', password: PASSWORD, role: 'staff' }, admin);
+  });
+  const call = (...a: Parameters<Api['call']>) => s.api.call(...a);
+  const login = (email: string, portal: string) => call('POST', '/api/auth/login', { email, password: PASSWORD, portal });
+
+  it('1 the staff signs in on the staff page only, the principal on the admin tab only', async () => {
+    const wrong = await login('desk@x.com', 'admin');
+    assert.equal(wrong[0], 403);
+    assert.ok(wrong[1].error.includes('Staff login'), 'the message says where to go');
+    const ok = await login('desk@x.com', 'staff');
+    assert.equal(ok[0], 200);
+    assert.equal(ok[1].user.role, 'staff');
+    assert.equal((await login('p@x.com', 'staff'))[0], 403);
+    assert.equal((await login('p@x.com', 'admin'))[0], 200);
+  });
+
+  it('2 the staff sees the office data but not the money of the coaching, and cannot make accounts', async () => {
+    const staff = (await login('desk@x.com', 'staff'))[1].token;
+    assert.equal((await call('GET', '/api/sync', null, staff))[0], 200);
+    assert.equal((await call('POST', '/api/users', { name: 'X', email: 'x@x.com', password: PASSWORD, role: 'staff' }, staff))[0], 403);
+    assert.equal((await call('PUT', '/api/institute', { changes: { expenses: { upsert: [{ id: 'e1', title: 'Rent', amount: 5, date: '2026-01-01', category: 'Rent' }] } } }, staff))[0] >= 400, true);
   });
 });

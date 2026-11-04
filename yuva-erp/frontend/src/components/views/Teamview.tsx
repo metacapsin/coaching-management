@@ -933,6 +933,13 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
                 <option value="parent">Parent</option>
                 <option value="admin">Principal (Administrator)</option>
               </select>
+              <p className="text-[11px] text-slate-400 mt-1">
+                {aRole === 'staff'
+                  ? 'Front desk: admissions, enquiries, attendance, fees and notices. Not the expenses, salaries or settings. Signs in at "Front desk staff login" (below the main sign in form).'
+                  : aRole === 'parent'
+                  ? 'Parents sign in at "Parent login" (below the main sign in form).'
+                  : 'Teachers, students and the principal sign in on the main sign in form.'}
+              </p>
             </div>
 
             {aRole === 'parent' && (

@@ -21,7 +21,7 @@ import type { AuthUser } from '../components/utils/api';
 export type { UserRole } from './Access';
 export type { AuthUser, AccountStatus } from '../components/utils/api';
 
-export type Portal = 'super' | 'admin' | 'member' | 'parent';
+export type Portal = 'super' | 'admin' | 'staff' | 'member' | 'parent';
 
 export type AuthResult = { ok: true } | { ok: false; error: string };
 

@@ -191,7 +191,7 @@ const SuperForgotPassword: React.FC<{ initialEmail: string }> = ({ initialEmail 
 // students. The parents have an own page (/parent, see ParentLoginPage), linked below the form.
 const PORTALS: { id: Portal; label: string; icon: LucideIcon; blurb: string }[] = [
   { id: 'super', label: 'Super Admin', icon: Crown, blurb: 'Approves coachings and manages all of them.' },
-  { id: 'admin', label: 'Coaching Admin', icon: ShieldCheck, blurb: 'Principal or front desk of one coaching, with its own data.' },
+  { id: 'admin', label: 'Coaching Admin', icon: ShieldCheck, blurb: 'Principal of one coaching, with its own data.' },
   { id: 'member', label: 'Teacher / Student', icon: Users, blurb: 'Teacher or student: sign in here, or create your account.' }
 ];
 
@@ -595,9 +595,12 @@ export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }>
 
           {!registering && !memberSignup && !createSuper && (
             <p className="mt-4 text-xs text-slate-500 text-center">
-              Are you a parent?{' '}
               <a href="/parent" className="font-semibold text-blue-600 hover:underline">
                 Parent login
+              </a>
+              <span className="mx-2 text-slate-300">|</span>
+              <a href="/staff" className="font-semibold text-blue-600 hover:underline">
+                Front desk staff login
               </a>
             </p>
           )}
