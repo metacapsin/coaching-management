@@ -150,7 +150,7 @@ describe('the public website', () => {
     const form = within(document.getElementById('signin') as HTMLElement);
     expect(form.queryByRole('button', { name: 'Parent' })).toBeNull();
     expect(form.getByRole('link', { name: 'Parent login' }).getAttribute('href')).toBe('/parent');
-    expect(form.getByRole('link', { name: 'Front desk staff login' }).getAttribute('href')).toBe('/staff');
+    expect(form.getByRole('link', { name: 'Staff login' }).getAttribute('href')).toBe('/staff');
   });
 
   it('the parent page signs in as a parent, and can create an account', () => {

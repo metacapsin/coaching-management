@@ -211,9 +211,9 @@ route('/api/auth/login', ['POST'], 'public', async (c) => {
     throw new HttpError(
       403,
       found.role === 'staff'
-        ? 'This is a Front Desk Staff account. Please use the Staff login page (the link “Front desk staff login” under the sign in form).'
+        ? 'This is a Front Desk Staff account. Please use the Staff login page (the “Staff login” button under the sign in form).'
         : isParent
-        ? 'This is a Parent account. Please use the Parent login page (the link “Parent login” under the sign in form).'
+        ? 'This is a Parent account. Please use the Parent login page (the “Parent login” button under the sign in form).'
         : `This is a ${roleLabel(found.role)} account. Please use the “${portalLabel(found.role, isParent)}” tab to sign in.`,
     );
   }
