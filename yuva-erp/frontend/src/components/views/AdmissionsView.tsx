@@ -6,7 +6,7 @@ import { usePaged } from '../utils/usePaged';
 import { EditStudentModal } from '../modals/EditstudentModal';
 import type { Student } from '../../types';
 import { csvCell, downloadTextFile, fillTemplate, formatDate, openWhatsApp, payPageLink, plural, toLocalISODate, withPayLink } from '../utils/helpers';
-import { emailFeeNotice } from '../utils/api';
+import { useFeeNotice } from '../utils/useFeeNotice';
 import {
   Users,
   UserPlus,
@@ -165,48 +165,10 @@ export const AdmissionsView: React.FC<AdmissionsViewProps> = ({
   // "Send notice": tells the parent that the fee of the child is not fully paid (the amount, and the date if one is set).
   // The fee is collected on the Fees page; here the office only sends the notice. It opens ready in WhatsApp and is kept in
   // Parent Broadcasts.
+  const sendFeeNotice = useFeeNotice();
   const handleFeeNotice = (e: React.MouseEvent, s: Student) => {
     e.stopPropagation();
-    if (!s.parentPhone) {
-      showNotice('error', `There is no parent number for ${s.name}. Add it in Edit first.`);
-      return;
-    }
-    const net = Math.max(0, s.totalFees - s.discount);
-    const bal = Math.max(0, net - s.feePaid);
-    const template = templates.find(t => t.type === 'fee_due');
-    const payLink = payPageLink(profile, s.name, bal);
-    const base = template
-      ? fillTemplate(template.templateBody, {
-          parent_name: s.parentName,
-          student_name: s.name,
-          currency: profile.currencySymbol,
-          due_amount: bal.toLocaleString('en-IN'),
-          due_date: s.nextDueDate ? formatDate(s.nextDueDate) : 'at the earliest',
-          batch_name: batches.find(b => b.id === s.batchId)?.name || 'Class'
-        })
-      : `Hello ${s.parentName} ji, the fee of ${s.name} (${s.rollNo}) at ${profile.name} is not fully paid. Pending: ${profile.currencySymbol}${bal.toLocaleString('en-IN')}. Please pay it at the earliest.`;
-    const message = withPayLink(base, payLink);
-
-    sendNotification({
-      type: 'fee_due',
-      channel: 'whatsapp',
-      recipientName: s.parentName,
-      recipientPhone: s.parentPhone,
-      studentName: s.name,
-      studentId: s.id,
-      content: message
-    });
-    openWhatsApp(s.parentPhone, message);
-    const payNote = payLink ? ' It has a Pay now link.' : ' Write the UPI id in Institute Profile to add a Pay now link.';
-    showNotice('success', `Fee notice for ${s.name} is ready in WhatsApp (pending ${profile.currencySymbol}${bal.toLocaleString('en-IN')}). Press Send there.${payNote}`);
-    // the parent who has an email also gets the notice by email, with the same Pay now button
-    if (s.parentEmail) {
-      emailFeeNotice(s.id)
-        .then(r => {
-          if (r.notified === 'sent') showNotice('success', `Fee notice for ${s.name} was also emailed to ${s.parentEmail}.${payNote}`);
-        })
-        .catch(() => undefined);
-    }
+    sendFeeNotice(s, r => showNotice(r.type, r.text));
   };
 
   // Archive hides a student from attendance rolls but keeps every record
