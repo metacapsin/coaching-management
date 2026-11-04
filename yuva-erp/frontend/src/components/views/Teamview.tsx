@@ -906,7 +906,6 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
                 <option value="teacher">Teacher</option>
                 <option value="student">Student</option>
                 <option value="parent">Parent</option>
-                <option value="admin">Principal (Administrator)</option>
               </select>
               <p className="text-[11px] text-slate-400 mt-1">
                 {aRole === 'parent'

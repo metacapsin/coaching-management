@@ -256,8 +256,10 @@ describe('Flow: a day at the institute', () => {
     const teacher = tokens.teacher;
     const me = (await call('GET', '/api/auth/me', null, admin))[1].user;
     assert.equal((await call('DELETE', `/api/users/${me.id}`, null, admin))[0], 400);
-    // there is no front desk staff role: a second kind of office account cannot be made
-    assert.equal((await call('POST', '/api/users', { name: 'Desk', email: 'desk@x.com', password: 'Desk12345pw', role: 'staff' }, admin))[0], 400);
+    // there is no front desk staff role and no second principal: those accounts cannot be made
+    for (const role of ['staff', 'admin']) {
+      assert.equal((await call('POST', '/api/users', { name: 'Desk', email: 'desk@x.com', password: 'Desk12345pw', role }, admin))[0], 400);
+    }
 
     assert.equal((await call('GET', '/api/auth/me', null, teacher))[0], 200);
     assert.equal((await call('DELETE', `/api/users/${teacherId}`, null, admin))[0], 200);

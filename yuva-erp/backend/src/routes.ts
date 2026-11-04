@@ -673,7 +673,8 @@ route('/api/users', ['POST'], 'admin', async (c) => {
   const b = c.body();
   const email = text(b.email).toLowerCase();
   const role = b.role;
-  if (!['admin', 'teacher', 'student'].includes(role)) throw new HttpError(400, 'Choose a valid role.');
+  // one coaching has one principal: nobody can add another one
+  if (!['teacher', 'student'].includes(role)) throw new HttpError(400, 'Choose a valid role. A coaching has only one principal.');
   if (!text(b.name)) throw new HttpError(400, 'Please enter the full name.');
   checkEmail(email);
   checkPassword(b.password);
