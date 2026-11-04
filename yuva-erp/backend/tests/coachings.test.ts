@@ -234,6 +234,26 @@ describe('Coachings', () => {
     await call('PUT', '/api/institute', { changes: { students: { remove: ['fs1', 'fs2', 'fs3'] } } }, adminA);
   });
 
+  it('02i the parents of a batch are emailed about a test that is coming', async () => {
+    const kid = (id: string, parentEmail: string) => ({ id, rollNo: id, name: 'Kid ' + id, email: '', phone: '9811122233', parentName: 'Parent ' + id, parentEmail, parentPhone: '9811100000', grade: 'Class 12', courseId: 'c1', batchId: 'bx', targetExam: 'JEE', dateOfAdmission: '2026-11-01', status: 'active', photoUrl: '/avatar.svg', address: '', totalFees: 1000, discount: 0, feePaid: 0 });
+    const exam = { id: 'ex9', code: 'EX9', title: 'Unit Test 9', batchId: 'bx', batchName: 'Batch X', subject: 'Physics', date: '2026-12-01', maxMarks: 100, passMarks: 35, status: 'scheduled', syllabusTopics: ['Motion', 'Force'], results: {} };
+    await call('PUT', '/api/institute', { changes: { students: { upsert: [kid('k1', 'k1parent@x.com'), kid('k2', '')] }, exams: { upsert: [exam] } } }, adminA);
+    const mail = captureMail();
+    let data: any;
+    try {
+      data = (await call('POST', '/api/exams/notice-email', { examId: 'ex9' }, adminA))[1];
+    } finally {
+      mail.stop();
+    }
+    assert.deepEqual([data.sent, data.noEmail], [1, 1]);
+    assert.deepEqual(mail.sent.map((m) => m[0]), ['k1parent@x.com']);
+    assert.ok(mail.sent[0][2].includes('Unit Test 9') && mail.sent[0][2].includes('Motion, Force') && mail.sent[0][2].includes('2026-12-01'));
+    assert.ok(mail.sent[0][2].includes('portal=parent'), 'the button opens the Parent sign in');
+    assert.equal((await call('POST', '/api/exams/notice-email', { examId: 'nope' }, adminA))[0], 404);
+    assert.equal((await call('POST', '/api/exams/notice-email', { examId: 'ex9' }, null))[0], 401);
+    await call('PUT', '/api/institute', { changes: { students: { remove: ['k1', 'k2'] }, exams: { remove: ['ex9'] } } }, adminA);
+  });
+
   it('02g a coaching added by the super admin tells its principal', async () => {
     const mail = captureMail();
     let status: number, data: any;

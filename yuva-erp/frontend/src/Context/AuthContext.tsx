@@ -21,7 +21,7 @@ import type { AuthUser } from '../components/utils/api';
 export type { UserRole } from './Access';
 export type { AuthUser, AccountStatus } from '../components/utils/api';
 
-export type Portal = 'super' | 'admin' | 'member';
+export type Portal = 'super' | 'admin' | 'member' | 'parent';
 
 export type AuthResult = { ok: true } | { ok: false; error: string };
 
@@ -82,6 +82,7 @@ interface AuthContextType {
   registerNewStudent: (input: NewStudentInput) => Promise<AuthResult>;
   getRegistrationOptions: () => Promise<RegistrationOptions>;
   registerStudent: (input: { rollNo: string; phone: string; email: string; password: string }) => Promise<AuthResult>;
+  registerParent: (input: { rollNo: string; phone: string; email: string; password: string; orgId?: string }) => Promise<AuthResult>;
   registerTeacher: (input: {
     name: string;
     phone: string;
@@ -265,6 +266,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     []
   );
 
+  // ----- Parent registration (checked against the admission record: roll number of the child and the parent mobile) -----
+  const registerParent = useCallback(
+    (input: { rollNo: string; phone: string; email: string; password: string; orgId?: string }) =>
+      attempt(async () => {
+        const session = await request<Session>('POST', '/auth/register-parent', input, { auth: false });
+        startSession(session, true);
+      }),
+    []
+  );
+
   // ----- New student registration: the server creates the record with an automatic roll number -----
   const registerNewStudent = useCallback(
     (input: NewStudentInput) =>
@@ -391,6 +402,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         registerNewStudent,
         getRegistrationOptions,
         registerStudent,
+        registerParent,
         registerTeacher,
         signIn,
         signOut,

@@ -301,7 +301,7 @@ export async function coachingName(c: Ctx, s: Store): Promise<string> {
 }
 
 /** Which tab of the sign in form a kind of person uses. */
-export const portalOf = (role: string): string => (role === 'teacher' || role === 'student' ? 'member' : 'admin');
+export const portalOf = (role: string, isParent = false): string => (role === 'student' && isParent ? 'parent' : role === 'teacher' || role === 'student' ? 'member' : 'admin');
 
 const ROLE_WORDS: Record<string, [string, string]> = {
   teacher: ['a teacher', 'You can take the attendance and enter the marks of your batches, and share notices and study material.'],
@@ -327,7 +327,7 @@ export async function welcomeMail(c: Ctx, s: Store, user: any, password: string)
       ['Sign in with', user.email],
       ['First password', password],
     ],
-    button: ['Sign in', c.loginLink(portalOf(role))],
+    button: ['Sign in', c.loginLink(portalOf(role, Boolean(user.isParent)))],
     note: 'The principal chose this first password. You will be asked to choose your own at the first sign in. If you did not expect this email, you can ignore it.',
     name: user.name,
   });

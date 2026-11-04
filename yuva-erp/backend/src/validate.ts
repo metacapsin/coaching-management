@@ -52,7 +52,8 @@ export function roleLabel(role: string): string {
 }
 
 /** Which login tab a role belongs to. */
-export function portalLabel(role: string): string {
+export function portalLabel(role: string, isParent = false): string {
   if (role === 'super') return 'Super Admin';
+  if (role === 'student' && isParent) return 'Parent';
   return role === 'student' || role === 'teacher' ? 'Teacher / Student' : 'Coaching Admin';
 }

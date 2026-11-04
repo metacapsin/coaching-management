@@ -157,4 +157,13 @@ describe('the public website', () => {
     expect(footer.getByRole('link', { name: 'Instagram' })).not.toBeNull();
     expect(footer.queryByRole('link', { name: 'LinkedIn' })).toBeNull();
   });
+
+  it('a parent has an own tab to sign in, and can create an account', () => {
+    render(<LandingPage />);
+    const form = within(document.getElementById('signin') as HTMLElement);
+    fireEvent.click(form.getByRole('button', { name: 'Parent' }));
+    expect(form.getByRole('button', { name: /Sign In as Parent/ })).not.toBeNull();
+    fireEvent.click(form.getByRole('button', { name: 'Create an account' }));
+    expect(form.getByText('Choose the coaching of your child to go on.')).not.toBeNull();
+  });
 });

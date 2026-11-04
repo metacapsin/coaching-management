@@ -6,11 +6,13 @@ import type { Portal } from '../../Context/AuthContext';
 import { ApiError, requestPasswordReset, resetPasswordWithCode, resetSuperPassword } from '../utils/api';
 import { RegisterCoachingForm } from './CoachingForms';
 import { MemberSignup } from './MemberSignup';
+import { ParentSignup } from './ParentSignup';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import {
   GraduationCap,
   ShieldCheck,
   Crown,
+  Heart,
   Users,
   Mail,
   Lock,
@@ -192,7 +194,8 @@ const SuperForgotPassword: React.FC<{ initialEmail: string }> = ({ initialEmail 
 const PORTALS: { id: Portal; label: string; icon: LucideIcon; blurb: string }[] = [
   { id: 'super', label: 'Super Admin', icon: Crown, blurb: 'Approves coachings and manages all of them.' },
   { id: 'admin', label: 'Coaching Admin', icon: ShieldCheck, blurb: 'Principal or front desk of one coaching, with its own data.' },
-  { id: 'member', label: 'Teacher / Student', icon: Users, blurb: 'Teacher, student or parent: sign in here. Teachers and students can also create their account.' }
+  { id: 'member', label: 'Teacher / Student', icon: Users, blurb: 'Teacher or student: sign in here, or create your account.' },
+  { id: 'parent', label: 'Parent', icon: Heart, blurb: 'Parent: follow the attendance, fees, tests and results of your child.' }
 ];
 
 const FEATURES = [
@@ -255,7 +258,7 @@ const Field: React.FC<{
 const portalOfLink = (): Portal | null => {
   try {
     const wanted = new URLSearchParams(window.location.search).get('portal');
-    return wanted === 'super' || wanted === 'admin' || wanted === 'member' ? wanted : null;
+    return wanted === 'super' || wanted === 'admin' || wanted === 'member' || wanted === 'parent' ? wanted : null;
   } catch {
     return null;
   }
@@ -429,12 +432,14 @@ export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }>
               : registering
               ? t('The Super Admin checks your request. After approval you sign in here as Coaching Admin.')
               : memberSignup
-              ? t('For teachers and students. Choose your coaching first.')
+              ? portal === 'parent'
+                ? 'For parents. Choose the coaching of your child first.'
+                : t('For teachers and students. Choose your coaching first.')
               : t('Sign in as {x} to continue.').replace('{x}', t(activePortal.label))}
           </p>
 
           {/* The two logins */}
-          <div className="mt-6 grid grid-cols-[repeat(3,minmax(0,1fr))] gap-1 bg-slate-100 p-1 rounded-lg">
+          <div className="mt-6 grid grid-cols-[repeat(4,minmax(0,1fr))] gap-1 bg-slate-100 p-1 rounded-lg">
             {PORTALS.map(p => {
               const Icon = p.icon;
               return (
@@ -474,7 +479,7 @@ export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }>
           {registering ? (
             <RegisterCoachingForm onClose={() => setRegistering(false)} />
           ) : memberSignup ? (
-            <MemberSignup onClose={() => setMemberSignup(false)} />
+            portal === 'parent' ? <ParentSignup onClose={() => setMemberSignup(false)} /> : <MemberSignup onClose={() => setMemberSignup(false)} />
           ) : (
             <form onSubmit={handleSubmit} noValidate className="mt-5 space-y-4">
               {createSuper && (
@@ -587,6 +592,15 @@ export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }>
           {portal === 'member' && !memberSignup && (
             <div className="mt-5 text-sm text-slate-600 text-center">
               {t('New teacher or student?')}{' '}
+              <button type="button" onClick={() => setMemberSignup(true)} className="font-semibold text-blue-600 hover:underline">
+                {t('Create an account')}
+              </button>
+            </div>
+          )}
+
+          {portal === 'parent' && !memberSignup && (
+            <div className="mt-5 text-sm text-slate-600 text-center">
+              {t('New parent?')}{' '}
               <button type="button" onClick={() => setMemberSignup(true)} className="font-semibold text-blue-600 hover:underline">
                 {t('Create an account')}
               </button>

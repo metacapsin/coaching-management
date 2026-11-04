@@ -65,7 +65,7 @@ route('/api/auth/forgot-password', ['POST'], 'public', async (c) => {
       // also by email: the person can set a new password at once with this code
       mail(target.email, 'Your AcademiaOS password reset code', 'Your password reset code', ['Use this code to set a new password. It works for 15 minutes.'], {
         code,
-        button: ['Open the sign in page', c.loginLink(target.role === 'teacher' || target.role === 'student' ? 'member' : 'admin')],
+        button: ['Open the sign in page', c.loginLink(portalOf(target.role, Boolean(target.isParent)))],
         note: 'If you did not ask for it, you can ignore this email.',
         name: target.name,
       });
@@ -198,13 +198,16 @@ route('/api/auth/login', ['POST'], 'public', async (c) => {
     throw invalid();
   }
 
-  // three logins: 'super' (super admin), 'admin' (principal and office staff of a coaching), 'member' (teacher, student)
+  // four logins: 'super' (super admin), 'admin' (principal and office staff of a coaching), 'member' (teacher, student),
+  // 'parent' (the parent of a student)
+  const isParent = found.role === 'student' && Boolean(found.isParent);
   let portalOk: boolean;
   if (portal === 'admin') portalOk = ['admin', 'staff'].includes(found.role);
-  else if (portal === 'member') portalOk = ['teacher', 'student'].includes(found.role); // the "Teacher / Student" tab: accounts the principal made for them
+  else if (portal === 'member') portalOk = ['teacher', 'student'].includes(found.role) && !isParent; // the "Teacher / Student" tab
+  else if (portal === 'parent') portalOk = isParent; // the "Parent" tab
   else portalOk = found.role === portal;
   if (!portalOk) {
-    throw new HttpError(403, `This is a ${roleLabel(found.role)} account. Please use the “${portalLabel(found.role)}” tab to sign in.`);
+    throw new HttpError(403, `This is a ${isParent ? 'Parent' : roleLabel(found.role)} account. Please use the “${portalLabel(found.role, isParent)}” tab to sign in.`);
   }
 
   if (auth.needsUpgrade(found)) {
@@ -266,6 +269,65 @@ route('/api/auth/register-teacher', ['POST'], 'public', async (c) => {
 });
 
 /** A student that was admitted by the office creates a login (checked against the admission record). */
+/** A parent creates an own account. It is checked against the admission record: the roll number of the child and the mobile
+ * number of the parent that was given at admission. One parent account for each child. */
+route('/api/auth/register-parent', ['POST'], 'public', async (c) => {
+  const s = await chooseOrg(c);
+  await requireSetup(c);
+  limitRegistrations(c);
+  const b = c.body();
+  const rollInput = text(b.rollNo, 50);
+  const email = text(b.email).toLowerCase();
+  const phone10 = last10(b.phone);
+  if (!rollInput) throw new HttpError(400, 'Please enter the roll number of your child.');
+  if (phone10.length < 10) throw new HttpError(400, 'Enter the 10-digit mobile number of the parent that was given at admission.');
+  checkEmail(email);
+  checkPassword(b.password);
+
+  const records = await s.find('students');
+  const rollKey = normRoll(rollInput);
+  const student = records.find((x) => normRoll(x.rollNo || '') === rollKey);
+  const verified = Boolean(student) && last10(student.parentPhone) === phone10;
+  if (!student || !verified) {
+    const sample = records.length ? records[0].rollNo : '05';
+    throw new HttpError(
+      400,
+      `We could not verify these details. Check the roll number of your child (it looks like ${sample}) and the parent's mobile number given at admission.`,
+    );
+  }
+  if (await s.userByStudent(student.id, true)) {
+    throw new HttpError(409, 'A parent account already exists for this child. Please sign in, or ask the principal to reset the password.');
+  }
+  if (await emailTaken(c, email)) throw new HttpError(409, 'An account with this email already exists.');
+
+  const user = auth.buildUser(
+    {
+      name: text(student.parentName, 100) || `Parent of ${student.name}`,
+      email,
+      password: b.password,
+      role: 'student',
+      isParent: true,
+      phone: text(b.phone, 30),
+      studentId: student.id,
+    },
+    'active',
+  );
+  await addUserOrConflict(c, user);
+  await s.bump();
+  await s.audit(user, 'register-parent', student.rollNo);
+  const coaching = await coachingName(c, s);
+  mail(user.email, `Your AcademiaOS account for ${coaching}`, `Welcome to ${coaching}`, [`Your parent account is ready. You can follow the attendance, fees, tests and results of ${student.name} (read only).`], {
+    details: [
+      ['Coaching', coaching],
+      ['Child', student.name],
+      ['Sign in with', user.email],
+    ],
+    button: ['Sign in', c.loginLink('parent')],
+    name: user.name,
+  });
+  return startSession(c, user, true);
+});
+
 route('/api/auth/register-student', ['POST'], 'public', async (c) => {
   const s = await chooseOrg(c);
   await requireSetup(c);
@@ -484,6 +546,49 @@ route('/api/fees/notice-email', ['POST'], 'user', async (c) => {
   return { notified: sent ? 'sent' : 'no-email' };
 });
 
+/** The office tells the parents of a batch about a test that is coming (date, subject, marks, what it covers). Every parent with
+ * an email gets it; the others are counted, the office tells them by WhatsApp. */
+route('/api/exams/notice-email', ['POST'], 'user', async (c) => {
+  if (!['admin', 'staff'].includes(c.user.role)) throw new HttpError(403, 'Only the principal or the front desk can send a test notice.');
+  const s = c.store;
+  const exam = (await s.find('exams')).find((x: any) => x.id === c.body().examId);
+  if (!exam) throw new HttpError(404, 'Test not found.');
+  const coaching = await coachingName(c, s);
+  const students = (await s.find('students')).filter((x: any) => x.batchId === exam.batchId && x.status !== 'inactive');
+  let sent = 0;
+  let noEmail = 0;
+  for (const st of students) {
+    const to = text(st.parentEmail, 150).toLowerCase();
+    if (!to) {
+      noEmail++;
+      continue;
+    }
+    const topics = Array.isArray(exam.syllabusTopics) ? exam.syllabusTopics.filter(Boolean).join(', ') : '';
+    const [ok] = mail(
+      to,
+      `Test of ${st.name} on ${exam.date}`,
+      'A test is coming',
+      [`${st.name} has a test at ${coaching}. Please make sure the preparation is done.`],
+      {
+        details: [
+          ['Student', st.name],
+          ['Test', exam.title],
+          ['Subject', exam.subject],
+          ['Date', exam.date],
+          ['Maximum marks', String(exam.maxMarks ?? '')],
+          ['It covers', topics],
+        ],
+        button: ['Sign in as Parent', c.loginLink('parent')],
+        note: 'In the parent login you see the tests, the results, the attendance and the fees of your child.',
+        name: st.parentName,
+      },
+    );
+    if (ok) sent++;
+  }
+  await s.audit(c.user, 'test-notice-email', `${exam.title}: ${sent} email(s)`);
+  return { sent, noEmail };
+});
+
 /** The browser asks for changes since the version it already has. */
 route('/api/sync', ['GET'], 'user', async (c) => {
   const s = c.store;
@@ -574,7 +679,7 @@ route('/api/users/<user_id>/approve', ['POST'], 'admin', async (c) => {
       ['Coaching', coaching],
       ['Sign in with', target.email],
     ],
-    button: ['Sign in', c.loginLink(portalOf(target.role))],
+    button: ['Sign in', c.loginLink(portalOf(target.role, Boolean(target.isParent)))],
     accent: GREEN,
     name: target.name,
   });

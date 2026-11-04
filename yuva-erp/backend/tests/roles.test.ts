@@ -209,7 +209,7 @@ describe('Parents: the child\'s data only, read only', () => {
     if (parent) body.isParent = true;
     return call('POST', '/api/users', body, admin);
   };
-  const login = (email: string) => tokenOf(s.api, email, 'member');
+  const login = (email: string) => tokenOf(s.api, email, 'parent');
 
   it('1 a parent and a student login live side by side', async () => {
     assert.equal((await make('alice@x.com', false))[0], 200);
@@ -239,10 +239,34 @@ describe('Parents: the child\'s data only, read only', () => {
     assert.equal((await call('PUT', '/api/homework/hw1', { done: true }, token))[0], 403);
     assert.ok([401, 403, 404, 405].includes((await call('GET', '/api/users', null, token))[0]));
     // the student can still mark it
-    assert.equal((await call('PUT', '/api/homework/hw1', { done: true }, await login('alice@x.com')))[0], 200);
+    assert.equal((await call('PUT', '/api/homework/hw1', { done: true }, await tokenOf(s.api, 'alice@x.com', 'member')))[0], 200);
     // and the parent sees that the child did it
     const seen = (await call('GET', '/api/sync', null, token))[1].institute.submissions;
     assert.deepEqual(seen.map((x: any) => x.studentId), ['s1']);
+  });
+
+  it('4 a parent signs in on the Parent tab, the others on their own tabs', async () => {
+    const login = (email: string, portal: string) => call('POST', '/api/auth/login', { email, password: PASSWORD, portal });
+    assert.equal((await login('mum@x.com', 'parent'))[0], 200);
+    const [status, data] = await login('mum@x.com', 'member');
+    assert.equal(status, 403);
+    assert.ok(data.error.includes('Parent'), 'the message names the Parent tab');
+    assert.equal((await login('alice@x.com', 'parent'))[0], 403);
+    assert.equal((await login('alice@x.com', 'member'))[0], 200);
+  });
+
+  it('5 a parent creates an own account with the roll number of the child and the parent mobile of the admission', async () => {
+    const body = { rollNo: '02', phone: '9800000002', email: 'bobmum@x.com', password: PASSWORD };
+    assert.equal((await call('POST', '/api/auth/register-parent', { ...body, phone: '9111111111' }))[0], 400); // not the number of the admission
+    assert.equal((await call('POST', '/api/auth/register-parent', { ...body, rollNo: '99' }))[0], 400); // no such child
+    assert.equal((await call('POST', '/api/auth/register-parent', { ...body, password: 'short' }))[0], 400);
+    const [status, data] = await call('POST', '/api/auth/register-parent', body);
+    assert.equal(status, 200);
+    assert.ok(data.user.isParent);
+    assert.equal((await call('POST', '/api/auth/register-parent', { ...body, email: 'other@x.com' }))[0], 409); // one parent account for each child
+    // the new parent sees the child only
+    const token = await tokenOf(s.api, 'bobmum@x.com', 'parent');
+    assert.deepEqual((await call('GET', '/api/sync', null, token))[1].institute.students.map((x: any) => x.id), ['s2']);
   });
 });
 
