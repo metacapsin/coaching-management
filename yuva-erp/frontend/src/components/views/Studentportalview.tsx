@@ -1,4 +1,6 @@
 import { PrintableMyResultsModal } from '../modals/PrintableMyResultsModal';
+import { PrintableFeeReceiptModal } from '../modals/PrintableFeeReceiptModal';
+import { ProgressCharts } from '../ui/ProgressCharts';
 import React, { useState } from 'react';
 import { NoticesCard, MaterialCard } from '../ui/HomeCards';
 import { useInstitute } from '../../Context/InstituteContext';
@@ -51,6 +53,7 @@ export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }>
   const transactions = allTransactions.filter(t => t.status !== 'cancelled');
 
   const [showResults, setShowResults] = useState(false);
+  const [receiptTx, setReceiptTx] = useState<(typeof allTransactions)[number] | null>(null);
 
   const student = students[0];
 
@@ -104,6 +107,20 @@ export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }>
     .slice(0, 10);
 
   const myReceipts = [...transactions].sort((a, b) => b.date.localeCompare(a.date));
+
+  // The data of the progress charts: the marks of every test (oldest first) and the attendance of every month
+  const chartTests = [...results].reverse().map(r => ({ title: r.exam.title, date: r.exam.date, percent: r.percent }));
+  const byMonth = new Map<string, { present: number; total: number }>();
+  for (const a of attendance) {
+    const status = a.records[student.id];
+    if (!status) continue;
+    const month = a.date.slice(0, 7);
+    const row = byMonth.get(month) || { present: 0, total: 0 };
+    row.total += 1;
+    if (status === 'present' || status === 'late') row.present += 1;
+    byMonth.set(month, row);
+  }
+  const chartMonths = [...byMonth.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([month, v]) => ({ month, ...v }));
 
   // What needs attention first: a fee that is not fully paid (with the Pay now button when the coaching wrote its UPI id)
   // and the next test (the date, and what it covers)
@@ -254,6 +271,8 @@ export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }>
           </div>
         </div>
       </div>
+
+      <ProgressCharts tests={chartTests} months={chartMonths} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
@@ -444,10 +463,20 @@ export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }>
                         {formatDate(tx.date)} · {tx.paymentMethod}
                       </span>
                     </div>
-                    <span className="font-mono font-bold text-slate-900">
-                      {profile.currencySymbol}
-                      {formatINR(tx.amount)}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-slate-900">
+                        {profile.currencySymbol}
+                        {formatINR(tx.amount)}
+                      </span>
+                      <button
+                        onClick={() => setReceiptTx(tx)}
+                        title="Open the receipt to print or save as PDF"
+                        className="px-2 py-1 text-[11px] font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md flex items-center gap-1"
+                      >
+                        <Printer className="w-3 h-3" />
+                        Receipt
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -544,6 +573,8 @@ export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }>
         <NoticesCard onNavigate={onNavigate} />
         <MaterialCard onNavigate={onNavigate} />
       </div>
+
+      {receiptTx && <PrintableFeeReceiptModal transaction={receiptTx} onClose={() => setReceiptTx(null)} />}
 
       {showResults && (
         <PrintableMyResultsModal

@@ -190,6 +190,12 @@ export class Store {
 
   // ---------- version ----------
 
+  /** Remembers that the absence of a student on a day was mailed. True the first time, false when it was done before. */
+  async claimAbsenceMail(key: string): Promise<boolean> {
+    const r = await this.meta.updateOne({ _id: 'absenceMailed' }, { $addToSet: { keys: key } }, { upsert: true });
+    return r.modifiedCount === 1 || r.upsertedCount === 1;
+  }
+
   async version(): Promise<number> {
     const doc = await this.meta.findOne({ _id: 'version' });
     return doc ? doc.value : 0;

@@ -604,13 +604,54 @@ route('/api/sync', ['GET'], 'user', async (c) => {
 });
 
 /** The browser sends what changed: { students: { upsert: [...], remove: [ids] }, profile: {...} } */
+/** A child was marked absent: the parent (with an email) is told at once. Once for each student and day, so saving the roll
+ * call again or changing it back and forth does not mail again. Roll calls of old days are not mailed. */
+async function mailAbsences(c: any, s: any, saved: any[], before: Map<string, any>): Promise<void> {
+  const today = new Date(todayLocal() + 'T00:00:00').getTime();
+  const students = new Map<string, any>((await s.find('students')).map((x: any) => [x.id, x]));
+  const coaching = await coachingName(c, s);
+  for (const rec of saved) {
+    if (!rec || typeof rec.date !== 'string' || !rec.records || typeof rec.records !== 'object') continue;
+    const age = (today - new Date(rec.date + 'T00:00:00').getTime()) / 86400000;
+    if (!(age >= 0 && age <= 2)) continue;
+    const old = before.get(rec.id)?.records || {};
+    for (const [sid, status] of Object.entries<any>(rec.records)) {
+      if (status !== 'absent' || old[sid] === 'absent') continue;
+      const st = students.get(sid);
+      const to = text(st?.parentEmail, 150).toLowerCase();
+      if (!st || !to || st.status === 'inactive') continue;
+      if (!(await s.claimAbsenceMail(`${rec.date}:${sid}`))) continue;
+      mail(to, `${st.name} was absent on ${rec.date}`, 'Your child was absent', [`${st.name} was marked absent at ${coaching}. If this is a mistake, please tell the office.`], {
+        details: [
+          ['Student', st.name],
+          ['Date', rec.date],
+          ['Batch', (st.batchName as string) || ''],
+        ],
+        button: ['Sign in as Parent', c.loginLink('parent')],
+        note: 'In the parent login you see the attendance of your child day by day.',
+        name: st.parentName,
+      });
+    }
+  }
+}
+
 route('/api/institute', ['PUT'], 'user', async (c) => {
   const s = c.store;
   const b = c.body(INSTITUTE_BODY);
+  const saved: any[] = Array.isArray(b.changes?.attendance?.upsert) ? b.changes.attendance.upsert : [];
+  const ids = saved.map((a) => a?.id).filter((i) => typeof i === 'string');
+  const before = new Map<string, any>(ids.length ? (await s.find('attendance', { _id: { $in: ids } })).map((x: any) => [x.id, x]) : []);
   const [summary, adjusted] = await applyChanges(c.user, s, b.changes);
   if (summary.length) {
     await s.bump();
     await s.audit(c.user, 'data', summary.join(', '));
+  }
+  if (saved.length) {
+    try {
+      await mailAbsences(c, s, saved, before); // a mail that fails never breaks the saving of the roll call
+    } catch {
+      /* the roll call is saved all the same */
+    }
   }
   // adjusted: how many things the server changed itself (renumbered, photo moved): the browser must fetch them
   return { version: await s.version(), adjusted };

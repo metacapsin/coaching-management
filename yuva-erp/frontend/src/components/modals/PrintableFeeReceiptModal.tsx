@@ -2,6 +2,8 @@ import React from 'react';
 import { useEscape } from '../ui/useEscape';
 import { OrgLogo } from '../ui/OrgLogo';
 import { useInstitute } from '../../Context/InstituteContext';
+import { useAuth } from '../../Context/AuthContext';
+import { canManageInstitute } from '../../Context/Access';
 import type { FeeTransaction } from '../../types';
 import { openWhatsApp } from '../utils/helpers';
 import { X, Printer, Share2, CheckCircle2, ShieldCheck } from 'lucide-react';
@@ -14,6 +16,8 @@ interface PrintableFeeReceiptModalProps {
 export const PrintableFeeReceiptModal: React.FC<PrintableFeeReceiptModalProps> = ({ transaction, onClose }) => {
   useEscape(onClose);
   const { profile, students, sendNotification } = useInstitute();
+  const { user } = useAuth();
+  const office = canManageInstitute(user?.role); // a parent or a student only prints or saves the receipt
 
   if (!transaction) return null;
 
@@ -66,13 +70,15 @@ export const PrintableFeeReceiptModal: React.FC<PrintableFeeReceiptModalProps> =
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleShareWhatsApp}
-              className="px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg flex items-center gap-1.5 transition-colors"
-            >
-              <Share2 className="w-3.5 h-3.5" />
-              WhatsApp Parent
-            </button>
+            {office && (
+              <button
+                onClick={handleShareWhatsApp}
+                className="px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg flex items-center gap-1.5 transition-colors"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                WhatsApp Parent
+              </button>
+            )}
             <button
               onClick={handlePrint}
               className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-1.5 transition-colors shadow-xs"

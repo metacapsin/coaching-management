@@ -254,6 +254,31 @@ describe('Coachings', () => {
     await call('PUT', '/api/institute', { changes: { students: { remove: ['k1', 'k2'] }, exams: { remove: ['ex9'] } } }, adminA);
   });
 
+  it('02j the parent is emailed when the child is marked absent, once for each day', async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const kid = { id: 'ab1', rollNo: 'ab1', name: 'Absent Kid', email: '', phone: '9811122233', parentName: 'Absent Parent', parentEmail: 'abparent@x.com', parentPhone: '9811100000', grade: 'Class 12', courseId: 'c1', batchId: 'bq', targetExam: 'JEE', dateOfAdmission: '2026-11-01', status: 'active', photoUrl: '/avatar.svg', address: '', totalFees: 1000, discount: 0, feePaid: 0 };
+    await call('PUT', '/api/institute', { changes: { students: { upsert: [kid] } } }, adminA);
+    const roll = (status: string) => ({ changes: { attendance: { upsert: [{ id: 'att-bq-today', date: today, batchId: 'bq', records: { ab1: status }, markedBy: 'x', updatedAt: today + 'T10:00:00' }] } } });
+    let mail = captureMail();
+    try {
+      await call('PUT', '/api/institute', roll('present'), adminA);
+      await call('PUT', '/api/institute', roll('absent'), adminA);
+    } finally {
+      mail.stop();
+    }
+    assert.deepEqual(mail.sent.map((m) => m[0]), ['abparent@x.com']);
+    assert.ok(mail.sent[0][2].includes('Absent Kid') && mail.sent[0][2].includes(today) && mail.sent[0][2].includes('portal=parent'));
+    mail = captureMail();
+    try {
+      await call('PUT', '/api/institute', roll('present'), adminA);
+      await call('PUT', '/api/institute', roll('absent'), adminA); // absent again the same day: not mailed again
+    } finally {
+      mail.stop();
+    }
+    assert.equal(mail.sent.length, 0);
+    await call('PUT', '/api/institute', { changes: { students: { remove: ['ab1'] }, attendance: { remove: ['att-bq-today'] } } }, adminA);
+  });
+
   it('02g a coaching added by the super admin tells its principal', async () => {
     const mail = captureMail();
     let status: number, data: any;
