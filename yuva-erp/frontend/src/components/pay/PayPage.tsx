@@ -1,10 +1,13 @@
 import React from 'react';
-import { BadgeIndianRupee, Copy, Smartphone } from 'lucide-react';
+import QRCode from 'qrcode';
+import { BadgeIndianRupee, Copy, QrCode, Smartphone } from 'lucide-react';
 import { isUpiId } from '../utils/helpers';
 
 // The page a parent opens from a fee notice (/pay?pa=<upi id>&pn=<coaching>&am=<amount>&sn=<student>). No sign in: it only
 // shows what is to be paid and has one button that opens the UPI app (GPay, PhonePe, Paytm...) with everything written.
 // The money goes straight to the coaching; the office writes the payment in the Fees page when it arrives.
+// A UPI link only opens on a phone that has a UPI app. A computer has none, so nothing would happen: the page also shows a
+// QR code (any UPI app can scan it, from the screen of the computer) and says so when the button did not open an app.
 export const PayPage: React.FC = () => {
   const q = new URLSearchParams(window.location.search);
   const pa = (q.get('pa') || '').trim();
@@ -16,6 +19,28 @@ export const PayPage: React.FC = () => {
     ? `upi://pay?pa=${encodeURIComponent(pa)}&pn=${encodeURIComponent(pn)}&am=${amount}&cu=INR&tn=${encodeURIComponent(`Fee ${student}`.trim())}`
     : '';
   const [copied, setCopied] = React.useState(false);
+  const [qr, setQr] = React.useState('');
+  const [noApp, setNoApp] = React.useState(false);
+
+  // the QR code of the same UPI link, made here in the browser (nothing is sent anywhere)
+  React.useEffect(() => {
+    if (!upiLink) return;
+    let alive = true;
+    QRCode.toString(upiLink, { type: 'svg', margin: 1, width: 220, errorCorrectionLevel: 'M' })
+      .then(svg => alive && setQr(svg))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [upiLink]);
+
+  // If the page is still in front 1.5 seconds after the button, no UPI app opened (a computer): tell what to do
+  const onPay = () => {
+    setNoApp(false);
+    setTimeout(() => {
+      if (document.visibilityState === 'visible') setNoApp(true);
+    }, 1500);
+  };
 
   const copy = async () => {
     try {
@@ -40,12 +65,32 @@ export const PayPage: React.FC = () => {
             <p className="text-4xl font-extrabold text-slate-900 mt-5">₹{amount.toLocaleString('en-IN')}</p>
             <a
               href={upiLink}
+              onClick={onPay}
               className="mt-6 flex items-center justify-center gap-2 w-full py-3 text-base font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl"
             >
               <Smartphone className="w-5 h-5" />
               Pay ₹{amount.toLocaleString('en-IN')} now
             </a>
             <p className="text-xs text-slate-500 mt-3">Opens your UPI app (GPay, PhonePe, Paytm...) with the amount already filled.</p>
+            {noApp && (
+              <p role="status" className="mt-3 p-2.5 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg text-left">
+                No UPI app opened. This is normal on a computer. Scan the QR code below with the UPI app of your phone, or open this page on your phone.
+              </p>
+            )}
+            {qr && (
+              <div className="mt-5">
+                <p className="text-[11px] text-slate-500 flex items-center justify-center gap-1">
+                  <QrCode className="w-3.5 h-3.5" />
+                  Or scan this with any UPI app (GPay, PhonePe, Paytm...)
+                </p>
+                <div
+                  className="mx-auto mt-2 w-44 h-44 p-2 bg-white rounded-lg border border-slate-200 [&>svg]:w-full [&>svg]:h-full"
+                  aria-label="QR code of the payment"
+                  role="img"
+                  dangerouslySetInnerHTML={{ __html: qr }}
+                />
+              </div>
+            )}
             <div className="mt-5 p-3 rounded-lg bg-slate-50 border border-slate-200 text-left">
               <p className="text-[11px] text-slate-500">Pay by hand to this UPI id</p>
               <div className="flex items-center justify-between gap-2 mt-1">

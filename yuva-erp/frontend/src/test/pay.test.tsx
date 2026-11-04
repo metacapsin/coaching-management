@@ -21,6 +21,13 @@ describe('the pay page of a fee notice', () => {
     expect(screen.getByText('alpha@okbank')).not.toBeNull();
   });
 
+  it('also shows a QR code of the same link, for a computer that has no UPI app', async () => {
+    window.history.replaceState(null, '', '/pay?pa=alpha%40okbank&pn=Alpha%20Classes&am=40000&sn=Aarav');
+    render(<PayPage />);
+    const qr = await screen.findByRole('img', { name: 'QR code of the payment' });
+    expect(qr.querySelector('svg')).not.toBeNull();
+  });
+
   it('says so when the link is not complete (no UPI id or a wrong amount)', () => {
     window.history.replaceState(null, '', '/pay?pa=notanupi&am=-5');
     render(<PayPage />);
