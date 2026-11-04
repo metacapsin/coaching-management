@@ -1171,6 +1171,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             )}
           </div>
+
+          {/* Follow-ups and notices fill the left column under the dues, so it is as long as the right one (no empty space) */}
+          <FollowUpsCard onNavigate={onNavigate} />
+          <NoticesCard onNavigate={onNavigate} />
         </div>
 
         {/* Right 1 Col: Recent Admissions, Receipts, Upcoming Tests */}
@@ -1355,11 +1359,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             )}
           </div>
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <FollowUpsCard onNavigate={onNavigate} />
-        <NoticesCard onNavigate={onNavigate} />
       </div>
     </div>
   );
