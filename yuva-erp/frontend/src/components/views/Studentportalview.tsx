@@ -15,7 +15,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   GraduationCap,
-  Printer
+  Printer,
+  CalendarOff
 } from 'lucide-react';
 
 import { formatINR, payPageLink, toLocalISODate, timeToMinutes } from '../utils/helpers';
@@ -47,6 +48,7 @@ export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }>
     transactions: allTransactions,
     exams,
     notificationLogs,
+    leaveRequests,
     getStudentAttendanceStats
   } = useInstitute();
   // Cancelled receipts are not money received
@@ -201,6 +203,33 @@ export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }>
           <div className="mt-0.5">{batch ? `${batch.classroom} · ${batch.startTime} - ${batch.endTime}` : ''}</div>
         </div>
       </div>
+
+      {/* Leave: a student asks the principal (the form is on the Notice Board); a parent does not get it */}
+      {!user?.isParent && (
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0">
+            <span className="p-2 rounded-lg bg-indigo-50 text-indigo-600 shrink-0">
+              <CalendarOff className="w-4 h-4" />
+            </span>
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-slate-900">Need a leave?</div>
+              <p className="text-xs text-slate-500">
+                {leaveRequests[0]
+                  ? `Last request: ${formatDate(leaveRequests[0].fromDate)}${leaveRequests[0].toDate !== leaveRequests[0].fromDate ? ` to ${formatDate(leaveRequests[0].toDate)}` : ''} · ${
+                      { pending: 'waiting for the principal', approved: 'approved', rejected: 'not given', cancelled: 'taken back' }[leaveRequests[0].status]
+                    }`
+                  : 'Send a notice to the principal with the dates and the reason. It is a leave only after he approves it.'}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => onNavigate('notices')}
+            className="px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm shrink-0"
+          >
+            Ask for leave
+          </button>
+        </div>
+      )}
 
       {/* KPI cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

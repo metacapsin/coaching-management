@@ -254,6 +254,7 @@ export interface LeaveRequest {
   fromDate: string;
   toDate: string;
   reason: string;
+  kind?: string; // Sick, Family function, Travel...
   status: LeaveStatus;
   createdAt: string;
   decidedAt?: string;

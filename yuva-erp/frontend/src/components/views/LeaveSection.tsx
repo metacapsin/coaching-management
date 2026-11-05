@@ -11,6 +11,7 @@ import { FLASH_CLASS } from '../utils/focusItem';
 // Nobody else sees it (not a teacher, not a parent); the server keeps it that way.
 
 export const MIN_REASON = 15;
+const LEAVE_KINDS = ['Sick', 'Family function', 'Travel', 'Exam / other class', 'Other'];
 
 const daysOf = (l: LeaveRequest) => Math.round((Date.parse(l.toDate) - Date.parse(l.fromDate)) / 86400000) + 1;
 export const leaveDates = (l: Pick<LeaveRequest, 'fromDate' | 'toDate'>) =>
@@ -33,6 +34,7 @@ export const StudentLeave: React.FC = () => {
   const [fromDate, setFromDate] = useState(today);
   const [toDate, setToDate] = useState('');
   const [reason, setReason] = useState('');
+  const [kind, setKind] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState('');
@@ -47,10 +49,11 @@ export const StudentLeave: React.FC = () => {
     }
     setBusy(true);
     try {
-      await askLeave({ fromDate, toDate: toDate || fromDate, reason: reason.trim() });
+      await askLeave({ fromDate, toDate: toDate || fromDate, reason: reason.trim(), kind });
       setReason('');
+      setKind('');
       setToDate('');
-      setDone('Sent to the principal. He may call your parent to check the reason. The leave is yours only after he approves it.');
+      setDone('Sent to the principal and to your parent. He may call your parent to check the reason. The leave is yours only after he approves it.');
     } catch (err) {
       setError(errorText(err));
     } finally {
@@ -58,17 +61,44 @@ export const StudentLeave: React.FC = () => {
     }
   };
 
+  const lastDay = toDate || fromDate;
+  const days = fromDate && lastDay >= fromDate ? Math.round((Date.parse(lastDay) - Date.parse(fromDate)) / 86400000) + 1 : 0;
+
   return (
     <section className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-      <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/50">
-        <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-          <CalendarOff className="w-4 h-4 text-indigo-600" />
-          Leave
+      <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+        <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+          <span className="p-1.5 rounded-lg bg-indigo-600 text-white">
+            <CalendarOff className="w-4 h-4" />
+          </span>
+          Ask for leave
         </h2>
-        <p className="text-[11px] text-slate-500">Ask the principal before you take a day off. Without his approval it is not a leave.</p>
+        <ol className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-slate-600">
+          <li><b className="text-indigo-700">1.</b> You send the notice</li>
+          <li><b className="text-indigo-700">2.</b> Your parent gets the message too</li>
+          <li><b className="text-indigo-700">3.</b> The principal calls your parent</li>
+          <li><b className="text-indigo-700">4.</b> He approves or does not give it</li>
+        </ol>
       </div>
 
-      <form onSubmit={submit} className="p-5 space-y-3 border-b border-slate-100">
+      <form onSubmit={submit} className="p-5 space-y-4 border-b border-slate-100">
+        <div>
+          <div className="text-xs font-medium text-slate-700 mb-1.5">What is the leave for?</div>
+          <div className="flex flex-wrap gap-2">
+            {LEAVE_KINDS.map(k => (
+              <button
+                type="button"
+                key={k}
+                onClick={() => setKind(kind === k ? '' : k)}
+                aria-pressed={kind === k}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors ${kind === k ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-300 hover:border-indigo-400 hover:text-indigo-700'}`}
+              >
+                {k}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <label className="block text-xs font-medium text-slate-700">
             First day of leave
@@ -79,26 +109,40 @@ export const StudentLeave: React.FC = () => {
             <input type="date" min={fromDate || today} value={toDate} onChange={e => setToDate(e.target.value)} className="mt-1 w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </label>
         </div>
+        {days > 0 && (
+          <p className="text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
+            Leave: {leaveDates({ fromDate, toDate: lastDay })} · {days} day{days === 1 ? '' : 's'}
+          </p>
+        )}
+
         <label className="block text-xs font-medium text-slate-700">
           Why do you need the leave? (full reason)
           <textarea
             value={reason}
             onChange={e => setReason(e.target.value)}
-            rows={3}
+            rows={4}
             maxLength={600}
-            placeholder="Write the whole reason. The principal will call your parent to check it."
+            placeholder="Write the whole reason: what happened, where you go, who is with you. The principal will call your parent to check it."
             className="mt-1 w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <span className="text-[11px] text-slate-400">{reason.trim().length} / at least {MIN_REASON} letters</span>
+          <span className={`text-[11px] ${reason.trim().length >= MIN_REASON ? 'text-emerald-600' : 'text-slate-400'}`}>
+            {reason.trim().length} letters (at least {MIN_REASON})
+          </span>
         </label>
+
+        <p className="text-[11px] text-slate-500 flex items-start gap-1.5">
+          <Phone className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+          Your parent will see this notice in the app too. Please tell them before you send it.
+        </p>
         {error && <p role="alert" className="text-xs font-medium text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">{error}</p>}
         {done && <p role="status" className="text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">{done}</p>}
-        <button type="submit" disabled={busy} className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-lg shadow-sm flex items-center gap-1.5">
-          <Send className="w-3.5 h-3.5" />
+        <button type="submit" disabled={busy} className="px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-lg shadow-sm flex items-center gap-2">
+          <Send className="w-4 h-4" />
           {busy ? 'Sending...' : 'Send to the principal'}
         </button>
       </form>
 
+      {leaveRequests.length > 0 && <div className="px-5 pt-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">My leave requests</div>}
       {leaveRequests.length > 0 && (
         <ul className="divide-y divide-slate-100">
           {leaveRequests.map(l => {
@@ -107,6 +151,7 @@ export const StudentLeave: React.FC = () => {
               <li key={l.id} className="px-5 py-3">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-semibold text-slate-900">{leaveDates(l)}</span>
+                  {l.kind && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{l.kind}</span>}
                   <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded ${tone}`}>{label}</span>
                 </div>
                 <p className="text-xs text-slate-600 mt-1 whitespace-pre-line">{l.reason}</p>
@@ -161,6 +206,7 @@ const Decide: React.FC<{ leave: LeaveRequest; fresh: boolean; flash: boolean }> 
       </div>
       <p className="text-sm font-semibold text-indigo-700 mt-1">
         Leave: {leaveDates(leave)} ({daysOf(leave)} day{daysOf(leave) === 1 ? '' : 's'})
+        {leave.kind && <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 align-middle">{leave.kind}</span>}
       </p>
       <p className="text-xs text-slate-700 mt-1 whitespace-pre-line leading-relaxed">Reason: {leave.reason}</p>
       <p className="text-[11px] text-slate-400 mt-1">Asked {formatDateTime(leave.createdAt)}</p>

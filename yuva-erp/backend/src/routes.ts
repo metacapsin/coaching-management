@@ -832,6 +832,7 @@ route('/api/homework/<material_id>', ['PUT'], 'user', async (c) => {
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 const MIN_REASON = 15;
+const LEAVE_KINDS = ['Sick', 'Family function', 'Travel', 'Exam / other class', 'Other'];
 const MAX_LEAVE_DAYS = 30;
 const dayNumber = (iso: string): number => Math.round(Date.parse(`${iso}T00:00:00Z`) / 86400000);
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -848,7 +849,7 @@ async function tellParentAboutLeave(c: any, leave: any, kind: 'asked' | 'approve
     const who = `your ward ${leave.studentName}${leave.rollNo ? ` (Roll No: ${leave.rollNo})` : ''}`;
     const content =
       kind === 'asked'
-        ? `${hello}${who} has sent a notice to the principal: ${leave.studentName} wants to take leave ${leaveDays(leave)} (reason given: "${leave.reason}"). The principal may call you to confirm it. If this is not true, please tell him. - ${coaching}`
+        ? `${hello}${who} has sent a notice to the principal: ${leave.studentName} wants to take leave ${leaveDays(leave)} (${leave.kind ? `${leave.kind}; ` : ''}reason given: "${leave.reason}"). The principal may call you to confirm it. If this is not true, please tell him. - ${coaching}`
         : kind === 'approved'
         ? `${hello}the principal has approved the leave of ${who} ${leaveDays(leave)}, after confirming the reason. - ${coaching}`
         : `${hello}the principal did not give the leave to ${who} ${leaveDays(leave)}.${leave.decisionNote ? ` Reason: ${leave.decisionNote}.` : ''} Please send ${leave.studentName} to the class. - ${coaching}`;
@@ -888,6 +889,7 @@ route('/api/leaves', ['POST'], 'user', async (c) => {
   const fromDate = text(b.fromDate, 10);
   const toDate = text(b.toDate, 10) || fromDate;
   const reason = text(b.reason, 600);
+  const kind = LEAVE_KINDS.includes(text(b.kind, 30)) ? text(b.kind, 30) : '';
   if (!ISO_DAY.test(fromDate) || !ISO_DAY.test(toDate) || Number.isNaN(Date.parse(fromDate)) || Number.isNaN(Date.parse(toDate))) throw new HttpError(400, 'Choose the dates of the leave.');
   if (fromDate < todayLocal()) throw new HttpError(400, 'Ask for leave before the day, not for a day that is already over.');
   if (toDate < fromDate) throw new HttpError(400, 'The last day cannot be before the first day.');
@@ -912,6 +914,7 @@ route('/api/leaves', ['POST'], 'user', async (c) => {
         fromDate,
         toDate,
         reason,
+        kind,
         status: 'pending',
         createdAt: nowIso(),
       },
@@ -920,7 +923,7 @@ route('/api/leaves', ['POST'], 'user', async (c) => {
   );
   await s.bump();
   await s.audit(c.user, 'leave-ask', `${me.name} ${fromDate}..${toDate}`);
-  await tellParentAboutLeave(c, { id, studentId: me.id, studentName: me.name, rollNo: me.rollNo ?? '', parentName: me.parentName ?? '', parentPhone: me.parentPhone ?? '', fromDate, toDate, reason }, 'asked');
+  await tellParentAboutLeave(c, { id, studentId: me.id, studentName: me.name, rollNo: me.rollNo ?? '', parentName: me.parentName ?? '', parentPhone: me.parentPhone ?? '', fromDate, toDate, reason, kind }, 'asked');
   return { ok: true, id };
 });
 
