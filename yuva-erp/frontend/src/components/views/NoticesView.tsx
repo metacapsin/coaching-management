@@ -122,7 +122,7 @@ export const NoticesView: React.FC = () => {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-semibold text-slate-900">{l.channel === 'student' ? (l.type === 'homework' ? 'Homework' : 'Test') : l.studentName}</span>
-                    <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{l.type === 'new_student' ? 'New student' : l.type === 'new_teacher' ? 'New teacher' : l.type === 'homework' ? 'Homework' : l.type === 'test_notice' ? 'Test' : l.type.replace(/_/g, ' ')}</span>
+                    <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{l.type === 'new_student' ? 'New student' : l.type === 'new_teacher' ? 'New teacher' : l.type === 'homework' ? 'Homework' : l.type === 'test_notice' ? 'Test' : l.type === 'attendance_absent' ? 'Absent' : l.type === 'attendance_late' ? 'Late' : l.type.replace(/_/g, ' ')}</span>
                     {freshIds.includes(l.id) && <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-rose-600 text-white">New</span>}
                   </div>
                   <p className="text-xs text-slate-600 mt-1 whitespace-pre-line leading-relaxed">{l.content}</p>

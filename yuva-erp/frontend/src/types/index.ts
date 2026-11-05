@@ -3,7 +3,7 @@ export type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
 export type PaymentMethod = 'Cash' | 'UPI' | 'Bank Transfer' | 'Cheque' | 'Card';
 export type ExamStatus = 'scheduled' | 'grading' | 'published';
 export type NotificationChannel = 'whatsapp' | 'sms' | 'email' | 'app' | 'student'; // 'student': the copy of a homework / test notice for the student's own login
-export type NotificationType = 'attendance_absent' | 'fee_due' | 'exam_result' | 'general_announcement' | 'schedule_change' | 'new_student' | 'new_teacher' | 'homework' | 'test_notice';
+export type NotificationType = 'attendance_absent' | 'fee_due' | 'exam_result' | 'general_announcement' | 'schedule_change' | 'new_student' | 'new_teacher' | 'homework' | 'test_notice' | 'attendance_late';
 export type EnquiryStatus = 'new' | 'contacted' | 'demo' | 'follow-up' | 'enrolled' | 'lost';
 export type EnquirySource = 'walk-in' | 'phone' | 'website' | 'referral' | 'social' | 'other';
 export type MaterialType = 'link' | 'note' | 'homework';
@@ -41,6 +41,7 @@ export interface Batch {
   courseName: string;
   subjects: string[];
   facultyName: string;
+  classTeacherId?: string; // the class teacher: with the principal, the only one who tells the parents about absent and late students
   classroom: string;
   scheduleDays: string[];
   startTime: string;

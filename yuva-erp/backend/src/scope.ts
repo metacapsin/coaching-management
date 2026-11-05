@@ -302,10 +302,17 @@ async function teacherPlan(name: string, change: Plan, user: any, store: Store):
     const known = await store.getMany('notificationLogs', change.upsert.map((l) => l.id));
     const fresh = change.upsert.filter((l) => !(l.id in known));
     const kids = new Set((await store.find('students', { batchId: { $in: ids } })).map((s) => s.id));
+    // absent and late students: the CLASS TEACHER of the batch tells the parents (the principal chooses it on the batch). While no class
+    // teacher is chosen, every teacher of the batch can; after it is chosen, only that teacher.
+    const classBatchIds = (await store.find('batches', { _id: { $in: ids } })).filter((b) => (b.classTeacherId ? b.classTeacherId === user.id : true)).map((b) => b.id);
+    const classKids = new Set((await store.find('students', { batchId: { $in: classBatchIds } })).map((s) => s.id));
     for (const l of fresh) {
       const kind = l.type === 'homework' || l.type === 'test_notice';
       const mine = l.channel === 'app' || (typeof l.studentId === 'string' && kids.has(l.studentId));
-      if (!kind || !mine) throw new HttpError(403, 'A teacher can tell the parents only about homework and tests of the own batches.');
+      const attendance = (l.type === 'attendance_absent' || l.type === 'attendance_late') && l.channel !== 'app' && typeof l.studentId === 'string' && classKids.has(l.studentId);
+      if (!(kind && mine) && !attendance) {
+        throw new HttpError(403, 'A teacher can tell the parents about homework and tests of the own batches. Absent and late students: only the class teacher of the batch (or the principal).');
+      }
     }
     return { upsert: fresh, remove: [] };
   }

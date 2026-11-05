@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dueText, homeworkNotice, studentHomeworkNotice, studentTestNotice, studentTestReminder, testNotice, testReminder, whenText } from '../components/utils/parentNotices';
+import { dueText, homeworkNotice, lateNotice, studentHomeworkNotice, studentTestNotice, studentTestReminder, testNotice, testReminder, whenText } from '../components/utils/parentNotices';
 
 const who = { parentName: 'Mrs Alice', studentName: 'Alice', coaching: 'Apex Academy' };
 const test = { title: 'Unit test 3', subject: 'Physics', date: '2026-11-10', maxMarks: 50, topics: ['Motion', 'Force'] };
@@ -29,6 +29,13 @@ describe('the notices to the parents', () => {
     expect(text).toContain('TOMORROW');
     expect(text).toContain('Alice');
     expect(text).toContain('Unit test 3');
+  });
+
+  it('the notice for a late student confirms it to the parent', () => {
+    const text = lateNotice(who, 'Class 12 Batch', '2026-11-05');
+    expect(text).toContain('Dear Mrs Alice');
+    expect(text).toContain('Alice joined the Class 12 Batch class late today (5 Nov 2026)');
+    expect(text).toContain('class teacher');
   });
 
   it('the notices for the student speak to the student, not to the parent', () => {

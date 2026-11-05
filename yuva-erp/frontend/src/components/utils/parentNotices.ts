@@ -55,6 +55,11 @@ export const studentHomeworkNotice = (me: Me, hw: HomeworkInfo, today: string, n
   `${hw.dueDate ? ` Submit it by ${dueText(hw.dueDate, today)}.` : ''}` +
   `${nextTest ? ` Also note: a test is coming ${whenText(nextTest.date, today)}: ${nextTest.title}${nextTest.subject ? ` (${nextTest.subject})` : ''}.` : ''} - ${me.coaching}`;
 
+/** The student joined the class late: the parent is told, so it is confirmed (and the reason can be asked). */
+export const lateNotice = (who: Who, batchName: string, date: string): string =>
+  `Dear ${who.parentName}, this is to confirm that ${who.studentName} joined the ${batchName} class late today (${formatDate(date)}). ` +
+  `If there was a problem or a reason for the delay, it is noted. If you did not know about it, please speak to the class teacher. - ${who.coaching}`;
+
 /** The day before the test. */
 export const testReminder = (who: Who, test: TestInfo): string =>
   `Reminder: ${who.studentName} has a test TOMORROW (${formatDate(test.date)}): ${test.title}${test.subject ? ` (${test.subject})` : ''}. ` +

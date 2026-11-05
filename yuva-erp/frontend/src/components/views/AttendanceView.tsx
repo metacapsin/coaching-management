@@ -82,11 +82,26 @@ export const AttendanceView: React.FC = () => {
   const totalCount = batchStudents.length;
   const attendanceRate = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
 
-  // Absent students list
-  const absentStudents = batchStudents.filter(s => localRecords[s.id] === 'absent');
+  // Absent and late students. The parents are told by the principal, or by the CLASS TEACHER of the batch.
+  // (while the principal has not chosen a class teacher for the batch, every teacher of the batch can)
+  const mayTell = (s: { batchId: string }) => {
+    if (canManageInstitute(user?.role)) return true;
+    const classTeacher = batches.find(b => b.id === s.batchId)?.classTeacherId;
+    return classTeacher ? classTeacher === user?.id : true;
+  };
+  const absentStudents = batchStudents.filter(s => localRecords[s.id] === 'absent' && mayTell(s));
+  const lateStudents = batchStudents.filter(s => localRecords[s.id] === 'late' && mayTell(s));
+  const toTell = absentStudents.length + lateStudents.length;
+  const cannotTell = (absentCount > 0 || lateCount > 0) && toTell === 0 && !canManageInstitute(user?.role);
 
   return (
     <div className="space-y-6">
+      {cannotTell && (
+        <div role="status" className="p-3 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg">
+          Only the class teacher of the batch, or the principal, tells the parents about absent and late students. You can mark the attendance here.
+        </div>
+      )}
+
       {/* Top Header */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -102,14 +117,14 @@ export const AttendanceView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* an absent alert to the parents is for the principal: a teacher tells the parents only about homework and tests */}
-          {absentCount > 0 && canManageInstitute(user?.role) && (
+          {/* absent and late students: told to the parents by the principal or by the class teacher of the batch */}
+          {toTell > 0 && (
             <button
               onClick={() => setIsAbsentModalOpen(true)}
               className="px-3.5 py-2 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors flex items-center gap-1.5 shadow-xs"
             >
               <Send className="w-4 h-4" />
-              Send Absent Alerts ({absentCount})
+              Tell Parents: Absent / Late ({toTell})
             </button>
           )}
 
@@ -377,6 +392,7 @@ export const AttendanceView: React.FC = () => {
           date={selectedDate}
           batchId={showAll ? '' : selectedBatchId}
           absentStudents={absentStudents}
+          lateStudents={lateStudents}
         />
       )}
     </div>

@@ -31,6 +31,7 @@ type Item = {
 
 const LOG_LABEL: Record<string, [string, string]> = {
   attendance_absent: ['Absent', 'bg-rose-100 text-rose-700'],
+  attendance_late: ['Late', 'bg-amber-100 text-amber-700'],
   fee_due: ['Fee due', 'bg-amber-100 text-amber-700'],
   exam_result: ['Result', 'bg-blue-100 text-blue-700'],
   schedule_change: ['Schedule', 'bg-indigo-100 text-indigo-700'],

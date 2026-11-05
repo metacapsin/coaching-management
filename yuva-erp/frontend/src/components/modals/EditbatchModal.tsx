@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useEscape } from '../ui/useEscape';
 import { useInstitute } from '../../Context/InstituteContext';
+import { useAuth } from '../../Context/AuthContext';
 import type { Batch } from '../../types';
 import { TIME_REGEX, normalizeTime, timeToMinutes } from '../utils/helpers';
 import { X, Layers, Check, AlertCircle } from 'lucide-react';
@@ -21,6 +22,9 @@ const inputClass = (hasError: boolean) =>
 export const EditBatchModal: React.FC<EditBatchModalProps> = ({ batch, enrolled, onClose, onSaved }) => {
   useEscape(onClose);
   const { courses, updateBatch } = useInstitute();
+  // the teachers of the coaching (the principal sees them): one of them is the class teacher of the batch
+  const { users } = useAuth();
+  const teachers = users.filter(u => u.role === 'teacher' && (u.status || 'active') === 'active');
 
   const [form, setForm] = useState({
     code: batch.code,
@@ -28,6 +32,7 @@ export const EditBatchModal: React.FC<EditBatchModalProps> = ({ batch, enrolled,
     courseId: batch.courseId,
     subjects: batch.subjects.join(', '),
     facultyName: batch.facultyName,
+    classTeacherId: batch.classTeacherId ?? '',
     classroom: batch.classroom,
     scheduleDays: batch.scheduleDays,
     startTime: batch.startTime,
@@ -78,6 +83,7 @@ export const EditBatchModal: React.FC<EditBatchModalProps> = ({ batch, enrolled,
         .map(s => s.trim())
         .filter(Boolean),
       facultyName: form.facultyName.trim(),
+      classTeacherId: form.classTeacherId || undefined,
       classroom: form.classroom.trim(),
       scheduleDays: DAYS.filter(d => form.scheduleDays.includes(d)),
       startTime: normalizeTime(form.startTime),
@@ -192,6 +198,24 @@ export const EditBatchModal: React.FC<EditBatchModalProps> = ({ batch, enrolled,
               onChange={e => setForm({ ...form, facultyName: e.target.value })}
               className={inputClass(false)}
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Class teacher</label>
+            <select
+              value={form.classTeacherId}
+              onChange={e => setForm({ ...form, classTeacherId: e.target.value })}
+              className={inputClass(false)}
+            >
+              <option value="">None (every teacher of the batch can tell the parents about absent / late students)</option>
+              {teachers.map(t => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                  {t.subject ? ` (${t.subject})` : ''}
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] text-slate-400 mt-1">Once you choose a class teacher, only that teacher (and you) tell the parents when a student is absent or late.</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

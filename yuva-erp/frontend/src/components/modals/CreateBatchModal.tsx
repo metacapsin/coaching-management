@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useEscape } from '../ui/useEscape';
 import { useInstitute } from '../../Context/InstituteContext';
+import { useAuth } from '../../Context/AuthContext';
 import { TIME_REGEX, normalizeTime, timeToMinutes } from '../utils/helpers';
 import { X, Layers, Check } from 'lucide-react';
 
@@ -17,6 +18,9 @@ export const CreateBatchModal: React.FC<CreateBatchModalProps> = ({
 }) => {
   useEscape(onClose);
   const { courses, batches, addBatch } = useInstitute();
+  // the teachers of the coaching (the principal sees them): one of them is the class teacher of the batch
+  const { users } = useAuth();
+  const teachers = users.filter(u => u.role === 'teacher' && (u.status || 'active') === 'active');
 
   const [formData, setFormData] = useState({
     code: '',
@@ -24,6 +28,7 @@ export const CreateBatchModal: React.FC<CreateBatchModalProps> = ({
     courseId: courses[0]?.id || '',
     subjects: '',
     facultyName: '',
+    classTeacherId: '',
     classroom: '',
     scheduleDays: ['Mon', 'Wed', 'Fri'] as string[],
     startTime: '04:00 PM',
@@ -84,6 +89,7 @@ export const CreateBatchModal: React.FC<CreateBatchModalProps> = ({
       courseName: course ? course.name : 'Academic Program',
       subjects: formData.subjects.split(',').map(s => s.trim()).filter(Boolean),
       facultyName: formData.facultyName.trim(),
+      classTeacherId: formData.classTeacherId || undefined,
       classroom: formData.classroom.trim(),
       scheduleDays: formData.scheduleDays,
       startTime: normalizeTime(formData.startTime),
@@ -169,6 +175,24 @@ export const CreateBatchModal: React.FC<CreateBatchModalProps> = ({
               onChange={e => setFormData({ ...formData, facultyName: e.target.value })}
               className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Class teacher</label>
+            <select
+              value={formData.classTeacherId}
+              onChange={e => setFormData({ ...formData, classTeacherId: e.target.value })}
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="">None (every teacher of the batch can tell the parents about absent / late students)</option>
+              {teachers.map(t => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                  {t.subject ? ` (${t.subject})` : ''}
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] text-slate-400 mt-1">Once you choose a class teacher, only that teacher (and you) tell the parents when a student is absent or late.</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
