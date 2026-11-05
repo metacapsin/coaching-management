@@ -6,10 +6,11 @@ import type { Announcement } from '../../types';
 import { NoticeModal } from '../modals/NoticeModal';
 import { formatDateTime } from '../utils/helpers';
 import { addIds, useBellMemory } from '../utils/bellMemory';
-import { Megaphone, Plus, Pencil, Trash2, Pin, PinOff, Users, Search } from 'lucide-react';
+import { FLASH_CLASS, useFocusFlash } from '../utils/focusItem';
+import { Megaphone, Plus, Pencil, Trash2, Pin, PinOff, Users, Search, UserPlus, GraduationCap } from 'lucide-react';
 
 export const NoticesView: React.FC = () => {
-  const { announcements, updateAnnouncement, deleteAnnouncement } = useInstitute();
+  const { announcements, updateAnnouncement, deleteAnnouncement, notificationLogs } = useInstitute();
   const { user } = useAuth();
   const role = user?.role;
   const office = canManageInstitute(role);
@@ -23,12 +24,26 @@ export const NoticesView: React.FC = () => {
   // means seen: the number on the sidebar goes away.
   const { memory, update } = useBellMemory(user?.id);
   const [freshIds, setFreshIds] = useState<string[]>([]);
+
+  // What happened with people (a new student, a new teacher) is shown here too, for the principal and for a teacher: it is the
+  // same as the lines of the bell. (A teacher only gets the new students of the own subject and class from the server.)
+  const activity = useMemo(
+    () => (role === 'admin' || role === 'teacher' ? notificationLogs.filter(l => l.type === 'new_student' || l.type === 'new_teacher') : []),
+    [notificationLogs, role]
+  );
+
   useEffect(() => {
-    const unseen = announcements.filter(a => a.authorId !== user?.id && !memory.pageNotices.includes(a.id)).map(a => a.id);
+    const unseen = [
+      ...announcements.filter(a => a.authorId !== user?.id).map(a => a.id),
+      ...activity.map(l => l.id)
+    ].filter(id => !memory.pageNotices.includes(id));
     if (!unseen.length) return;
     setFreshIds(prev => addIds(prev, unseen));
     update(m => ({ ...m, pageNotices: addIds(m.pageNotices, unseen) }));
-  }, [announcements, memory.pageNotices, user?.id, update]);
+  }, [announcements, activity, memory.pageNotices, user?.id, update]);
+
+  // Opened from the bell: scroll to that message and light it up for a moment
+  const flashId = useFocusFlash('notices', () => setQuery(''));
 
   const sorted = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -82,6 +97,37 @@ export const NoticesView: React.FC = () => {
         </div>
       )}
 
+      {activity.length > 0 && (
+        <section className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/50">
+            <h2 className="text-sm font-bold text-slate-900">New students and teachers</h2>
+            <p className="text-[11px] text-slate-500">What happened in your coaching, newest first.</p>
+          </div>
+          <ul className="divide-y divide-slate-100">
+            {activity.map(l => (
+              <li
+                key={l.id}
+                id={`focus-${l.id}`}
+                className={`px-5 py-3 flex items-start gap-3 transition-shadow ${flashId === l.id ? FLASH_CLASS : ''}`}
+              >
+                <span className={`mt-0.5 p-1.5 rounded-lg ${l.type === 'new_student' ? 'bg-emerald-100 text-emerald-700' : 'bg-teal-100 text-teal-700'}`}>
+                  {l.type === 'new_student' ? <UserPlus className="w-4 h-4" /> : <GraduationCap className="w-4 h-4" />}
+                </span>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-semibold text-slate-900">{l.studentName}</span>
+                    <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{l.type === 'new_student' ? 'New student' : 'New teacher'}</span>
+                    {freshIds.includes(l.id) && <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-rose-600 text-white">New</span>}
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1 whitespace-pre-line leading-relaxed">{l.content}</p>
+                  <p className="text-[11px] text-slate-400 mt-1">{formatDateTime(l.timestamp.replace(' ', 'T'))}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {sorted.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 py-14 text-center shadow-xs">
           <Megaphone className="w-8 h-8 text-slate-300 mx-auto mb-2" />
@@ -93,7 +139,10 @@ export const NoticesView: React.FC = () => {
           {sorted.map(n => (
             <article
               key={n.id}
-              className={`bg-white rounded-xl border p-5 shadow-xs ${n.pinned ? 'border-indigo-300 bg-indigo-50/30' : 'border-slate-200'}`}
+              id={`focus-${n.id}`}
+              className={`bg-white rounded-xl border p-5 shadow-xs transition-shadow ${n.pinned ? 'border-indigo-300 bg-indigo-50/30' : 'border-slate-200'} ${
+                flashId === n.id ? FLASH_CLASS : ''
+              }`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">

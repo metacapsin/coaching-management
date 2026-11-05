@@ -76,7 +76,10 @@ function MainApp() {
   const { user, signOut } = useAuth();
   // the numbers on the sidebar: what is new on the Notice Board and on Parent Broadcasts (it goes away when the page is opened)
   const { memory: bellMemory } = useBellMemory(user?.id);
-  const newNotices = announcements.filter(a => a.authorId !== user?.id && !bellMemory.pageNotices.includes(a.id)).length;
+  const activityLogs = user?.role === 'admin' || user?.role === 'teacher' ? notificationLogs.filter(l => l.type === 'new_student' || l.type === 'new_teacher') : [];
+  const newNotices =
+    announcements.filter(a => a.authorId !== user?.id && !bellMemory.pageNotices.includes(a.id)).length +
+    activityLogs.filter(l => !bellMemory.pageNotices.includes(l.id)).length;
   const newBroadcasts = notificationLogs.filter(l => l.channel !== 'app' && !bellMemory.pageBroadcast.includes(l.id)).length;
   const { t } = useLang();
 

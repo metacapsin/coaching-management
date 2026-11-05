@@ -3,6 +3,8 @@ import { Bell, GraduationCap, Megaphone, MessageSquare, Pin, Trash2, UserPlus } 
 import { useInstitute } from '../../Context/InstituteContext';
 import { useAuth } from '../../Context/AuthContext';
 import { addIds, useBellMemory } from '../utils/bellMemory';
+import { requestFocus } from '../utils/focusItem';
+import type { TabId } from '../../Context/Access';
 import { formatDateTime } from '../utils/helpers';
 import type { NotificationLog } from '../../types';
 
@@ -10,8 +12,8 @@ import type { NotificationLog } from '../../types';
 //   everybody      the notices of the coaching that somebody else wrote (a notice for all, for the own batch, for the teachers)
 //   the principal  also the messages to the parents (absent, fee, result) and "a new student / teacher"
 //   a teacher      also "a new student" of the own subject and class
-// A click on a line shows the whole message right there. The same things are on their pages (Notice Board, Parent Broadcasts),
-// where the number on the sidebar counts what is new.
+// A click on a line opens its page and lights up that message there: a notice, and "a new student / teacher", on the Notice Board;
+// a message to the parents on Parent Broadcasts. The number on the sidebar counts what is new on those pages.
 // A parent only reads: no page lets a parent or a student write a notice (the server refuses it too).
 type Item = {
   id: string;
@@ -24,6 +26,7 @@ type Item = {
   time: number;
   when: string;
   pinned?: boolean;
+  tab: 'notices' | 'notifications'; // the page of this message
 };
 
 const LOG_LABEL: Record<string, [string, string]> = {
@@ -38,12 +41,11 @@ const LOG_LABEL: Record<string, [string, string]> = {
 
 const logTime = (ts: string) => new Date(ts.replace(' ', 'T')).getTime() || 0;
 
-export const NoticeBell: React.FC<{ onOpenBroadcast?: () => void }> = ({ onOpenBroadcast }) => {
+export const NoticeBell: React.FC<{ onOpen: (tab: TabId) => void }> = ({ onOpen }) => {
   const { announcements, notificationLogs, deleteNotification } = useInstitute();
   const { user } = useAuth();
   const { memory, update } = useBellMemory(user?.id);
   const [open, setOpen] = useState(false);
-  const [openId, setOpenId] = useState<string | null>(null); // the line that is read in full
   const [freshIds, setFreshIds] = useState<string[]>([]); // the blue dots while the bell is open
   const ref = useRef<HTMLDivElement>(null);
   const role = user?.role;
@@ -75,7 +77,8 @@ export const NoticeBell: React.FC<{ onOpenBroadcast?: () => void }> = ({ onOpenB
         body: a.body,
         time: new Date(a.createdAt).getTime() || 0,
         when: formatDateTime(a.createdAt),
-        pinned: a.pinned
+        pinned: a.pinned,
+        tab: 'notices' as const
       }));
     for (const l of notificationLogs) {
       if (role === 'teacher' && l.type !== 'new_student') continue;
@@ -90,7 +93,9 @@ export const NoticeBell: React.FC<{ onOpenBroadcast?: () => void }> = ({ onOpenB
         title: l.channel === 'app' ? l.studentName : `${l.studentName} · to ${l.recipientName}`,
         body: l.content,
         time: logTime(l.timestamp),
-        when: formatDateTime(l.timestamp.replace(' ', 'T'))
+        when: formatDateTime(l.timestamp.replace(' ', 'T')),
+        // what the office / the teacher gets about people (new student, new teacher) is on the Notice Board; the rest is a message to a parent
+        tab: l.type === 'new_student' || l.type === 'new_teacher' ? 'notices' : 'notifications'
       });
     }
     return list.filter(i => !memory.hidden.includes(i.id)).sort((x, y) => y.time - x.time);
@@ -118,6 +123,19 @@ export const NoticeBell: React.FC<{ onOpenBroadcast?: () => void }> = ({ onOpenB
     for (const i of items) remove(i);
     update(m => ({ ...m, hidden: addIds(m.hidden, items.map(i => i.id)) }));
     setFreshIds([]);
+  };
+
+  // A click opens the page of the message and lights it up there; the line counts as read (the number on the sidebar goes down)
+  const openItem = (item: Item) => {
+    update(m => ({
+      ...m,
+      seen: addIds(m.seen, [item.id]),
+      pageNotices: item.tab === 'notices' ? addIds(m.pageNotices, [item.id]) : m.pageNotices,
+      pageBroadcast: item.tab === 'notifications' ? addIds(m.pageBroadcast, [item.id]) : m.pageBroadcast
+    }));
+    requestFocus({ tab: item.tab, id: item.id }); // before the page opens: it lights up the message
+    setOpen(false);
+    onOpen(item.tab);
   };
 
   const iconOf = (item: Item) =>
@@ -163,14 +181,14 @@ export const NoticeBell: React.FC<{ onOpenBroadcast?: () => void }> = ({ onOpenB
                   key={n.id}
                   role="button"
                   tabIndex={0}
-                  onClick={() => setOpenId(prev => (prev === n.id ? null : n.id))}
+                  onClick={() => openItem(n)}
                   onKeyDown={e => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
-                      setOpenId(prev => (prev === n.id ? null : n.id));
+                      openItem(n);
                     }
                   }}
-                  title="Click to read the whole message"
+                  title={n.tab === 'notices' ? 'Open on the Notice Board' : 'Open on Parent Broadcasts'}
                   className="px-4 py-2.5 hover:bg-slate-50 transition-colors cursor-pointer focus:outline-none focus:bg-slate-50"
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -200,19 +218,19 @@ export const NoticeBell: React.FC<{ onOpenBroadcast?: () => void }> = ({ onOpenB
                       {n.pinned && <Pin className="w-3 h-3 text-amber-500 shrink-0" />}
                       {n.title}
                     </div>
-                    <p className={`text-[11px] text-slate-500 mt-0.5 ${openId === n.id ? 'whitespace-pre-line break-words' : 'line-clamp-1'}`}>{n.body}</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">{n.body}</p>
                   </div>
                 </div>
               ))}
             </div>
           )}
 
-          {onOpenBroadcast && (
+          {role === 'admin' && (
             <button
               type="button"
               onClick={() => {
                 setOpen(false);
-                onOpenBroadcast();
+                onOpen('notifications');
               }}
               className="w-full px-4 py-2.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 border-t border-slate-100 transition-colors"
             >

@@ -326,7 +326,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
 
           {/* The bell of everybody: the notices, and for the principal / a teacher more (see NoticeBell) */}
-          {user?.role !== 'super' && <NoticeBell onOpenBroadcast={canManage ? () => goTo('notifications') : undefined} />}
+          {user?.role !== 'super' && <NoticeBell onOpen={goTo} />}
 
           {/* Profile menu */}
           <div ref={profileRef} className="relative">

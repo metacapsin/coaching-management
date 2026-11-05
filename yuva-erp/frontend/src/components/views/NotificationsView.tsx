@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import { useAuth } from '../../Context/AuthContext';
 import { addIds, useBellMemory } from '../utils/bellMemory';
+import { FLASH_CLASS, useFocusFlash } from '../utils/focusItem';
 import type { Student } from '../../types';
 import { fillTemplate, openWhatsApp, toLocalISODate, formatDate } from '../utils/helpers';
 import { Pager } from '../ui/Pager';
@@ -147,6 +148,12 @@ export const NotificationsView: React.FC = () => {
   const { user } = useAuth();
   const { memory, update } = useBellMemory(user?.id);
   const [freshIds, setFreshIds] = useState<string[]>([]);
+  // Opened from the bell: open the Audit Logs and light up that message
+  const flashId = useFocusFlash('notifications', () => {
+    setActiveTab('logs');
+    setLogFilter('all');
+    setLogQuery('');
+  });
   useEffect(() => {
     const unseen = notificationLogs.filter(l => l.channel !== 'app' && !memory.pageBroadcast.includes(l.id)).map(l => l.id);
     if (!unseen.length) return;
@@ -539,7 +546,7 @@ export const NotificationsView: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {pagedLogs.items.map(log => (
-                  <tr key={log.id} className="hover:bg-slate-50/60 transition-colors">
+                  <tr key={log.id} id={`focus-${log.id}`} className={`hover:bg-slate-50/60 transition-colors ${flashId === log.id ? FLASH_CLASS : ''}`}>
                     <td className="p-3.5 font-mono text-slate-400 whitespace-nowrap">
                       {freshIds.includes(log.id) && <span className="mr-1.5 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-rose-600 text-white font-sans">New</span>}
                       {log.timestamp}
