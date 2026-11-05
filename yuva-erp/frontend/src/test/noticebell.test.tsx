@@ -19,7 +19,7 @@ afterEach(cleanup);
 describe('the bell of a teacher and a student', () => {
   it('a teacher sees the meeting notice, the notice for everybody and the new student of the batch, with a number on the bell', () => {
     role = 'teacher';
-    render(<NoticeBell onOpenBoard={() => undefined} />);
+    render(<NoticeBell />);
     expect(screen.getByLabelText('Notices from the coaching').textContent).toBe('3');
     fireEvent.click(screen.getByLabelText('Notices from the coaching'));
     expect(screen.getByText('Teachers meeting')).not.toBeNull();
@@ -32,7 +32,7 @@ describe('the bell of a teacher and a student', () => {
 
   it('a student does not get the new student lines', () => {
     role = 'student';
-    render(<NoticeBell onOpenBoard={() => undefined} />);
+    render(<NoticeBell />);
     fireEvent.click(screen.getByLabelText('Notices from the coaching'));
     expect(screen.queryByText('Newbie Kid')).toBeNull();
     expect(screen.getByText('Holiday')).not.toBeNull();
@@ -40,17 +40,34 @@ describe('the bell of a teacher and a student', () => {
 
   it('a line can be deleted, and everything can be cleared; it is remembered', () => {
     role = 'teacher';
-    const { unmount } = render(<NoticeBell onOpenBoard={() => undefined} />);
+    const { unmount } = render(<NoticeBell />);
     fireEvent.click(screen.getByLabelText('Notices from the coaching'));
     fireEvent.click(within(screen.getByText('Holiday').closest('div.px-4') as HTMLElement).getByLabelText('Delete this from the list'));
     expect(screen.queryByText('Holiday')).toBeNull();
     expect(screen.getByText('Teachers meeting')).not.toBeNull();
     unmount();
-    render(<NoticeBell onOpenBoard={() => undefined} />); // the next visit: still deleted
+    render(<NoticeBell />); // the next visit: still deleted
     fireEvent.click(screen.getByLabelText('Notices from the coaching'));
     expect(screen.queryByText('Holiday')).toBeNull();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     fireEvent.click(screen.getByRole('button', { name: 'Clear all' }));
     expect(screen.getByText('Nothing new from the coaching.')).not.toBeNull();
+  });
+
+  it('a click on a line shows the whole message right there, a second click folds it, deleting does not open it', () => {
+    role = 'teacher';
+    render(<NoticeBell />);
+    fireEvent.click(screen.getByLabelText('Notices from the coaching'));
+    const body = screen.getByText('Friday 4 pm');
+    expect(body.className).toContain('line-clamp-2');
+    fireEvent.click(screen.getByText('Teachers meeting'));
+    expect(screen.getByText('Friday 4 pm').className).not.toContain('line-clamp-2');
+    fireEvent.click(screen.getByText('Teachers meeting'));
+    expect(screen.getByText('Friday 4 pm').className).toContain('line-clamp-2');
+    // the delete button only deletes
+    fireEvent.click(within(screen.getByText('Holiday').closest('div.px-4') as HTMLElement).getByLabelText('Delete this from the list'));
+    expect(screen.queryByText('Holiday')).toBeNull();
+    // no other page is opened: there is no "Open" button in the bell
+    expect(screen.queryByText('Open Notice Board →')).toBeNull();
   });
 });

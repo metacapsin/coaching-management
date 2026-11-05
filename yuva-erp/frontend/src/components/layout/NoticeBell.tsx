@@ -23,7 +23,8 @@ const read = (key: string): Memory => {
   return { seen: [], hidden: [] };
 };
 
-export const NoticeBell: React.FC<{ onOpenBoard: () => void }> = ({ onOpenBoard }) => {
+// Clicking a line shows the whole message right there.
+export const NoticeBell: React.FC = () => {
   const { announcements, notificationLogs } = useInstitute();
   const { user } = useAuth();
   const key = `academia_os_notice_bell_v1_${user?.id ?? 'x'}`;
@@ -87,6 +88,10 @@ export const NoticeBell: React.FC<{ onOpenBoard: () => void }> = ({ onOpenBoard 
     if (next && unread > 0) save({ ...memory, seen: Array.from(new Set([...memory.seen, ...notices.map(n => n.id)])) });
   };
 
+  // the line that is read in full (a second click closes it again)
+  const [openId, setOpenId] = useState<string | null>(null);
+  const toggleItem = (id: string) => setOpenId(prev => (prev === id ? null : id));
+
   const remove = (id: string) => save({ seen: memory.seen, hidden: Array.from(new Set([...memory.hidden, id])) });
   const removeAll = () => {
     if (!window.confirm('Delete everything from this list? The notices stay on the Notice Board.')) return;
@@ -136,7 +141,20 @@ export const NoticeBell: React.FC<{ onOpenBoard: () => void }> = ({ onOpenBoard 
           ) : (
             <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
               {notices.map(n => (
-                <div key={n.id} className="px-4 py-3 hover:bg-slate-50 transition-colors">
+                <div
+                  key={n.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => toggleItem(n.id)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      toggleItem(n.id);
+                    }
+                  }}
+                  title="Click to read the whole message"
+                  className="px-4 py-3 hover:bg-slate-50 transition-colors cursor-pointer focus:outline-none focus:bg-slate-50"
+                >
                   <div className="flex items-center justify-between gap-2">
                     <span
                       className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded inline-flex items-center gap-1 ${
@@ -151,7 +169,10 @@ export const NoticeBell: React.FC<{ onOpenBoard: () => void }> = ({ onOpenBoard 
                       <span className="text-[10px] font-mono text-slate-400">{n.when}</span>
                       <button
                         type="button"
-                        onClick={() => remove(n.id)}
+                        onClick={e => {
+                          e.stopPropagation(); // deleting must not open it
+                          remove(n.id);
+                        }}
                         aria-label="Delete this from the list"
                         title="Delete this from the list"
                         className="p-1 -mr-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
@@ -165,23 +186,13 @@ export const NoticeBell: React.FC<{ onOpenBoard: () => void }> = ({ onOpenBoard 
                       {n.pinned && <Pin className="w-3 h-3 text-amber-500 shrink-0" />}
                       {n.title}
                     </div>
-                    <p className="text-[11px] text-slate-500 line-clamp-2 mt-0.5">{n.body}</p>
+                    <p className={`text-[11px] text-slate-500 mt-0.5 ${openId === n.id ? 'whitespace-pre-line break-words' : 'line-clamp-2'}`}>{n.body}</p>
                   </div>
                 </div>
               ))}
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              onOpenBoard();
-            }}
-            className="w-full px-4 py-2.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 border-t border-slate-100 transition-colors"
-          >
-            Open Notice Board →
-          </button>
         </div>
       )}
     </div>

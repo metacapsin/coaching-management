@@ -170,6 +170,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
   const recentLogs = bellLogs.slice(0, 6);
 
+  // A click on a line shows the whole message right there (a second click closes it again)
+  const [openLogId, setOpenLogId] = useState<string | null>(null);
+  const toggleLog = (id: string) => setOpenLogId(prev => (prev === id ? null : id));
+
   // Clock tick
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 30000);
@@ -439,7 +443,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
 
           {/* A teacher, a student or a parent: the notices of the coaching */}
-          {!canManage && user?.role !== 'super' && <NoticeBell onOpenBoard={() => goTo('notices')} />}
+          {!canManage && user?.role !== 'super' && <NoticeBell />}
 
           {/* Notifications bell */}
           <div ref={bellRef} className={`relative ${canManage ? '' : 'hidden'}`}>
@@ -482,7 +486,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                 ) : (
                   <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
                     {recentLogs.map((log, index) => (
-                      <div key={log.id} className="group px-4 py-3 hover:bg-slate-50 transition-colors">
+                      <div
+                        key={log.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => toggleLog(log.id)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            toggleLog(log.id);
+                          }
+                        }}
+                        title="Click to read the whole message"
+                        className="group px-4 py-3 hover:bg-slate-50 transition-colors cursor-pointer focus:outline-none focus:bg-slate-50"
+                      >
                         <div className="flex items-center justify-between gap-2">
                           <span
                             className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded ${typeStyle(
@@ -496,7 +513,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                             <span className="text-[10px] font-mono text-slate-400">{log.timestamp}</span>
                             <button
                               type="button"
-                              onClick={() => removeNotification(log, index)}
+                              onClick={e => {
+                                e.stopPropagation(); // deleting must not open it
+                                removeNotification(log, index);
+                              }}
                               aria-label="Delete this notification"
                               title="Delete this notification"
                               className="p-1 -mr-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
@@ -512,7 +532,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                               {log.studentName}
                               {log.channel !== 'app' && <span className="font-normal text-slate-500"> · to {log.recipientName}</span>}
                             </div>
-                            <p className="text-[11px] text-slate-500 line-clamp-2 mt-0.5">{log.content}</p>
+                            <p className={`text-[11px] text-slate-500 mt-0.5 ${openLogId === log.id ? 'whitespace-pre-line break-words' : 'line-clamp-2'}`}>{log.content}</p>
                           </div>
                         </div>
                       </div>
