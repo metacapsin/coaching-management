@@ -711,8 +711,10 @@ route('/api/users', ['POST'], 'admin', async (c) => {
   await addUserOrConflict(c, user);
   await s.bump();
   await s.audit(c.user, 'user-add', `${user.email} (${roleLabel(role)})`);
-  if (!isParent && (role === 'teacher' || role === 'student')) {
-    await notifyNewPerson(s, role === 'teacher' ? 'new_teacher' : 'new_student', user.name, `${user.name} was added as a ${role}.`);
+  // A new TEACHER is told to the bell. A student is not: the admission form already put "new student" in the bell, and it makes the
+  // login right after (this route), so a second line would show every new student twice.
+  if (!isParent && role === 'teacher') {
+    await notifyNewPerson(s, 'new_teacher', user.name, `${user.name} was added as a teacher.`);
   }
   await welcomeMail(c, s, user, b.password);
   return { user: auth.publicUser(user) };

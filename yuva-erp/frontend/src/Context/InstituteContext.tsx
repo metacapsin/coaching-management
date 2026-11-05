@@ -1113,7 +1113,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         content: tomorrow ? testReminder(who, info) : testNotice(who, info, today),
         status: 'pending',
         // a test for tomorrow is the reminder already: the day-before reminder must not send it a second time
-        ...(kind === 'new' && tomorrow ? { id: `log-testrem-${exam.id}-${st.id}` } : {})
+        ...(tomorrow ? { id: `log-testrem-${exam.id}-${st.id}` } : {})
       });
       sendNotification({
         type: 'test_notice',
@@ -1125,7 +1125,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         studentId: st.id,
         content: tomorrow ? studentTestReminder({ studentName: st.name, coaching: profile.name }, info) : studentTestNotice({ studentName: st.name, coaching: profile.name }, info, today),
         status: 'sent',
-        ...(kind === 'new' && tomorrow ? { id: `log-testrem-s-${exam.id}-${st.id}` } : {})
+        ...(tomorrow ? { id: `log-testrem-s-${exam.id}-${st.id}` } : {})
       });
     }
     if (kids.length > 0) {

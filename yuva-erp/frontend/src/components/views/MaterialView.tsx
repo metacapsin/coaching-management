@@ -154,7 +154,7 @@ export const MaterialView: React.FC = () => {
                       {m.subject} · {m.batchName}
                     </span>
                   </div>
-                  {canChange(m) && (
+                  {(canChange(m) || (m.type === 'homework' && m.confirmed === false)) && (
                     <div className="flex gap-1 shrink-0">
                       {m.type === 'homework' && m.confirmed === false && office && (
                         <span className="px-2 py-1 text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg" title="The teacher has to confirm first">
@@ -174,7 +174,7 @@ export const MaterialView: React.FC = () => {
                           Confirm
                         </button>
                       )}
-                      {m.type === 'homework' && m.confirmed !== false && mayTellAbout(m.subject) && (
+                      {canChange(m) && m.type === 'homework' && m.confirmed !== false && mayTellAbout(m.subject) && (
                         <button
                           title="Tell the parents of this batch about this homework (and a test that is coming)"
                           onClick={() => {
@@ -187,12 +187,16 @@ export const MaterialView: React.FC = () => {
                           Tell parents
                         </button>
                       )}
-                      <button title="Edit" onClick={() => setEditing({ material: m })} className="p-1.5 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg">
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button title="Delete" onClick={() => setDeleteTarget(m)} className="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {canChange(m) && (
+                        <>
+                          <button title="Edit" onClick={() => setEditing({ material: m })} className="p-1.5 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg">
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button title="Delete" onClick={() => setDeleteTarget(m)} className="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>

@@ -365,11 +365,11 @@ describe('The notification bell: new students and teachers', () => {
   const call = (...a: Parameters<Api['call']>) => s.api.call(...a);
   const bell = async () => ((await call('GET', '/api/sync', null, admin))[1].institute.notificationLogs ?? []).filter((l: any) => l.channel === 'app');
 
-  it('1 a teacher or student added by the principal appears in the bell', async () => {
+  it('1 a teacher added by the principal appears in the bell; a student login does not (the admission already told it)', async () => {
     assert.equal((await call('POST', '/api/users', { name: 'Neha Teacher', email: 'neha@x.com', password: PASSWORD, role: 'teacher', batchIds: ['b1'] }, admin))[0], 200);
     assert.equal((await call('POST', '/api/users', { name: 'Alice Student', email: 'alice@x.com', password: PASSWORD, role: 'student', studentId: 's1' }, admin))[0], 200);
     const lines = await bell();
-    assert.deepEqual(lines.map((l: any) => [l.type, l.studentName]).sort(), [['new_student', 'Alice Student'], ['new_teacher', 'Neha Teacher']]);
+    assert.deepEqual(lines.map((l: any) => [l.type, l.studentName]), [['new_teacher', 'Neha Teacher']]); // one line, not two for the student
     assert.ok(lines.every((l: any) => l.timestamp && l.content));
   });
 
