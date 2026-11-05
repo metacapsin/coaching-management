@@ -120,6 +120,13 @@ A new coaching opens with sample data so every screen can be seen at once (`AUTO
   confirms the date first. **Absent and late students:** the class teacher of the batch (the principal chooses it in Edit Batch) or the
   principal. A teacher's own notices are for the students only. A parent only reads.
 
+## Leave of a student
+
+- The student asks the principal for leave on the Notice Board: the dates and the FULL reason (at least 15 letters). It is a leave only after the principal approves it.
+- The principal gets it in the bell ("Leave request") and on the Notice Board ("New", and the number on the sidebar). He calls the parent (the phone number is on
+  the card), ticks "I called the parent and the reason is true" and approves, or writes why he does not give it.
+- The parent gets the same news as a text (the child asked; approved; not given) in the bell and on the Notice Board. A teacher does not see it.
+
 ## Backups
 
 Institute Profile → Data Backup: download everything (data, accounts, photos) as one file, restore it

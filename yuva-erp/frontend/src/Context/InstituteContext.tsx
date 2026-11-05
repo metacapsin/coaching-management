@@ -27,7 +27,8 @@ import type {
   Book,
   Announcement,
   StudyMaterial,
-  Submission
+  Submission,
+  LeaveRequest
 } from '../types';
 import {
   initialInstituteProfile,
@@ -198,6 +199,7 @@ interface InstituteContextType {
   announcements: Announcement[];
   materials: StudyMaterial[];
   submissions: Submission[]; // homework marked as done (read only here; a student marks it with markHomework)
+  leaveRequests: LeaveRequest[]; // leave: the student asks, the principal decides (read only here; only the student and the principal get it)
 
   // Are the changes saved on the server?
   saveState: SaveState;
@@ -260,6 +262,9 @@ interface InstituteContextType {
 
   // Homework (a student marks it as done)
   markHomework: (materialId: string, done: boolean) => Promise<void>;
+  askLeave: (input: { fromDate: string; toDate: string; reason: string }) => Promise<void>;
+  decideLeave: (id: string, input: { decision: 'approved' | 'rejected'; note: string; parentConfirmed: boolean }) => Promise<void>;
+  cancelLeave: (id: string) => Promise<void>;
 
   // Salary actions (principal only)
   addSalary: (salary: Omit<Salary, 'id'>) => Salary;
@@ -352,6 +357,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [announcements, setAnnouncements] = useState<Announcement[]>(initialAnnouncements);
   const [materials, setMaterials] = useState<StudyMaterial[]>(initialMaterials);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
 
   const values: Values = {
     profile,
@@ -402,6 +408,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     { const list = data.announcements ?? []; setAnnouncements(list); mark('announcements', list); }
     { const list = data.materials ?? []; setMaterials(list); mark('materials', list); }
     if (data.submissions !== undefined) setSubmissions(data.submissions); // never pushed back: the server owns it
+    setLeaveRequests(data.leaveRequests ?? []); // the same: only the leave routes write it
   };
 
   const takeSkippedData = () => {
@@ -927,6 +934,21 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     await refreshNow(true);
   };
 
+  // ----- leave (the student asks, the principal decides; these go to their own routes, not through the data sync) -----
+
+  const askLeave = async (input: { fromDate: string; toDate: string; reason: string }) => {
+    await request('POST', '/leaves', input);
+    await refreshNow(true);
+  };
+  const decideLeave = async (id: string, input: { decision: 'approved' | 'rejected'; note: string; parentConfirmed: boolean }) => {
+    await request('PUT', `/leaves/${id}`, input);
+    await refreshNow(true);
+  };
+  const cancelLeave = async (id: string) => {
+    await request('PUT', `/leaves/${id}`, { decision: 'cancelled' });
+    await refreshNow(true);
+  };
+
   // ----- expenses -----
 
   const addExpense = (data: Omit<Expense, 'id' | 'createdAt' | 'createdBy'>) => {
@@ -1371,6 +1393,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         announcements,
         materials,
         submissions,
+        leaveRequests,
         saveState: linkStatus === 'offline' ? 'offline' : saveState,
         updateProfile,
         addStudent,
@@ -1409,6 +1432,9 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         updateBook,
         deleteBook,
         markHomework,
+        askLeave,
+        decideLeave,
+        cancelLeave,
         addAnnouncement,
         updateAnnouncement,
         deleteAnnouncement,

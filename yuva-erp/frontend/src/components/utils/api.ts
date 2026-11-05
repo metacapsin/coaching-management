@@ -12,6 +12,7 @@ import type {
   InstituteProfile,
   NotificationLog,
   NotificationTemplate,
+  LeaveRequest,
   Salary,
   StaffAttendance,
   Student,
@@ -63,6 +64,7 @@ export interface InstituteData {
   staffAttendance?: StaffAttendance[];
   books?: Book[];
   submissions?: Submission[];
+  leaveRequests?: LeaveRequest[];
   announcements?: Announcement[];
   materials?: StudyMaterial[];
 }

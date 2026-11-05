@@ -19,7 +19,8 @@ const exams = [
   { id: 'ex2', title: 'Maths test', subject: 'Maths', batchName: 'Class 12 Batch', date: '2026-11-09', confirmed: false } // another subject
 ];
 const materials = [{ id: 'm1', type: 'homework', title: 'Optics worksheet', subject: 'Physics', batchName: 'Class 12 Batch', dueDate: '2026-11-09', confirmed: false }];
-vi.mock('../Context/InstituteContext', () => ({ useInstitute: () => ({ announcements, notificationLogs: logs, exams, materials }) }));
+const leaveRequests = [{ id: 'l1', studentId: 's1', studentName: 'Alice', batchName: 'Class 12 Batch', parentName: 'Mrs Verma', parentPhone: '9000000001', fromDate: '2026-11-10', toDate: '2026-11-11', reason: 'A family wedding in another city', status: 'pending', createdAt: '2026-11-05T09:00:00Z' }];
+vi.mock('../Context/InstituteContext', () => ({ useInstitute: () => ({ announcements, notificationLogs: logs, exams, materials, leaveRequests }) }));
 let subject = '';
 vi.mock('../Context/AuthContext', () => ({ useAuth: () => ({ user: { id: `u-${role}${isParent ? '-parent' : ''}`, role, isParent, subject } }) }));
 
@@ -64,10 +65,30 @@ describe('the bell of everybody', () => {
     expect(opened).toEqual(['material']);
   });
 
+  it('only the principal gets the leave request of a student in the bell', () => {
+    role = 'admin';
+    render(<NoticeBell onOpen={() => undefined} />);
+    fireEvent.click(bell());
+    expect(screen.getByText('Leave request')).not.toBeNull();
+    expect(screen.getByText(/Alice wants leave on/)).not.toBeNull();
+    expect(screen.getByText(/A family wedding in another city/)).not.toBeNull();
+  });
+
+  it('a teacher, a student and a parent never get the leave request in the bell', () => {
+    for (const [r, parent] of [['teacher', false], ['student', false], ['student', true]] as const) {
+      role = r;
+      isParent = parent;
+      const { unmount } = render(<NoticeBell onOpen={() => undefined} />);
+      fireEvent.click(bell());
+      expect(screen.queryByText('Leave request')).toBeNull();
+      unmount();
+    }
+  });
+
   it('the principal gets what comes to him (notices of others, a new student) but NOT the messages that he sends to the parents', () => {
     role = 'admin';
     render(<NoticeBell onOpen={noop} />);
-    expect(bell().textContent).toBe('3'); // meeting, holiday, new student
+    expect(bell().textContent).toBe('4'); // meeting, holiday, new student, and the leave request of a student
     fireEvent.click(bell());
     expect(screen.getByText('Newbie Kid')).not.toBeNull();
     expect(screen.queryByText('sharique')).toBeNull(); // the fee message is for the parent

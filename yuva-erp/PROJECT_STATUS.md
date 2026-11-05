@@ -57,6 +57,7 @@ Which modules are complete, which screens (UI) exist, what is still missing, and
 | 40 | **Who may tell the parents**: homework / test / result: the teacher of that subject (or the principal); absent and late students: the class teacher of the batch (chosen on the batch) or the principal; a teacher's own notices are for the students, not the parents; a parent only reads | `scope.ts`, `AttendanceView.tsx`, `EditbatchModal.tsx` | `PUT /api/institute` (403 otherwise) | tests + browser |
 | 41 | **The teacher confirms** a test / homework that the principal made for him, then the principal tells the parents | `TeacherSelect.tsx`, `ExamsView.tsx`, `MaterialView.tsx` | `exams`, `materials` (`confirmed`) | tests + browser |
 | 42 | **One principal per coaching, no front desk role**; the parent has an own login page `/parent` | `Teamview.tsx`, `ParentLoginPage.tsx` | `POST /api/users` (only teacher / student) | tests + browser |
+| 43 | **Leave of a student**: the student asks the principal (dates + the full reason, at least 15 letters); the principal gets it in the bell and on the Notice Board ("Leave request", "New", the number on the sidebar), calls the parent (the phone is on the card), ticks that he did, and approves or does not give (the student reads the note); the PARENT gets the same news as a text (asked, approved, not given). Not visible to a teacher. A parent and a teacher cannot ask | `LeaveSection.tsx`, `NoticesView.tsx`, `NoticeBell.tsx` | `POST /api/leaves`, `PUT /api/leaves/<id>` | tests + browser |
 
 ## 2. Not built / still missing
 

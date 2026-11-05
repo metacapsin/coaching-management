@@ -32,10 +32,11 @@ export const LISTS = [
   'staffAttendance', // the daily attendance of the teachers and staff (principal only)
   'books', // the library: books the institute shares to read online (everybody reads)
   'submissions', // homework marked as done: written only by the students themselves
+  'leaveRequests', // a student asks the principal for leave: written only by the leave routes (student asks, principal decides)
 ];
 
 // The app shows the newest first for these lists
-const NEWEST_FIRST = new Set(['students', 'attendance', 'transactions', 'exams', 'notificationLogs', 'enquiries', 'announcements', 'materials', 'expenses', 'salaries']);
+const NEWEST_FIRST = new Set(['students', 'attendance', 'transactions', 'exams', 'notificationLogs', 'enquiries', 'announcements', 'materials', 'expenses', 'salaries', 'leaveRequests']);
 
 export const DEFAULT_ORG = 'default'; // the coaching whose data lives in the plain collection names
 export const PLATFORM_ORG = '__platform__'; // the super admins (they have no institute data)

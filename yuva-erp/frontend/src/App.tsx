@@ -72,7 +72,7 @@ import type { LucideIcon } from 'lucide-react';
 import { FeeTransaction, Student } from './types';
 
 function MainApp() {
-  const { profile, students, transactions, notificationLogs, announcements } = useInstitute();
+  const { profile, students, transactions, notificationLogs, announcements, leaveRequests } = useInstitute();
   const { user, signOut } = useAuth();
   // the number on the sidebar: what is new on the Notice Board (it goes away when the page is opened)
   const { memory: bellMemory } = useBellMemory(user?.id);
@@ -88,7 +88,8 @@ function MainApp() {
       : [];
   const newNotices =
     announcements.filter(a => a.authorId !== user?.id && !bellMemory.pageNotices.includes(a.id)).length +
-    activityLogs.filter(l => !bellMemory.pageNotices.includes(l.id)).length;
+    activityLogs.filter(l => !bellMemory.pageNotices.includes(l.id)).length +
+    (user?.role === 'admin' ? leaveRequests.filter(l => l.status === 'pending' && !bellMemory.pageNotices.includes(`leave-${l.id}`)).length : 0); // a student asks for leave
   const { t } = useLang();
 
   const role = user?.role;

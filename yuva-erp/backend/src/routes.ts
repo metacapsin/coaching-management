@@ -826,6 +826,137 @@ route('/api/homework/<material_id>', ['PUT'], 'user', async (c) => {
   return ok();
 });
 
+// ---------- leave of a student ----------
+// A student asks the principal for leave (dates + the full reason). The principal calls the parent to check the reason and then
+// approves or rejects it. Only an APPROVED leave is a leave. Nobody writes this list through the normal data sync.
+
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+const MIN_REASON = 15;
+const MAX_LEAVE_DAYS = 30;
+const dayNumber = (iso: string): number => Math.round(Date.parse(`${iso}T00:00:00Z`) / 86400000);
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const niceDay = (iso: string): string => `${parseInt(iso.slice(8, 10), 10)} ${MONTHS[parseInt(iso.slice(5, 7), 10) - 1]} ${iso.slice(0, 4)}`;
+const leaveDays = (l: any): string => (l.fromDate === l.toDate ? `on ${niceDay(l.fromDate)}` : `from ${niceDay(l.fromDate)} to ${niceDay(l.toDate)}`);
+
+/** The same news that the principal gets goes to the PARENT of the student as a text (in the bell and on the Notice Board of the
+ * parent login): the child asked for leave / the principal answered. A courtesy: a failure never breaks the leave itself. */
+async function tellParentAboutLeave(c: any, leave: any, kind: 'asked' | 'approved' | 'rejected'): Promise<void> {
+  try {
+    const s = c.store;
+    const coaching = await coachingName(c, s);
+    const hello = `Dear ${leave.parentName || 'Parent'}, `;
+    const who = `your ward ${leave.studentName}${leave.rollNo ? ` (Roll No: ${leave.rollNo})` : ''}`;
+    const content =
+      kind === 'asked'
+        ? `${hello}${who} has sent a notice to the principal: ${leave.studentName} wants to take leave ${leaveDays(leave)} (reason given: "${leave.reason}"). The principal may call you to confirm it. If this is not true, please tell him. - ${coaching}`
+        : kind === 'approved'
+        ? `${hello}the principal has approved the leave of ${who} ${leaveDays(leave)}, after confirming the reason. - ${coaching}`
+        : `${hello}the principal did not give the leave to ${who} ${leaveDays(leave)}.${leave.decisionNote ? ` Reason: ${leave.decisionNote}.` : ''} Please send ${leave.studentName} to the class. - ${coaching}`;
+    const d = new Date();
+    const p = (n: number) => String(n).padStart(2, '0');
+    const timestamp = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+    await s.applyList(
+      'notificationLogs',
+      [
+        {
+          id: `log-leave-${leave.id}-${kind}`,
+          timestamp,
+          type: 'leave',
+          channel: 'whatsapp',
+          recipientName: leave.parentName || 'Parent',
+          recipientPhone: leave.parentPhone || '',
+          studentId: leave.studentId,
+          studentName: leave.studentName,
+          content,
+          status: 'sent',
+        },
+      ],
+      [],
+    );
+    await s.bump();
+  } catch {
+    /* a courtesy */
+  }
+}
+
+route('/api/leaves', ['POST'], 'user', async (c) => {
+  if (c.user.role !== 'student' || c.user.isParent) throw new HttpError(403, 'Only a student asks for leave.');
+  const s = c.store;
+  const me = c.user.studentId ? await s.getItem('students', c.user.studentId) : null;
+  if (!me) throw new HttpError(404, 'Student not found.');
+  const b = c.body();
+  const fromDate = text(b.fromDate, 10);
+  const toDate = text(b.toDate, 10) || fromDate;
+  const reason = text(b.reason, 600);
+  if (!ISO_DAY.test(fromDate) || !ISO_DAY.test(toDate) || Number.isNaN(Date.parse(fromDate)) || Number.isNaN(Date.parse(toDate))) throw new HttpError(400, 'Choose the dates of the leave.');
+  if (fromDate < todayLocal()) throw new HttpError(400, 'Ask for leave before the day, not for a day that is already over.');
+  if (toDate < fromDate) throw new HttpError(400, 'The last day cannot be before the first day.');
+  if (dayNumber(toDate) - dayNumber(fromDate) + 1 > MAX_LEAVE_DAYS) throw new HttpError(400, `One request can be for ${MAX_LEAVE_DAYS} days at most.`);
+  if (reason.length < MIN_REASON) throw new HttpError(400, `Write the full reason for the leave (at least ${MIN_REASON} letters): why do you need it?`);
+  const mine = await s.find('leaveRequests', { studentId: me.id, status: { $in: ['pending', 'approved'] } });
+  if (mine.some((l) => l.fromDate <= toDate && fromDate <= l.toDate)) throw new HttpError(409, 'You already have a leave request for these days.');
+  const batch = me.batchId ? await s.getItem('batches', me.batchId) : null;
+  const id = newId('leave');
+  await s.applyList(
+    'leaveRequests',
+    [
+      {
+        id,
+        studentId: me.id,
+        studentName: me.name,
+        rollNo: me.rollNo ?? '',
+        batchId: me.batchId ?? '',
+        batchName: batch?.name ?? '',
+        parentName: me.parentName ?? '',
+        parentPhone: me.parentPhone ?? '',
+        fromDate,
+        toDate,
+        reason,
+        status: 'pending',
+        createdAt: nowIso(),
+      },
+    ],
+    [],
+  );
+  await s.bump();
+  await s.audit(c.user, 'leave-ask', `${me.name} ${fromDate}..${toDate}`);
+  await tellParentAboutLeave(c, { id, studentId: me.id, studentName: me.name, rollNo: me.rollNo ?? '', parentName: me.parentName ?? '', parentPhone: me.parentPhone ?? '', fromDate, toDate, reason }, 'asked');
+  return { ok: true, id };
+});
+
+/** The principal decides (approved / rejected); the student can take back a request that is still waiting (cancelled). */
+route('/api/leaves/<leave_id>', ['PUT'], 'user', async (c) => {
+  const s = c.store;
+  const leave = await s.getItem('leaveRequests', c.req.params.leave_id as string);
+  if (!leave) throw new HttpError(404, 'Leave request not found.');
+  if (leave.status !== 'pending') throw new HttpError(409, 'This request was already answered.');
+  const b = c.body();
+  const decision = text(b.decision, 20);
+
+  if (c.user.role === 'student' && !c.user.isParent) {
+    if (leave.studentId !== c.user.studentId) throw new HttpError(404, 'Leave request not found.');
+    if (decision !== 'cancelled') throw new HttpError(403, 'Only the principal approves or rejects leave.');
+    await s.applyList('leaveRequests', [{ ...leave, status: 'cancelled', decidedAt: nowIso() }], []);
+    await s.bump();
+    return ok();
+  }
+
+  if (c.user.role !== 'admin') throw new HttpError(403, 'Only the principal approves or rejects leave.');
+  if (decision !== 'approved' && decision !== 'rejected') throw new HttpError(400, 'Approve or reject the leave.');
+  const note = text(b.note, 400);
+  if (decision === 'approved' && b.parentConfirmed !== true) throw new HttpError(400, 'Call the parent and confirm the reason first, then tick that you did.');
+  if (decision === 'rejected' && note.length < 5) throw new HttpError(400, 'Write why the leave is not given.');
+  await s.applyList(
+    'leaveRequests',
+    [{ ...leave, status: decision, decisionNote: note, decidedAt: nowIso(), decidedBy: c.user.name, ...(decision === 'approved' ? { parentConfirmedBy: c.user.name } : {}) }],
+    [],
+  );
+  await s.bump();
+  await s.audit(c.user, `leave-${decision}`, `${leave.studentName} ${leave.fromDate}..${leave.toDate}`);
+  await tellParentAboutLeave(c, { ...leave, decisionNote: note }, decision);
+  return ok();
+});
+
 /** Everybody can change the email they sign in with. The current password has to be typed (somebody who finds a
  * signed-in screen cannot take the account over). One email, one account, over all coachings. */
 route('/api/auth/change-email', ['POST'], 'any', async (c) => {

@@ -4,13 +4,14 @@ import { useAuth } from '../../Context/AuthContext';
 import { canManageInstitute } from '../../Context/Access';
 import type { Announcement } from '../../types';
 import { NoticeModal } from '../modals/NoticeModal';
+import { PrincipalLeave, StudentLeave } from './LeaveSection';
 import { formatDateTime } from '../utils/helpers';
 import { addIds, useBellMemory } from '../utils/bellMemory';
 import { FLASH_CLASS, useFocusFlash } from '../utils/focusItem';
 import { Megaphone, Plus, Pencil, Trash2, Pin, PinOff, Users, Search, UserPlus, GraduationCap, MessageSquare } from 'lucide-react';
 
 export const NoticesView: React.FC = () => {
-  const { announcements, updateAnnouncement, deleteAnnouncement, notificationLogs } = useInstitute();
+  const { announcements, updateAnnouncement, deleteAnnouncement, notificationLogs, leaveRequests } = useInstitute();
   const { user } = useAuth();
   const role = user?.role;
   const office = canManageInstitute(role);
@@ -41,12 +42,13 @@ export const NoticesView: React.FC = () => {
   useEffect(() => {
     const unseen = [
       ...announcements.filter(a => a.authorId !== user?.id).map(a => a.id),
-      ...activity.map(l => l.id)
+      ...activity.map(l => l.id),
+      ...(role === 'admin' ? leaveRequests.filter(l => l.status === 'pending').map(l => `leave-${l.id}`) : []) // a student asks for leave
     ].filter(id => !memory.pageNotices.includes(id));
     if (!unseen.length) return;
     setFreshIds(prev => addIds(prev, unseen));
     update(m => ({ ...m, pageNotices: addIds(m.pageNotices, unseen) }));
-  }, [announcements, activity, memory.pageNotices, user?.id, update]);
+  }, [announcements, activity, leaveRequests, role, memory.pageNotices, user?.id, update]);
 
   // Opened from the bell: scroll to that message and light it up for a moment
   const flashId = useFocusFlash('notices', () => setQuery(''));
@@ -103,6 +105,9 @@ export const NoticesView: React.FC = () => {
         </div>
       )}
 
+      {role === 'admin' && <PrincipalLeave freshIds={freshIds} flashId={flashId} />}
+      {role === 'student' && !isParent && <StudentLeave />}
+
       {activity.length > 0 && (
         <section className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
           <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/50">
@@ -122,7 +127,7 @@ export const NoticesView: React.FC = () => {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-semibold text-slate-900">{l.channel === 'student' ? (l.type === 'homework' ? 'Homework' : 'Test') : l.studentName}</span>
-                    <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{l.type === 'new_student' ? 'New student' : l.type === 'new_teacher' ? 'New teacher' : l.type === 'homework' ? 'Homework' : l.type === 'test_notice' ? 'Test' : l.type === 'attendance_absent' ? 'Absent' : l.type === 'attendance_late' ? 'Late' : l.type.replace(/_/g, ' ')}</span>
+                    <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{l.type === 'new_student' ? 'New student' : l.type === 'new_teacher' ? 'New teacher' : l.type === 'homework' ? 'Homework' : l.type === 'test_notice' ? 'Test' : l.type === 'attendance_absent' ? 'Absent' : l.type === 'attendance_late' ? 'Late' : l.type === 'leave' ? 'Leave' : l.type.replace(/_/g, ' ')}</span>
                     {freshIds.includes(l.id) && <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-rose-600 text-white">New</span>}
                   </div>
                   <p className="text-xs text-slate-600 mt-1 whitespace-pre-line leading-relaxed">{l.content}</p>

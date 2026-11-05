@@ -3,7 +3,7 @@ export type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
 export type PaymentMethod = 'Cash' | 'UPI' | 'Bank Transfer' | 'Cheque' | 'Card';
 export type ExamStatus = 'scheduled' | 'grading' | 'published';
 export type NotificationChannel = 'whatsapp' | 'sms' | 'email' | 'app' | 'student'; // 'student': the copy of a homework / test notice for the student's own login
-export type NotificationType = 'attendance_absent' | 'fee_due' | 'exam_result' | 'general_announcement' | 'schedule_change' | 'new_student' | 'new_teacher' | 'homework' | 'test_notice' | 'attendance_late';
+export type NotificationType = 'attendance_absent' | 'fee_due' | 'exam_result' | 'general_announcement' | 'schedule_change' | 'new_student' | 'new_teacher' | 'homework' | 'test_notice' | 'attendance_late' | 'leave';
 export type EnquiryStatus = 'new' | 'contacted' | 'demo' | 'follow-up' | 'enrolled' | 'lost';
 export type EnquirySource = 'walk-in' | 'phone' | 'website' | 'referral' | 'social' | 'other';
 export type MaterialType = 'link' | 'note' | 'homework';
@@ -237,6 +237,29 @@ export interface Submission {
   materialId: string;
   studentId: string;
   doneAt: string;
+}
+
+// A student asks the principal for leave. The principal calls the parent, then approves or rejects it. Only the student and the
+// principal see it (not a teacher, not a parent). Written by the server only (see the leave routes).
+export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+export interface LeaveRequest {
+  id: string;
+  studentId: string;
+  studentName: string;
+  rollNo: string;
+  batchId: string;
+  batchName: string;
+  parentName: string;
+  parentPhone: string;
+  fromDate: string;
+  toDate: string;
+  reason: string;
+  status: LeaveStatus;
+  createdAt: string;
+  decidedAt?: string;
+  decidedBy?: string;
+  decisionNote?: string;
+  parentConfirmedBy?: string;
 }
 
 // Somebody who is paid every month (a teacher or other staff). Only the principal sees it.

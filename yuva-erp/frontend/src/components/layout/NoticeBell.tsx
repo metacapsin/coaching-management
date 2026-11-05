@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Bell, GraduationCap, Megaphone, MessageSquare, Pin, Trash2, UserPlus } from 'lucide-react';
+import { Bell, CalendarOff, GraduationCap, Megaphone, MessageSquare, Pin, Trash2, UserPlus } from 'lucide-react';
 import { useInstitute } from '../../Context/InstituteContext';
 import { useAuth } from '../../Context/AuthContext';
 import { addIds, useBellMemory } from '../utils/bellMemory';
@@ -7,6 +7,7 @@ import { requestFocus } from '../utils/focusItem';
 import { formatDateTime } from '../utils/helpers';
 import type { NotificationLog } from '../../types';
 import { sameSubject } from '../utils/parentNotices';
+import { leaveDates } from '../views/LeaveSection';
 import type { TabId } from '../../Context/Access';
 
 // The bell of everybody (principal, teacher, student, parent). One list, newest first:
@@ -18,7 +19,7 @@ import type { TabId } from '../../Context/Access';
 // A parent only reads: no page lets a parent or a student write a notice (the server refuses it too).
 type Item = {
   id: string;
-  kind: 'notice' | 'log' | 'confirm';
+  kind: 'notice' | 'log' | 'confirm' | 'leave';
   log?: NotificationLog;
   label: string;
   tone: string;
@@ -33,6 +34,7 @@ type Item = {
 const LOG_LABEL: Record<string, [string, string]> = {
   attendance_absent: ['Absent', 'bg-rose-100 text-rose-700'],
   attendance_late: ['Late', 'bg-amber-100 text-amber-700'],
+  leave: ['Leave', 'bg-indigo-100 text-indigo-700'],
   fee_due: ['Fee due', 'bg-amber-100 text-amber-700'],
   exam_result: ['Result', 'bg-blue-100 text-blue-700'],
   schedule_change: ['Schedule', 'bg-indigo-100 text-indigo-700'],
@@ -46,7 +48,7 @@ const LOG_LABEL: Record<string, [string, string]> = {
 const logTime = (ts: string) => new Date(ts.replace(' ', 'T')).getTime() || 0;
 
 export const NoticeBell: React.FC<{ onOpen: (tab: TabId) => void }> = ({ onOpen }) => {
-  const { announcements, notificationLogs, exams, materials } = useInstitute();
+  const { announcements, notificationLogs, exams, materials, leaveRequests } = useInstitute();
   const { user } = useAuth();
   const { memory, update } = useBellMemory(user?.id);
   const [open, setOpen] = useState(false);
@@ -136,8 +138,25 @@ export const NoticeBell: React.FC<{ onOpen: (tab: TabId) => void }> = ({ onOpen 
         });
       }
     }
+    // the principal ONLY: a student wants to take leave (it goes away when he approves or rejects it)
+    if (role === 'admin') {
+      for (const l of leaveRequests) {
+        if (l.status !== 'pending') continue;
+        list.push({
+          id: `leave-${l.id}`,
+          kind: 'leave',
+          label: 'Leave request',
+          tone: 'bg-indigo-100 text-indigo-700',
+          title: `${l.studentName} wants leave on ${leaveDates(l)}`,
+          body: l.reason,
+          time: new Date(l.createdAt).getTime() || 0,
+          when: formatDateTime(l.createdAt),
+          tab: 'notices'
+        });
+      }
+    }
     return list.filter(i => !memory.hidden.includes(i.id)).sort((x, y) => y.time - x.time);
-  }, [announcements, notificationLogs, exams, materials, memory.hidden, role, user?.id, user?.subject]);
+  }, [announcements, notificationLogs, exams, materials, leaveRequests, memory.hidden, role, user?.id, user?.subject]);
 
   const unread = items.filter(i => !memory.seen.includes(i.id)).length;
 
@@ -172,7 +191,7 @@ export const NoticeBell: React.FC<{ onOpen: (tab: TabId) => void }> = ({ onOpen 
   };
 
   const iconOf = (item: Item) =>
-    item.kind === 'notice' ? <Megaphone className="w-3 h-3" /> : item.log?.type === 'new_student' ? <UserPlus className="w-3 h-3" /> : item.log?.type === 'new_teacher' ? <GraduationCap className="w-3 h-3" /> : <MessageSquare className="w-3 h-3" />;
+    item.kind === 'notice' ? <Megaphone className="w-3 h-3" /> : item.kind === 'leave' ? <CalendarOff className="w-3 h-3" /> : item.log?.type === 'new_student' ? <UserPlus className="w-3 h-3" /> : item.log?.type === 'new_teacher' ? <GraduationCap className="w-3 h-3" /> : <MessageSquare className="w-3 h-3" />;
 
   return (
     <div ref={ref} className="relative">

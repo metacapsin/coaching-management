@@ -130,6 +130,8 @@ export async function scopeInstitute(user: any, store: Store): Promise<any> {
       announcements: await store.find('announcements', { $or: [{ audience: 'all' }, { audience: 'teachers' }, { batchId: { $in: ids } }] }),
       materials,
       submissions: await store.find('submissions', { materialId: { $in: (await store.find('materials', { batchId: { $in: ids } })).map((m) => m.id) } }),
+      // leave is between the student and the principal only: a teacher does not get it
+      leaveRequests: [],
     };
   }
 
@@ -153,6 +155,7 @@ export async function scopeInstitute(user: any, store: Store): Promise<any> {
     announcements: [],
     materials: [],
     submissions: [],
+    leaveRequests: [],
   };
   const me = user.studentId ? await store.getItem('students', user.studentId) : null;
   if (!me) return empty;
@@ -214,6 +217,8 @@ export async function scopeInstitute(user: any, store: Store): Promise<any> {
     materials: await store.find('materials', { batchId: orNull(me.batchId) }),
     books: await store.find('books'),
     submissions: await store.find('submissions', { studentId: me.id }),
+    // leave is for the student only (the principal decides it): not for a teacher and not for a parent account
+    leaveRequests: user.isParent ? [] : await store.find('leaveRequests', { studentId: me.id }),
   };
 }
 
@@ -463,6 +468,7 @@ export async function applyChanges(user: any, store: Store, changes: any): Promi
     }
     let parsed = parseChange(name, change);
     if (name === 'submissions') throw new HttpError(403, 'Homework is marked as done by the students themselves.');
+    if (name === 'leaveRequests') throw new HttpError(403, 'Leave is asked by the student and decided by the principal on the leave page.');
     if (PRINCIPAL_ONLY.has(name) && user.role !== 'admin') throw new HttpError(403, 'Only the principal can change the expenses.');
     if (user.role === 'teacher') parsed = await teacherPlan(name, parsed, user, store);
     plans.push([name, parsed]);
