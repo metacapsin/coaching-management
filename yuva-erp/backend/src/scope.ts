@@ -174,10 +174,13 @@ export async function scopeInstitute(user: any, store: Store): Promise<any> {
     .filter((a) => (a.records || {})[me.id])
     .map((a) => ({ ...a, records: { [me.id]: a.records[me.id] } }));
 
-  // the messages to the own parent; never the lines of the bell of the principal and the teachers (a new student, a new teacher)
-  const logs = (await store.find('notificationLogs'))
-    .filter((log) => log.channel !== 'app')
-    .filter((log) => (log.studentId ? log.studentId === me.id : log.studentName === me.name));
+  // The messages that the principal sends to the parent of this student (absent, fee, result...) are for the PARENT account: the
+  // student does not get them. Never the lines of the bell of the principal and the teachers (a new student, a new teacher).
+  const logs = user.isParent
+    ? (await store.find('notificationLogs'))
+        .filter((log) => log.channel !== 'app')
+        .filter((log) => (log.studentId ? log.studentId === me.id : log.studentName === me.name))
+    : [];
 
   return {
     ...empty,

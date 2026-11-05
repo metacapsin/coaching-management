@@ -509,3 +509,34 @@ describe('Who is told about a new student: the subject and the class', () => {
     assert.ok((await told(english10)).includes('Tenth Two'));
   });
 });
+
+describe('A message to a parent goes to the parent account', () => {
+  let admin = '';
+  let student = '';
+  let parent = '';
+  const s = withServer(async (api) => {
+    admin = (await api.call('POST', '/api/auth/setup', { name: 'P', email: 'p@x.com', password: PASSWORD }))[1].token;
+    await api.call('PUT', '/api/institute', { changes: { batches: { upsert: BATCHES }, students: { upsert: STUDENTS } } }, admin);
+    await api.call('POST', '/api/users', { name: 'Alice', email: 'alice@x.com', password: PASSWORD, role: 'student', studentId: 's1' }, admin);
+    await api.call('POST', '/api/users', { name: 'Mrs Alice', email: 'mrs@x.com', password: PASSWORD, role: 'student', studentId: 's1', isParent: true }, admin);
+    student = await tokenOf(api, 'alice@x.com', 'member');
+    parent = await tokenOf(api, 'mrs@x.com', 'parent');
+  });
+  const call = (...a: Parameters<Api['call']>) => s.api.call(...a);
+  const logsOf = async (token: string) => ((await call('GET', '/api/sync', null, token))[1].institute.notificationLogs as any[]).map((l) => l.id);
+
+  it('1 the parent of the child gets it, the student does not, the parent of another child does not', async () => {
+    const mine = { id: 'm1', timestamp: '2026-11-05 11:17', type: 'attendance_absent', channel: 'whatsapp', recipientName: 'P', recipientPhone: '+91 98000 00001', studentId: 's1', studentName: 'Alice', content: 'Alice was absent', status: 'pending' };
+    const other = { ...mine, id: 'm2', studentId: 's2', studentName: 'Bob', content: 'Bob was absent' };
+    assert.equal((await call('PUT', '/api/institute', { changes: { notificationLogs: { upsert: [mine, other] } } }, admin))[0], 200);
+    assert.deepEqual(await logsOf(parent), ['m1']); // only about the own child
+    assert.deepEqual(await logsOf(student), []); // the message is for the parent
+  });
+
+  it('2 a parent only reads: cannot send a message or a notice', async () => {
+    const msg = { id: 'm9', timestamp: '2026-11-05 12:00', type: 'general_announcement', channel: 'whatsapp', recipientName: 'x', recipientPhone: '1', studentName: 'Alice', content: 'hi', status: 'pending' };
+    assert.equal((await call('PUT', '/api/institute', { changes: { notificationLogs: { upsert: [msg] } } }, parent))[0], 403);
+    const notice = { id: 'n9', title: 't', body: 'b', audience: 'all', createdAt: '2026-11-05T11:00:00.000Z', authorId: 'x', authorName: 'P' };
+    assert.equal((await call('PUT', '/api/institute', { changes: { announcements: { upsert: [notice] } } }, parent))[0], 403);
+  });
+});

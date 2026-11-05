@@ -74,13 +74,17 @@ import { FeeTransaction, Student } from './types';
 function MainApp() {
   const { profile, students, transactions, notificationLogs, announcements } = useInstitute();
   const { user, signOut } = useAuth();
-  // the numbers on the sidebar: what is new on the Notice Board and on Parent Broadcasts (it goes away when the page is opened)
+  // the number on the sidebar: what is new on the Notice Board (it goes away when the page is opened)
   const { memory: bellMemory } = useBellMemory(user?.id);
-  const activityLogs = user?.role === 'admin' || user?.role === 'teacher' ? notificationLogs.filter(l => l.type === 'new_student' || l.type === 'new_teacher') : [];
+  const activityLogs =
+    user?.role === 'admin' || user?.role === 'teacher'
+      ? notificationLogs.filter(l => l.type === 'new_student' || l.type === 'new_teacher')
+      : user?.role === 'student' && user.isParent
+      ? notificationLogs.filter(l => l.channel !== 'app') // the messages of the coaching about the child
+      : [];
   const newNotices =
     announcements.filter(a => a.authorId !== user?.id && !bellMemory.pageNotices.includes(a.id)).length +
     activityLogs.filter(l => !bellMemory.pageNotices.includes(l.id)).length;
-  const newBroadcasts = notificationLogs.filter(l => l.channel !== 'app' && !bellMemory.pageBroadcast.includes(l.id)).length;
   const { t } = useLang();
 
   const role = user?.role;
@@ -138,7 +142,7 @@ function MainApp() {
     { id: 'fees', label: 'Fees & Invoicing', icon: CreditCard },
     { id: 'exams', label: role === 'teacher' ? 'Tests & Marks' : 'Exams & Results', icon: Award },
     { id: 'batches', label: 'Batches & Timetable', icon: Layers },
-    { id: 'notifications', label: 'Parent Broadcasts', icon: Bell, badge: newBroadcasts, fresh: true },
+    { id: 'notifications', label: 'Parent Broadcasts', icon: Bell },
     { id: 'notices', label: 'Notice Board', icon: Megaphone, badge: newNotices, fresh: true },
     { id: 'material', label: role === 'student' ? 'Study Material' : 'Study Material & Homework', icon: BookOpen },
     { id: 'library', label: 'Library', icon: Library },

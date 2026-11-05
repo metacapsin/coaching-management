@@ -186,7 +186,7 @@ describe('Flow: a day at the institute', () => {
     const inst = data.institute;
     assert.deepEqual(inst.students.map((s: any) => s.id), ['s1']);
     assert.equal(inst.transactions.length, 1);
-    assert.deepEqual(inst.notificationLogs.map((l: any) => l.id), ['l1']);
+    assert.deepEqual(inst.notificationLogs, []); // the message to the parent is for the parent account, not for the student
     const e = inst.exams[0];
     assert.deepEqual(Object.keys(e.results), ['s1']);
     assert.equal(e.results.s1.rank, 1);

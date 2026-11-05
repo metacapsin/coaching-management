@@ -10,10 +10,10 @@ import type { NotificationLog } from '../../types';
 
 // The bell of everybody (principal, teacher, student, parent). One list, newest first:
 //   everybody      the notices of the coaching that somebody else wrote (a notice for all, for the own batch, for the teachers)
-//   the principal  also the messages to the parents (absent, fee, result) and "a new student / teacher"
+//   the principal  also "a new student / teacher" (NOT the messages that he sends to the parents: they are for the parents)
 //   a teacher      also "a new student" of the own subject and class
-// A click on a line opens its page and lights up that message there: a notice, and "a new student / teacher", on the Notice Board;
-// a message to the parents on Parent Broadcasts. The number on the sidebar counts what is new on those pages.
+//   a parent       also the messages that the coaching sent about the child (absent, fee, result...)
+// A click on a line opens the Notice Board and lights up that message there. The number on the sidebar counts what is new.
 // A parent only reads: no page lets a parent or a student write a notice (the server refuses it too).
 type Item = {
   id: string;
@@ -26,7 +26,7 @@ type Item = {
   time: number;
   when: string;
   pinned?: boolean;
-  tab: 'notices' | 'notifications'; // the page of this message
+  tab: 'notices'; // the page of this message
 };
 
 const LOG_LABEL: Record<string, [string, string]> = {
@@ -42,7 +42,7 @@ const LOG_LABEL: Record<string, [string, string]> = {
 const logTime = (ts: string) => new Date(ts.replace(' ', 'T')).getTime() || 0;
 
 export const NoticeBell: React.FC<{ onOpen: (tab: TabId) => void }> = ({ onOpen }) => {
-  const { announcements, notificationLogs, deleteNotification } = useInstitute();
+  const { announcements, notificationLogs } = useInstitute();
   const { user } = useAuth();
   const { memory, update } = useBellMemory(user?.id);
   const [open, setOpen] = useState(false);
@@ -81,8 +81,11 @@ export const NoticeBell: React.FC<{ onOpen: (tab: TabId) => void }> = ({ onOpen 
         tab: 'notices' as const
       }));
     for (const l of notificationLogs) {
+      const aboutPeople = l.type === 'new_student' || l.type === 'new_teacher';
       if (role === 'teacher' && l.type !== 'new_student') continue;
-      if (role !== 'admin' && role !== 'teacher') continue;
+      if (role === 'admin' && !aboutPeople) continue; // the messages to the parents are not notifications for the principal
+      if (role === 'student' && (!user?.isParent || l.channel === 'app')) continue; // a student gets no message that is for the parent
+      if (role !== 'admin' && role !== 'teacher' && role !== 'student') continue;
       const [label, tone] = LOG_LABEL[l.type] ?? ['Message', 'bg-slate-100 text-slate-700'];
       list.push({
         id: l.id,
@@ -90,12 +93,11 @@ export const NoticeBell: React.FC<{ onOpen: (tab: TabId) => void }> = ({ onOpen 
         log: l,
         label,
         tone,
-        title: l.channel === 'app' ? l.studentName : `${l.studentName} · to ${l.recipientName}`,
+        title: l.studentName,
         body: l.content,
         time: logTime(l.timestamp),
         when: formatDateTime(l.timestamp.replace(' ', 'T')),
-        // what the office / the teacher gets about people (new student, new teacher) is on the Notice Board; the rest is a message to a parent
-        tab: l.type === 'new_student' || l.type === 'new_teacher' ? 'notices' : 'notifications'
+        tab: 'notices'
       });
     }
     return list.filter(i => !memory.hidden.includes(i.id)).sort((x, y) => y.time - x.time);
@@ -113,14 +115,10 @@ export const NoticeBell: React.FC<{ onOpen: (tab: TabId) => void }> = ({ onOpen 
     }
   };
 
-  // Deleting: the principal really deletes the messages to the parents; everything else only leaves the own bell
-  const remove = (item: Item) => {
-    if (item.log && role === 'admin' && item.log.channel !== 'app') deleteNotification(item.log.id);
-    else update(m => ({ ...m, hidden: addIds(m.hidden, [item.id]) }));
-  };
+  // Deleting only takes the line out of the own bell (the notices and the messages stay on their page)
+  const remove = (item: Item) => update(m => ({ ...m, hidden: addIds(m.hidden, [item.id]) }));
   const removeAll = () => {
     if (!window.confirm('Delete everything from this list? The notices stay on the Notice Board.')) return;
-    for (const i of items) remove(i);
     update(m => ({ ...m, hidden: addIds(m.hidden, items.map(i => i.id)) }));
     setFreshIds([]);
   };
@@ -130,8 +128,7 @@ export const NoticeBell: React.FC<{ onOpen: (tab: TabId) => void }> = ({ onOpen 
     update(m => ({
       ...m,
       seen: addIds(m.seen, [item.id]),
-      pageNotices: item.tab === 'notices' ? addIds(m.pageNotices, [item.id]) : m.pageNotices,
-      pageBroadcast: item.tab === 'notifications' ? addIds(m.pageBroadcast, [item.id]) : m.pageBroadcast
+      pageNotices: addIds(m.pageNotices, [item.id])
     }));
     requestFocus({ tab: item.tab, id: item.id }); // before the page opens: it lights up the message
     setOpen(false);
@@ -188,7 +185,7 @@ export const NoticeBell: React.FC<{ onOpen: (tab: TabId) => void }> = ({ onOpen 
                       openItem(n);
                     }
                   }}
-                  title={n.tab === 'notices' ? 'Open on the Notice Board' : 'Open on Parent Broadcasts'}
+                  title="Open on the Notice Board"
                   className="px-4 py-2.5 hover:bg-slate-50 transition-colors cursor-pointer focus:outline-none focus:bg-slate-50"
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -225,18 +222,6 @@ export const NoticeBell: React.FC<{ onOpen: (tab: TabId) => void }> = ({ onOpen 
             </div>
           )}
 
-          {role === 'admin' && (
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false);
-                onOpen('notifications');
-              }}
-              className="w-full px-4 py-2.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 border-t border-slate-100 transition-colors"
-            >
-              Open Parent Broadcast Center →
-            </button>
-          )}
         </div>
       )}
     </div>

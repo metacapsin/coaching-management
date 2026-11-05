@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 
 // The bell of everybody: fake contexts
 let role = 'teacher';
-const deleteNotification = vi.fn();
+let isParent = false;
 const announcements = [
   { id: 'an1', title: 'Teachers meeting', body: 'Friday 4 pm', audience: 'teachers', createdAt: '2026-11-05T08:00:00.000Z', authorId: 'x', authorName: 'P' },
   { id: 'an2', title: 'Holiday', body: 'Closed on Friday', audience: 'all', createdAt: '2026-11-04T09:00:00.000Z', authorId: 'x', authorName: 'P', pinned: true },
@@ -13,8 +13,8 @@ const logs = [
   { id: 'log1', timestamp: '2026-11-05 10:13', type: 'new_student', channel: 'app', studentName: 'Newbie Kid', content: 'Newbie Kid (Roll No: 05) joined Batch A.', batchId: 'b1', status: 'sent' },
   { id: 'log2', timestamp: '2026-11-05 10:39', type: 'fee_due', channel: 'whatsapp', studentName: 'sharique', recipientName: 'khatim', content: 'Dear khatim, a pending installment of 1,45,000 is due.', status: 'pending' }
 ];
-vi.mock('../Context/InstituteContext', () => ({ useInstitute: () => ({ announcements, notificationLogs: logs, deleteNotification }) }));
-vi.mock('../Context/AuthContext', () => ({ useAuth: () => ({ user: { id: `u-${role}`, role } }) }));
+vi.mock('../Context/InstituteContext', () => ({ useInstitute: () => ({ announcements, notificationLogs: logs }) }));
+vi.mock('../Context/AuthContext', () => ({ useAuth: () => ({ user: { id: `u-${role}${isParent ? '-parent' : ''}`, role, isParent } }) }));
 
 import { NoticeBell } from '../components/layout/NoticeBell';
 import { getBellMemory } from '../components/utils/bellMemory';
@@ -22,7 +22,7 @@ import { getBellMemory } from '../components/utils/bellMemory';
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
-  deleteNotification.mockClear();
+  isParent = false;
 });
 afterEach(cleanup);
 
@@ -43,28 +43,38 @@ describe('the bell of everybody', () => {
     expect(bell().textContent).toBe(''); // opening it means seen: the number is gone
   });
 
-  it('the principal also gets the messages to the parents and the new student', () => {
+  it('the principal gets what comes to him (notices of others, a new student) but NOT the messages that he sends to the parents', () => {
     role = 'admin';
     render(<NoticeBell onOpen={noop} />);
-    expect(bell().textContent).toBe('4'); // meeting, holiday, new student, fee message (not the own notice)
+    expect(bell().textContent).toBe('3'); // meeting, holiday, new student
     fireEvent.click(bell());
-    expect(screen.getByText('sharique · to khatim')).not.toBeNull();
-    expect(screen.getByText('Fee due')).not.toBeNull();
+    expect(screen.getByText('Newbie Kid')).not.toBeNull();
+    expect(screen.queryByText('sharique')).toBeNull(); // the fee message is for the parent
+    expect(screen.queryByText('Fee due')).toBeNull();
     expect(screen.queryByText('My own notice')).toBeNull(); // the notices that I wrote myself are not in my bell
-    expect(screen.getByText('Open Parent Broadcast Center →')).not.toBeNull();
   });
 
-  it('a student and a parent only read the notices: no messages to parents, no new student lines', () => {
+  it('a parent gets the notices and the messages of the coaching about the child; a student gets no message that is for the parent', () => {
+    role = 'student';
+    isParent = true;
+    render(<NoticeBell onOpen={noop} />);
+    expect(bell().textContent).toBe('4'); // three notices and the fee message (not the line about a new student)
+    fireEvent.click(bell());
+    expect(screen.getByText('sharique')).not.toBeNull();
+    expect(screen.getByText('Fee due')).not.toBeNull();
+    expect(screen.queryByText('Newbie Kid')).toBeNull();
+  });
+
+  it('a student only reads the notices: no message for the parent, no new student line', () => {
     role = 'student';
     render(<NoticeBell onOpen={noop} />);
     fireEvent.click(bell());
     expect(screen.queryByText('Newbie Kid')).toBeNull();
     expect(screen.queryByText(/sharique/)).toBeNull();
     expect(screen.getByText('Holiday')).not.toBeNull();
-    expect(screen.queryByText('Open Parent Broadcast Center →')).toBeNull();
   });
 
-  it('a click opens the page of the message and counts as read: notice and new student on the Notice Board, a message to a parent on Parent Broadcasts', () => {
+  it('a click opens the Notice Board with that message and counts as read', () => {
     role = 'admin';
     const opened: string[] = [];
     render(<NoticeBell onOpen={tab => opened.push(tab)} />);
@@ -75,18 +85,12 @@ describe('the bell of everybody', () => {
     expect(getBellMemory('u-admin').pageNotices).toContain('an2'); // the number of the Notice Board goes down
 
     fireEvent.click(bell());
-    fireEvent.click(screen.getByText('sharique · to khatim'));
-    expect(opened[1]).toBe('notifications');
-    expect(JSON.parse(sessionStorage.getItem('academia_os_focus_item') as string)).toEqual({ tab: 'notifications', id: 'log2' });
-    expect(getBellMemory('u-admin').pageBroadcast).toContain('log2');
-
-    fireEvent.click(bell());
     fireEvent.click(screen.getByText('Newbie Kid'));
-    expect(opened[2]).toBe('notices'); // a new student is shown on the Notice Board
-    expect(screen.queryByText('Open Parent Broadcast Center →')).toBeNull(); // the bell closed: the message is not read inside it
+    expect(opened[1]).toBe('notices'); // a new student is shown on the Notice Board too
+    expect(screen.queryByText('Nothing new.')).toBeNull();
   });
 
-  it('a line can be deleted and everything cleared; it is remembered; only the principal really deletes a message to the parents', () => {
+  it('a line can be deleted and everything cleared; it is remembered', () => {
     role = 'teacher';
     const first = render(<NoticeBell onOpen={noop} />);
     fireEvent.click(bell());
@@ -100,16 +104,5 @@ describe('the bell of everybody', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     fireEvent.click(screen.getByRole('button', { name: 'Clear all' }));
     expect(screen.getByText('Nothing new.')).not.toBeNull();
-    expect(deleteNotification).not.toHaveBeenCalled(); // a teacher deletes nothing of the coaching
-    cleanup();
-
-    localStorage.clear();
-    role = 'admin';
-    render(<NoticeBell onOpen={noop} />);
-    fireEvent.click(bell());
-    fireEvent.click(within(screen.getByText('sharique · to khatim').closest('div.px-4') as HTMLElement).getByLabelText('Delete this notification'));
-    expect(deleteNotification).toHaveBeenCalledWith('log2'); // the message to the parent is really deleted
-    fireEvent.click(within(screen.getByText('Newbie Kid').closest('div.px-4') as HTMLElement).getByLabelText('Delete this notification'));
-    expect(deleteNotification).toHaveBeenCalledTimes(1); // the new student line only leaves the own bell (the teacher reads it too)
   });
 });

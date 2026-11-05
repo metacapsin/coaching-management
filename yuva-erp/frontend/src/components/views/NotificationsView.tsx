@@ -1,8 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
-import { useAuth } from '../../Context/AuthContext';
-import { addIds, useBellMemory } from '../utils/bellMemory';
-import { FLASH_CLASS, useFocusFlash } from '../utils/focusItem';
 import type { Student } from '../../types';
 import { fillTemplate, openWhatsApp, toLocalISODate, formatDate } from '../utils/helpers';
 import { Pager } from '../ui/Pager';
@@ -135,7 +132,7 @@ export const NotificationsView: React.FC = () => {
     setDispatchSuccessMsg(
       targets.length === 0
         ? 'No students match this audience.'
-        : `${targets.length} message${targets.length === 1 ? '' : 's'} added to the queue. Open "Message History" and press "Send now" on each one to send it from WhatsApp.`
+        : `${targets.length} message${targets.length === 1 ? '' : 's'} sent to the parent${targets.length === 1 ? '' : 's'}: it is in the bell and on the Notice Board of the parent login. To send it on WhatsApp too, open "Audit Logs" and press "Send now".`
     );
     setTimeout(() => setDispatchSuccessMsg(''), 5000);
   };
@@ -143,23 +140,6 @@ export const NotificationsView: React.FC = () => {
   // the lines that only the bell shows (a new student or teacher) are not messages to the parents
   const parentLogs = notificationLogs.filter(l => l.channel !== 'app');
 
-  // A message that was not seen before gets a "New" tag while this page is open. Opening the page means seen: the number on the
-  // sidebar goes away.
-  const { user } = useAuth();
-  const { memory, update } = useBellMemory(user?.id);
-  const [freshIds, setFreshIds] = useState<string[]>([]);
-  // Opened from the bell: open the Audit Logs and light up that message
-  const flashId = useFocusFlash('notifications', () => {
-    setActiveTab('logs');
-    setLogFilter('all');
-    setLogQuery('');
-  });
-  useEffect(() => {
-    const unseen = notificationLogs.filter(l => l.channel !== 'app' && !memory.pageBroadcast.includes(l.id)).map(l => l.id);
-    if (!unseen.length) return;
-    setFreshIds(prev => addIds(prev, unseen));
-    update(m => ({ ...m, pageBroadcast: addIds(m.pageBroadcast, unseen) }));
-  }, [notificationLogs, memory.pageBroadcast, update]);
   const pendingLogs = parentLogs.filter(l => l.status === 'pending');
   const lq = logQuery.trim().toLowerCase();
   const shownLogs = (logFilter === 'pending' ? pendingLogs : parentLogs).filter(
@@ -400,7 +380,7 @@ export const NotificationsView: React.FC = () => {
                 className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-1.5 shadow-xs"
               >
                 <Send className="w-3.5 h-3.5" />
-                Record Broadcast in Log
+                Send to Parent
               </button>
             </div>
           </div>
@@ -546,9 +526,8 @@ export const NotificationsView: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {pagedLogs.items.map(log => (
-                  <tr key={log.id} id={`focus-${log.id}`} className={`hover:bg-slate-50/60 transition-colors ${flashId === log.id ? FLASH_CLASS : ''}`}>
+                  <tr key={log.id} className="hover:bg-slate-50/60 transition-colors">
                     <td className="p-3.5 font-mono text-slate-400 whitespace-nowrap">
-                      {freshIds.includes(log.id) && <span className="mr-1.5 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-rose-600 text-white font-sans">New</span>}
                       {log.timestamp}
                     </td>
 
