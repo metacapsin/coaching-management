@@ -10,6 +10,7 @@ import { BookOpen, Check } from 'lucide-react';
 interface MaterialModalProps {
   material?: StudyMaterial | null;
   onClose: () => void;
+  onSaved?: (message: string) => void; // for the page: what happened (the parents were told)
 }
 
 const inputClass = (hasError = false) =>
@@ -24,8 +25,8 @@ export const TYPE_LABEL: Record<MaterialType, string> = {
 };
 
 // Add or edit study material for a batch (teachers: only their own batches)
-export const MaterialModal: React.FC<MaterialModalProps> = ({ material, onClose }) => {
-  const { batches, addMaterial, updateMaterial } = useInstitute();
+export const MaterialModal: React.FC<MaterialModalProps> = ({ material, onClose, onSaved }) => {
+  const { batches, students, addMaterial, updateMaterial } = useInstitute();
   const { user } = useAuth();
   const office = canManageInstitute(user?.role);
   const myBatches = office ? batches : batches.filter(b => (user?.batchIds || []).includes(b.id));
@@ -66,7 +67,13 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({ material, onClose 
       dueDate: form.type === 'homework' && form.dueDate ? form.dueDate : undefined
     };
     if (material) updateMaterial(material.id, data);
-    else addMaterial(data);
+    else {
+      addMaterial(data); // homework: the parents of the batch are told at once
+      if (data.type === 'homework') {
+        const told = students.filter(s => s.batchId === data.batchId && s.status !== 'inactive').length;
+        onSaved?.(told > 0 ? `Homework saved. The parents of ${told} student${told === 1 ? '' : 's'} were told: it is in their bell and waiting in Parent Broadcasts for WhatsApp.` : 'Homework saved. There is no student in this batch yet, so no parent was told.');
+      }
+    }
     onClose();
   };
 

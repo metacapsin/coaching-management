@@ -49,6 +49,7 @@ import {
 } from '../data/mockData';
 import { nextRollNumber } from '../components/utils/rollNo';
 import { toLocalISODate, toLocalDateTime, uid, fillTemplate, formatDate, payPageLink, withPayLink } from '../components/utils/helpers';
+import { homeworkNotice, testNotice, testReminder } from '../components/utils/parentNotices';
 
 export const DEFAULT_PHOTO = '/avatar.svg';
 
@@ -295,7 +296,11 @@ interface InstituteContextType {
     studentId?: string;
     content: string;
     status?: NotificationLog['status'];
+    id?: string; // a fixed id: the same message is never made twice
   }) => void;
+  // Tell ALL the parents of the batch (not one student): a test is coming / homework was given. Returns how many parents were told.
+  notifyHomework: (material: StudyMaterial) => number;
+  notifyTest: (exam: Exam, kind?: 'new' | 'again') => number;
   updateNotificationStatus: (id: string, status: NotificationLog['status']) => void;
   deleteNotification: (id: string) => void;
   updateTemplate: (id: string, body: string) => void;
@@ -788,6 +793,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       results: {}
     };
     setExams(prev => [newExam, ...prev]);
+    notifyTest(newExam, 'new'); // the parents of the batch are told at once
     return newExam;
   };
 
@@ -954,6 +960,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       authorName: user?.name || ''
     };
     setMaterials(prev => [material, ...prev]);
+    if (material.type === 'homework') notifyHomework(material); // the parents of the batch are told at once
     return material;
   };
 
@@ -976,9 +983,10 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     studentId?: string;
     content: string;
     status?: NotificationLog['status'];
+    id?: string;
   }) => {
     const newLog: NotificationLog = {
-      id: uid('log'),
+      id: notif.id ?? uid('log'),
       timestamp: toLocalDateTime(),
       type: notif.type,
       channel: notif.channel,
@@ -990,8 +998,110 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       // Nothing is sent by this app itself: "sent" means the message was opened in WhatsApp
       status: notif.status ?? 'sent'
     };
-    setNotificationLogs(prev => [newLog, ...prev]);
+    setNotificationLogs(prev => (prev.some(l => l.id === newLog.id) ? prev : [newLog, ...prev]));
   };
+
+  // ----- the notices to the parents about homework and tests -----
+  // They go to ALL the active students of the batch (their parents), by the teacher or by the principal. Every message is in the
+  // bell and on the Notice Board of the parent login, and waits in Parent Broadcasts ("Send now") to go on WhatsApp too.
+  const batchKids = (batchId: string) => students.filter(s => s.batchId === batchId && s.status !== 'inactive');
+
+  // When a TEACHER did it, the principal gets a line in the bell: so he knows, and can send it again from the page
+  const tellPrincipal = (type: 'homework' | 'test_notice', batchName: string, content: string) => {
+    if (user?.role !== 'teacher') return;
+    setNotificationLogs(prev => [
+      { id: uid('log'), timestamp: toLocalDateTime(), type, channel: 'app', recipientName: 'Principal', recipientPhone: '', studentName: batchName, content, status: 'sent' },
+      ...prev
+    ]);
+  };
+
+  const notifyHomework = (m: StudyMaterial): number => {
+    if (m.type !== 'homework') return 0;
+    const kids = batchKids(m.batchId);
+    const today = toLocalISODate();
+    // a test that is coming for this batch is told in the same message
+    const next = exams
+      .filter(e => e.batchId === m.batchId && e.status === 'scheduled' && e.date >= today)
+      .sort((a, b) => a.date.localeCompare(b.date))[0];
+    const nextTest = next ? { title: next.title, subject: next.subject, date: next.date, maxMarks: next.maxMarks, topics: next.syllabusTopics || [] } : undefined;
+    for (const st of kids) {
+      sendNotification({
+        type: 'homework',
+        channel: 'whatsapp',
+        recipientName: st.parentName,
+        recipientPhone: st.parentPhone,
+        studentName: st.name,
+        studentId: st.id,
+        content: homeworkNotice(
+          { parentName: st.parentName, studentName: st.name, coaching: profile.name },
+          { title: m.title, description: m.description, subject: m.subject, batchName: m.batchName, dueDate: m.dueDate },
+          today,
+          nextTest
+        ),
+        status: 'pending'
+      });
+    }
+    if (kids.length > 0) {
+      tellPrincipal('homework', m.batchName, `${user?.name || 'A teacher'} gave homework "${m.title}"${m.dueDate ? ` (submit by ${formatDate(m.dueDate)})` : ''} to ${m.batchName}. The parents of ${kids.length} student${kids.length === 1 ? '' : 's'} were told.`);
+    }
+    return kids.length;
+  };
+
+  const tomorrowISO = () => toLocalISODate(new Date(Date.now() + 86400000));
+
+  const notifyTest = (exam: Exam, kind: 'new' | 'again' = 'again'): number => {
+    const kids = batchKids(exam.batchId);
+    const today = toLocalISODate();
+    const info = { title: exam.title, subject: exam.subject, date: exam.date, maxMarks: exam.maxMarks, topics: exam.syllabusTopics || [] };
+    const tomorrow = exam.date === tomorrowISO();
+    for (const st of kids) {
+      const who = { parentName: st.parentName, studentName: st.name, coaching: profile.name };
+      sendNotification({
+        type: 'test_notice',
+        channel: 'whatsapp',
+        recipientName: st.parentName,
+        recipientPhone: st.parentPhone,
+        studentName: st.name,
+        studentId: st.id,
+        content: tomorrow ? testReminder(who, info) : testNotice(who, info, today),
+        status: 'pending',
+        // a test for tomorrow is the reminder already: the day-before reminder must not send it a second time
+        ...(kind === 'new' && tomorrow ? { id: `log-testrem-${exam.id}-${st.id}` } : {})
+      });
+    }
+    if (kids.length > 0) {
+      tellPrincipal('test_notice', exam.batchName, `${user?.name || 'A teacher'} scheduled the test "${exam.title}" for ${exam.batchName} on ${formatDate(exam.date)}. The parents of ${kids.length} student${kids.length === 1 ? '' : 's'} were told.`);
+    }
+    return kids.length;
+  };
+
+  // The day before a test: every parent of the batch gets a reminder "the test is TOMORROW" (once, even if many people open the app)
+  const reminded = useRef(new Set<string>());
+  useEffect(() => {
+    if (!ready || onboarding || (user?.role !== 'admin' && user?.role !== 'teacher')) return;
+    const tomorrow = tomorrowISO();
+    for (const exam of exams) {
+      if (exam.status !== 'scheduled' || exam.date !== tomorrow) continue;
+      const info = { title: exam.title, subject: exam.subject, date: exam.date, maxMarks: exam.maxMarks, topics: exam.syllabusTopics || [] };
+      for (const st of batchKids(exam.batchId)) {
+        const id = `log-testrem-${exam.id}-${st.id}`;
+        if (reminded.current.has(id) || notificationLogs.some(l => l.id === id)) continue;
+        reminded.current.add(id);
+        sendNotification({
+          id,
+          type: 'test_notice',
+          channel: 'whatsapp',
+          recipientName: st.parentName,
+          recipientPhone: st.parentPhone,
+          studentName: st.name,
+          studentId: st.id,
+          content: testReminder({ parentName: st.parentName, studentName: st.name, coaching: profile.name }, info),
+          status: 'pending'
+        });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, onboarding, user?.role, exams, students.length]);
 
   const updateNotificationStatus = (id: string, status: NotificationLog['status']) => {
     setNotificationLogs(prev => prev.map(l => (l.id === id ? { ...l, status } : l)));
@@ -1171,6 +1281,8 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         updateMaterial,
         deleteMaterial,
         sendNotification,
+        notifyHomework,
+        notifyTest,
         updateNotificationStatus,
         deleteNotification,
         updateTemplate,

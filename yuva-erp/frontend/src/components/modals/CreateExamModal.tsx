@@ -8,7 +8,7 @@ import { X, Award, Check } from 'lucide-react';
 interface CreateExamModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess?: () => void;
+  onSuccess?: (told: number) => void; // how many parents were told about the test
 }
 
 export const CreateExamModal: React.FC<CreateExamModalProps> = ({
@@ -17,7 +17,7 @@ export const CreateExamModal: React.FC<CreateExamModalProps> = ({
   onSuccess
 }) => {
   useEscape(onClose);
-  const { batches, exams, addExam } = useInstitute();
+  const { batches, exams, students, addExam } = useInstitute();
 
   const [formData, setFormData] = useState({
     code: '',
@@ -80,7 +80,7 @@ export const CreateExamModal: React.FC<CreateExamModalProps> = ({
       syllabusTopics: topics.length > 0 ? topics : ['General Full Syllabus']
     });
 
-    if (onSuccess) onSuccess();
+    if (onSuccess) onSuccess(students.filter(s => s.batchId === formData.batchId && s.status !== 'inactive').length); // the parents are told by addExam
     onClose();
   };
 

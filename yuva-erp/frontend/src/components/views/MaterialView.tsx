@@ -5,7 +5,7 @@ import { canManageInstitute } from '../../Context/Access';
 import type { StudyMaterial } from '../../types';
 import { MaterialModal, TYPE_LABEL } from '../modals/MaterialModal';
 import { formatDate, toLocalISODate } from '../utils/helpers';
-import { BookOpen, Plus, Pencil, Trash2, ExternalLink, FileText, ClipboardList, Search, CheckCircle2, Circle } from 'lucide-react';
+import { BookOpen, Plus, Pencil, Trash2, ExternalLink, FileText, ClipboardList, Search, CheckCircle2, Circle, Send } from 'lucide-react';
 
 const TYPE_STYLE = {
   link: 'bg-blue-100 text-blue-700',
@@ -14,7 +14,7 @@ const TYPE_STYLE = {
 } as const;
 
 export const MaterialView: React.FC = () => {
-  const { materials, batches, students, submissions, deleteMaterial, markHomework } = useInstitute();
+  const { materials, batches, students, submissions, deleteMaterial, markHomework, notifyHomework } = useInstitute();
   const { user } = useAuth();
   const role = user?.role;
   const office = canManageInstitute(role);
@@ -50,6 +50,13 @@ export const MaterialView: React.FC = () => {
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [materials, batchFilter, typeFilter, query]
   );
+
+  // what happened: the parents were told about the homework
+  const [notice, setNotice] = useState('');
+  const flash = (text: string) => {
+    setNotice(text);
+    setTimeout(() => setNotice(''), 7000);
+  };
 
   const canChange = (m: StudyMaterial) => office || (role === 'teacher' && m.authorId === user?.id);
   const batchOptions = batches.filter(b => materials.some(m => m.batchId === b.id) || canWrite);
@@ -118,6 +125,12 @@ export const MaterialView: React.FC = () => {
         </select>
       </div>
 
+      {notice && (
+        <div role="status" className="p-3 text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg">
+          {notice}
+        </div>
+      )}
+
       {list.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 py-14 text-center shadow-xs">
           <BookOpen className="w-8 h-8 text-slate-300 mx-auto mb-2" />
@@ -143,6 +156,19 @@ export const MaterialView: React.FC = () => {
                   </div>
                   {canChange(m) && (
                     <div className="flex gap-1 shrink-0">
+                      {m.type === 'homework' && (
+                        <button
+                          title="Tell the parents of this batch about this homework (and a test that is coming)"
+                          onClick={() => {
+                            const told = notifyHomework(m);
+                            flash(told > 0 ? `The parents of ${told} student${told === 1 ? '' : 's'} were told about this homework.` : 'There is no student in this batch yet.');
+                          }}
+                          className="px-2 py-1 text-[11px] font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg flex items-center gap-1"
+                        >
+                          <Send className="w-3 h-3" />
+                          Tell parents
+                        </button>
+                      )}
                       <button title="Edit" onClick={() => setEditing({ material: m })} className="p-1.5 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg">
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
@@ -212,7 +238,7 @@ export const MaterialView: React.FC = () => {
         </div>
       )}
 
-      {editing && <MaterialModal material={editing.material} onClose={() => setEditing(null)} />}
+      {editing && <MaterialModal material={editing.material} onClose={() => setEditing(null)} onSaved={flash} />}
 
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">

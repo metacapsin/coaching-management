@@ -29,7 +29,8 @@ export const NoticesView: React.FC = () => {
   // same as the lines of the bell. (A teacher only gets the new students of the own subject and class from the server.)
   const isParent = role === 'student' && Boolean(user?.isParent);
   const activity = useMemo(() => {
-    if (role === 'admin' || role === 'teacher') return notificationLogs.filter(l => l.type === 'new_student' || l.type === 'new_teacher');
+    if (role === 'admin') return notificationLogs.filter(l => l.channel === 'app'); // new student / teacher, a teacher gave homework or a test
+    if (role === 'teacher') return notificationLogs.filter(l => l.type === 'new_student');
     // a parent: the messages that the coaching sent about the child (the server sends them to the parent account only)
     if (isParent) return notificationLogs.filter(l => l.channel !== 'app');
     return [];
@@ -103,8 +104,8 @@ export const NoticesView: React.FC = () => {
       {activity.length > 0 && (
         <section className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
           <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/50">
-            <h2 className="text-sm font-bold text-slate-900">{isParent ? 'Messages from the coaching' : 'New students and teachers'}</h2>
-            <p className="text-[11px] text-slate-500">{isParent ? 'What the coaching sent about your child, newest first.' : 'What happened in your coaching, newest first.'}</p>
+            <h2 className="text-sm font-bold text-slate-900">{isParent ? 'Messages from the coaching' : 'What happened'}</h2>
+            <p className="text-[11px] text-slate-500">{isParent ? 'What the coaching sent about your child, newest first.' : 'New students and teachers, and the homework and tests that the teachers gave. Newest first.'}</p>
           </div>
           <ul className="divide-y divide-slate-100">
             {activity.map(l => (
@@ -113,13 +114,13 @@ export const NoticesView: React.FC = () => {
                 id={`focus-${l.id}`}
                 className={`px-5 py-3 flex items-start gap-3 transition-shadow ${flashId === l.id ? FLASH_CLASS : ''}`}
               >
-                <span className={`mt-0.5 p-1.5 rounded-lg ${l.type === 'new_student' ? 'bg-emerald-100 text-emerald-700' : l.type === 'new_teacher' ? 'bg-teal-100 text-teal-700' : 'bg-amber-100 text-amber-700'}`}>
+                <span className={`mt-0.5 p-1.5 rounded-lg ${l.type === 'new_student' ? 'bg-emerald-100 text-emerald-700' : l.type === 'new_teacher' ? 'bg-teal-100 text-teal-700' : l.type === 'homework' ? 'bg-violet-100 text-violet-700' : l.type === 'test_notice' ? 'bg-orange-100 text-orange-700' : 'bg-amber-100 text-amber-700'}`}>
                   {l.type === 'new_student' ? <UserPlus className="w-4 h-4" /> : l.type === 'new_teacher' ? <GraduationCap className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}
                 </span>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-semibold text-slate-900">{l.studentName}</span>
-                    <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{l.type === 'new_student' ? 'New student' : l.type === 'new_teacher' ? 'New teacher' : l.type.replace(/_/g, ' ')}</span>
+                    <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{l.type === 'new_student' ? 'New student' : l.type === 'new_teacher' ? 'New teacher' : l.type === 'homework' ? 'Homework' : l.type === 'test_notice' ? 'Test' : l.type.replace(/_/g, ' ')}</span>
                     {freshIds.includes(l.id) && <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-rose-600 text-white">New</span>}
                   </div>
                   <p className="text-xs text-slate-600 mt-1 whitespace-pre-line leading-relaxed">{l.content}</p>

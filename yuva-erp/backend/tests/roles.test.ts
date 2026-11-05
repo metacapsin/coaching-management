@@ -540,3 +540,49 @@ describe('A message to a parent goes to the parent account', () => {
     assert.equal((await call('PUT', '/api/institute', { changes: { announcements: { upsert: [notice] } } }, parent))[0], 403);
   });
 });
+
+describe('Homework and tests: the notice to all the parents of the batch', () => {
+  let admin = '';
+  let teacher = '';
+  let parentA = '';
+  let parentB = '';
+  const s = withServer(async (api) => {
+    admin = (await api.call('POST', '/api/auth/setup', { name: 'P', email: 'p@x.com', password: PASSWORD }))[1].token;
+    await api.call('PUT', '/api/institute', { changes: { batches: { upsert: BATCHES }, students: { upsert: STUDENTS } } }, admin);
+    await api.call('POST', '/api/users', { name: 'Teacher A', email: 'ta@x.com', password: PASSWORD, role: 'teacher', batchIds: ['b1'] }, admin);
+    await api.call('POST', '/api/users', { name: 'Mrs Alice', email: 'pa@x.com', password: PASSWORD, role: 'student', studentId: 's1', isParent: true }, admin); // batch b1
+    await api.call('POST', '/api/users', { name: 'Mrs Carol', email: 'pc@x.com', password: PASSWORD, role: 'student', studentId: 's3', isParent: true }, admin); // batch b2
+    teacher = await tokenOf(api, 'ta@x.com', 'member');
+    parentA = await tokenOf(api, 'pa@x.com', 'parent');
+    parentB = await tokenOf(api, 'pc@x.com', 'parent');
+  });
+  const call = (...a: Parameters<Api['call']>) => s.api.call(...a);
+  const logs = async (token: string) => (await call('GET', '/api/sync', null, token))[1].institute.notificationLogs as any[];
+  const log = (id: string, type: string, studentId: string, studentName: string, channel = 'whatsapp') => ({
+    id, timestamp: '2026-11-05 12:00', type, channel, recipientName: 'Parent', recipientPhone: '+91 98000 00001', studentId, studentName, content: `${type} for ${studentName}`, status: 'pending',
+  });
+
+  it('1 a teacher gives homework: the parents of the batch get it, the parents of another batch do not, the principal is told', async () => {
+    const changes = { notificationLogs: { upsert: [
+      log('h-s1', 'homework', 's1', 'Alice'),
+      log('h-s2', 'homework', 's2', 'Bob'),
+      log('h-app', 'homework', '', 'Batch A', 'app'),
+    ] } };
+    assert.equal((await call('PUT', '/api/institute', { changes }, teacher))[0], 200);
+    assert.deepEqual((await logs(parentA)).map((l) => l.id), ['h-s1']); // only about the own child
+    assert.deepEqual(await logs(parentB), []); // the other batch hears nothing
+    const seenByPrincipal = await logs(admin);
+    assert.ok(seenByPrincipal.some((l) => l.id === 'h-app' && l.channel === 'app')); // the line of the bell
+    assert.ok(seenByPrincipal.some((l) => l.id === 'h-s1')); // and the message waits in Parent Broadcasts
+    assert.ok(!(await logs(teacher)).some((l) => l.id === 'h-s1')); // the teacher does not read the messages of the parents
+  });
+
+  it('2 a test for the batch reaches every parent of the batch; the same message is never made twice', async () => {
+    const test = (id: string, studentId: string, name: string) => log(id, 'test_notice', studentId, name);
+    const changes = { notificationLogs: { upsert: [test('log-testrem-e1-s1', 's1', 'Alice'), test('log-testrem-e1-s2', 's2', 'Bob')] } };
+    assert.equal((await call('PUT', '/api/institute', { changes }, admin))[0], 200);
+    assert.ok((await logs(parentA)).some((l) => l.id === 'log-testrem-e1-s1' && l.type === 'test_notice'));
+    assert.equal((await call('PUT', '/api/institute', { changes }, teacher))[0], 200); // sent again by somebody else: not doubled
+    assert.equal((await logs(admin)).filter((l) => l.id === 'log-testrem-e1-s1').length, 1);
+  });
+});

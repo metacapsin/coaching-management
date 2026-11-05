@@ -13,7 +13,7 @@ import { canManageInstitute } from '../../Context/Access';
 import { Award, Plus, FileText, Printer, Send, Pencil, Trash2, Ticket } from 'lucide-react';
 
 export const ExamsView: React.FC = () => {
-  const { exams, students, sendNotification, templates, deleteExam, profile } = useInstitute();
+  const { exams, students, sendNotification, templates, deleteExam, profile, notifyTest } = useInstitute();
   const { user } = useAuth();
   const office = canManageInstitute(user?.role);
   const [editingExam, setEditingExam] = useState<Exam | null>(null);
@@ -29,6 +29,7 @@ export const ExamsView: React.FC = () => {
   const [reportCardStudent, setReportCardStudent] = useState<Student | null>(null);
   const [broadcastSentExamId, setBroadcastSentExamId] = useState<string | null>(null);
   const [testNotice, setTestNotice] = useState<{ examId: string; text: string } | null>(null);
+  const [scheduledNotice, setScheduledNotice] = useState('');
 
   const currentExam = exams.find(e => e.id === selectedExamId) || exams[0];
   // Archived students are shown only if they already have a result in this exam
@@ -102,41 +103,32 @@ export const ExamsView: React.FC = () => {
   // "Tell parents": the parents of the batch get the date of the test, what it covers and the marks, by WhatsApp (queued in
   // Parent Broadcasts, "Send now" on each) and by email (at once, when the parent has an email)
   const handleTestNotice = async (exam: Exam) => {
-    const batchStudents = students.filter(st => st.batchId === exam.batchId && st.status !== 'inactive');
-    const topics = (exam.syllabusTopics || []).filter(Boolean).join(', ');
-    let queued = 0;
-    for (const st of batchStudents) {
-      if (!st.parentPhone) continue;
-      sendNotification({
-        type: 'general_announcement',
-        channel: 'whatsapp',
-        recipientName: st.parentName,
-        recipientPhone: st.parentPhone,
-        studentName: st.name,
-        studentId: st.id,
-        content:
-          `Dear ${st.parentName}, ${st.name} has a test: ${exam.title}${exam.subject ? ` (${exam.subject})` : ''} on ${formatDate(exam.date)}. ` +
-          `Maximum marks: ${exam.maxMarks}.${topics ? ` It covers: ${topics}.` : ''} Please make sure ${st.name} is ready. - ${profile.name}`,
-        status: 'pending'
-      });
-      queued++;
-    }
+    // The same notice as when the test was scheduled: ALL the parents of the batch (the parent login, and WhatsApp in Parent Broadcasts)
+    const queued = notifyTest(exam, 'again');
     let emailPart = '';
-    try {
-      const r = await emailTestNotice(exam.id);
-      emailPart = r.sent > 0 ? ` ${r.sent} parent${r.sent === 1 ? ' was' : 's were'} also emailed.` : '';
-    } catch {
-      /* the WhatsApp messages are queued all the same */
+    if (office) {
+      try {
+        const r = await emailTestNotice(exam.id);
+        emailPart = r.sent > 0 ? ` ${r.sent} parent${r.sent === 1 ? ' was' : 's were'} also emailed.` : '';
+      } catch {
+        /* the messages are sent all the same */
+      }
     }
     setTestNotice({
       examId: exam.id,
-      text: queued > 0 ? `${queued} message${queued === 1 ? '' : 's'} are waiting in Parent Broadcasts (press Send now on each).${emailPart}` : `No parent number found in this batch.${emailPart}`
+      text: queued > 0 ? `The parents of ${queued} student${queued === 1 ? '' : 's'} were told: it is in their bell, and waiting in Parent Broadcasts for WhatsApp.${emailPart}` : 'There is no student in this batch yet.'
     });
     setTimeout(() => setTestNotice(null), 6000);
   };
 
   return (
     <div className="space-y-6">
+      {scheduledNotice && (
+        <div role="status" className="p-3 text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg">
+          {scheduledNotice}
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -271,7 +263,7 @@ export const ExamsView: React.FC = () => {
                     Enter / Edit Scores
                   </button>
 
-                  {office && currentExam.status !== 'published' && currentExam.date >= toLocalISODate() && (
+                  {(office || user?.role === 'teacher') && currentExam.status !== 'published' && currentExam.date >= toLocalISODate() && (
                     <button
                       onClick={() => void handleTestNotice(currentExam)}
                       title="Tell the parents of this batch the date of the test"
@@ -437,7 +429,14 @@ export const ExamsView: React.FC = () => {
 
       {/* Modals */}
       {isCreateModalOpen && (
-        <CreateExamModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
+        <CreateExamModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onSuccess={told => {
+            setScheduledNotice(told > 0 ? `Test scheduled. The parents of ${told} student${told === 1 ? '' : 's'} were told: it is in their bell, and waiting in Parent Broadcasts for WhatsApp.` : 'Test scheduled. There is no student in this batch yet, so no parent was told.');
+            setTimeout(() => setScheduledNotice(''), 7000);
+          }}
+        />
       )}
 
       {gradingExam && (

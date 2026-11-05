@@ -36,7 +36,9 @@ const LOG_LABEL: Record<string, [string, string]> = {
   schedule_change: ['Schedule', 'bg-indigo-100 text-indigo-700'],
   general_announcement: ['Message', 'bg-slate-100 text-slate-700'],
   new_student: ['New student', 'bg-emerald-100 text-emerald-700'],
-  new_teacher: ['New teacher', 'bg-teal-100 text-teal-700']
+  new_teacher: ['New teacher', 'bg-teal-100 text-teal-700'],
+  homework: ['Homework', 'bg-violet-100 text-violet-700'],
+  test_notice: ['Test', 'bg-orange-100 text-orange-700']
 };
 
 const logTime = (ts: string) => new Date(ts.replace(' ', 'T')).getTime() || 0;
@@ -81,9 +83,8 @@ export const NoticeBell: React.FC<{ onOpen: (tab: TabId) => void }> = ({ onOpen 
         tab: 'notices' as const
       }));
     for (const l of notificationLogs) {
-      const aboutPeople = l.type === 'new_student' || l.type === 'new_teacher';
       if (role === 'teacher' && l.type !== 'new_student') continue;
-      if (role === 'admin' && !aboutPeople) continue; // the messages to the parents are not notifications for the principal
+      if (role === 'admin' && l.channel !== 'app') continue; // the messages to the parents are not notifications for the principal
       if (role === 'student' && (!user?.isParent || l.channel === 'app')) continue; // a student gets no message that is for the parent
       if (role !== 'admin' && role !== 'teacher' && role !== 'student') continue;
       const [label, tone] = LOG_LABEL[l.type] ?? ['Message', 'bg-slate-100 text-slate-700'];

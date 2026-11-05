@@ -77,8 +77,10 @@ function MainApp() {
   // the number on the sidebar: what is new on the Notice Board (it goes away when the page is opened)
   const { memory: bellMemory } = useBellMemory(user?.id);
   const activityLogs =
-    user?.role === 'admin' || user?.role === 'teacher'
-      ? notificationLogs.filter(l => l.type === 'new_student' || l.type === 'new_teacher')
+    user?.role === 'admin'
+      ? notificationLogs.filter(l => l.channel === 'app')
+      : user?.role === 'teacher'
+      ? notificationLogs.filter(l => l.type === 'new_student')
       : user?.role === 'student' && user.isParent
       ? notificationLogs.filter(l => l.channel !== 'app') // the messages of the coaching about the child
       : [];
