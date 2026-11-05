@@ -10,6 +10,7 @@ import { canAccessTab, canManageInstitute } from './Context/Access';
 import { useLang } from './i18n/LangContext';
 import type { TabId } from './Context/Access';
 import { hasSuperSession, useSyncStatus } from './components/utils/api';
+import { useBellMemory } from './components/utils/bellMemory';
 import { tabPath, useTabRoute } from './components/utils/useTabRoute';
 
 import { DashboardView } from './components/views/DashboardView';
@@ -71,8 +72,12 @@ import type { LucideIcon } from 'lucide-react';
 import { FeeTransaction, Student } from './types';
 
 function MainApp() {
-  const { profile, students, transactions, notificationLogs } = useInstitute();
+  const { profile, students, transactions, notificationLogs, announcements } = useInstitute();
   const { user, signOut } = useAuth();
+  // the numbers on the sidebar: what is new on the Notice Board and on Parent Broadcasts (it goes away when the page is opened)
+  const { memory: bellMemory } = useBellMemory(user?.id);
+  const newNotices = announcements.filter(a => a.authorId !== user?.id && !bellMemory.pageNotices.includes(a.id)).length;
+  const newBroadcasts = notificationLogs.filter(l => l.channel !== 'app' && !bellMemory.pageBroadcast.includes(l.id)).length;
   const { t } = useLang();
 
   const role = user?.role;
@@ -122,7 +127,7 @@ function MainApp() {
   const dashboardLabel =
     user?.isParent ? 'Parent Portal' : role === 'student' ? 'My Portal' : role === 'teacher' ? 'My Dashboard' : 'Dashboard';
 
-  const navItems: { id: TabId; label: string; icon: LucideIcon; badge?: number }[] = [
+  const navItems: { id: TabId; label: string; icon: LucideIcon; badge?: number; fresh?: boolean }[] = [
     { id: 'dashboard', label: dashboardLabel, icon: LayoutDashboard },
     { id: 'students', label: 'Admissions & Students', icon: Users, badge: students.length },
     { id: 'enquiries', label: 'Enquiries', icon: PhoneCall },
@@ -130,8 +135,8 @@ function MainApp() {
     { id: 'fees', label: 'Fees & Invoicing', icon: CreditCard },
     { id: 'exams', label: role === 'teacher' ? 'Tests & Marks' : 'Exams & Results', icon: Award },
     { id: 'batches', label: 'Batches & Timetable', icon: Layers },
-    { id: 'notifications', label: 'Parent Broadcasts', icon: Bell, badge: notificationLogs.length },
-    { id: 'notices', label: 'Notice Board', icon: Megaphone },
+    { id: 'notifications', label: 'Parent Broadcasts', icon: Bell, badge: newBroadcasts, fresh: true },
+    { id: 'notices', label: 'Notice Board', icon: Megaphone, badge: newNotices, fresh: true },
     { id: 'material', label: role === 'student' ? 'Study Material' : 'Study Material & Homework', icon: BookOpen },
     { id: 'library', label: 'Library', icon: Library },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
@@ -318,8 +323,13 @@ function MainApp() {
                     <span>{t(item.label)}</span>
                   </div>
 
-                  {isManager && typeof item.badge === 'number' && item.badge > 0 && (
-                    <span className="font-mono text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.2 rounded font-medium">
+                  {(isManager || item.fresh) && typeof item.badge === 'number' && item.badge > 0 && (
+                    <span
+                      className={`font-mono text-[10px] px-1.5 py-0.2 rounded font-medium ${
+                        item.fresh ? 'bg-rose-600 text-white font-bold' : 'bg-slate-800 text-slate-300'
+                      }`}
+                      title={item.fresh ? 'New' : undefined}
+                    >
                       {item.badge}
                     </span>
                   )}

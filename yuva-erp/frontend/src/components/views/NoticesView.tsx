@@ -1,10 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import { useAuth } from '../../Context/AuthContext';
 import { canManageInstitute } from '../../Context/Access';
 import type { Announcement } from '../../types';
 import { NoticeModal } from '../modals/NoticeModal';
 import { formatDateTime } from '../utils/helpers';
+import { addIds, useBellMemory } from '../utils/bellMemory';
 import { Megaphone, Plus, Pencil, Trash2, Pin, PinOff, Users, Search } from 'lucide-react';
 
 export const NoticesView: React.FC = () => {
@@ -17,6 +18,17 @@ export const NoticesView: React.FC = () => {
   const [editing, setEditing] = useState<{ notice: Announcement | null } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Announcement | null>(null);
   const [query, setQuery] = useState('');
+
+  // A notice that somebody else wrote and that was not seen before gets a "New" tag while this page is open. Opening the page
+  // means seen: the number on the sidebar goes away.
+  const { memory, update } = useBellMemory(user?.id);
+  const [freshIds, setFreshIds] = useState<string[]>([]);
+  useEffect(() => {
+    const unseen = announcements.filter(a => a.authorId !== user?.id && !memory.pageNotices.includes(a.id)).map(a => a.id);
+    if (!unseen.length) return;
+    setFreshIds(prev => addIds(prev, unseen));
+    update(m => ({ ...m, pageNotices: addIds(m.pageNotices, unseen) }));
+  }, [announcements, memory.pageNotices, user?.id, update]);
 
   const sorted = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -88,6 +100,7 @@ export const NoticesView: React.FC = () => {
                   <div className="flex items-center gap-2 flex-wrap">
                     {n.pinned && <Pin className="w-3.5 h-3.5 text-indigo-600" />}
                     <h2 className="text-sm font-bold text-slate-900">{n.title}</h2>
+                    {freshIds.includes(n.id) && <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-rose-600 text-white">New</span>}
                     <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
                       <Users className="w-3 h-3" />
                       {n.audience === 'all' ? 'Everybody' : n.audience === 'teachers' ? 'Teachers' : n.batchName || 'Batch'}

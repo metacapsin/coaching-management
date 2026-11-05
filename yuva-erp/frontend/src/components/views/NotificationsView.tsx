@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
+import { useAuth } from '../../Context/AuthContext';
+import { addIds, useBellMemory } from '../utils/bellMemory';
 import type { Student } from '../../types';
 import { fillTemplate, openWhatsApp, toLocalISODate, formatDate } from '../utils/helpers';
 import { Pager } from '../ui/Pager';
@@ -139,6 +141,18 @@ export const NotificationsView: React.FC = () => {
 
   // the lines that only the bell shows (a new student or teacher) are not messages to the parents
   const parentLogs = notificationLogs.filter(l => l.channel !== 'app');
+
+  // A message that was not seen before gets a "New" tag while this page is open. Opening the page means seen: the number on the
+  // sidebar goes away.
+  const { user } = useAuth();
+  const { memory, update } = useBellMemory(user?.id);
+  const [freshIds, setFreshIds] = useState<string[]>([]);
+  useEffect(() => {
+    const unseen = notificationLogs.filter(l => l.channel !== 'app' && !memory.pageBroadcast.includes(l.id)).map(l => l.id);
+    if (!unseen.length) return;
+    setFreshIds(prev => addIds(prev, unseen));
+    update(m => ({ ...m, pageBroadcast: addIds(m.pageBroadcast, unseen) }));
+  }, [notificationLogs, memory.pageBroadcast, update]);
   const pendingLogs = parentLogs.filter(l => l.status === 'pending');
   const lq = logQuery.trim().toLowerCase();
   const shownLogs = (logFilter === 'pending' ? pendingLogs : parentLogs).filter(
@@ -527,6 +541,7 @@ export const NotificationsView: React.FC = () => {
                 {pagedLogs.items.map(log => (
                   <tr key={log.id} className="hover:bg-slate-50/60 transition-colors">
                     <td className="p-3.5 font-mono text-slate-400 whitespace-nowrap">
+                      {freshIds.includes(log.id) && <span className="mr-1.5 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-rose-600 text-white font-sans">New</span>}
                       {log.timestamp}
                     </td>
 

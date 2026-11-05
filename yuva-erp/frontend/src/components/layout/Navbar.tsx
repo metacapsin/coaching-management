@@ -3,13 +3,11 @@ import { useInstitute } from '../../Context/InstituteContext';
 import {
   Search,
   Bell,
-  Trash2,
   UserPlus,
   Settings,
   Download,
   ChevronDown,
   X,
-  MessageSquare,
   LogOut,
   ShieldCheck,
   GraduationCap
@@ -20,7 +18,6 @@ import { useLang } from '../../i18n/LangContext';
 import { downloadFromServer } from '../utils/api';
 import { canManageInstitute } from '../../Context/Access';
 import { NoticeBell } from './NoticeBell';
-import type { NotificationLog } from '../../types';
 import type { TabId } from '../../Context/Access';
 
 export type { TabId };
@@ -51,27 +48,6 @@ const TAB_META: Record<TabId, { title: string; subtitle: string }> = {
   library: { title: 'Library', subtitle: 'Books to read online' }
 };
 
-const SEEN_KEY = 'academia_os_notif_seen_v1';
-
-const typeStyle = (type: string) => {
-  switch (type) {
-    case 'attendance_absent':
-      return 'bg-rose-100 text-rose-700';
-    case 'fee_due':
-      return 'bg-amber-100 text-amber-700';
-    case 'exam_result':
-      return 'bg-blue-100 text-blue-700';
-    case 'schedule_change':
-      return 'bg-indigo-100 text-indigo-700';
-    case 'new_student':
-      return 'bg-emerald-100 text-emerald-700';
-    case 'new_teacher':
-      return 'bg-teal-100 text-teal-700';
-    default:
-      return 'bg-slate-100 text-slate-700';
-  }
-};
-
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   onNavigate,
@@ -79,7 +55,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onAddTeacher,
   onSelectStudent
 }) => {
-  const { profile, students, batches, notificationLogs, saveState, deleteNotification } = useInstitute();
+  const { profile, students, batches, saveState } = useInstitute();
   const { user, signOut, isAdmin } = useAuth();
   const canManage = canManageInstitute(user?.role);
 
@@ -89,25 +65,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [activeIndex, setActiveIndex] = useState(0);
 
   // Dropdown state
-  const [bellOpen, setBellOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-
-  // Unread notifications (count of logs already seen is remembered in the browser)
-  const [seenCount, setSeenCount] = useState<number>(() => {
-    try {
-      const stored = localStorage.getItem(SEEN_KEY);
-      return stored ? Number(stored) || 0 : 0;
-    } catch {
-      return 0;
-    }
-  });
 
   // Live clock (updates every 30 seconds)
   const [now, setNow] = useState(new Date());
 
   const inputRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
-  const bellRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
   const { t } = useLang();
@@ -117,63 +81,6 @@ export const Navbar: React.FC<NavbarProps> = ({
       : activeTab === 'dashboard' && user?.role === 'teacher'
       ? { title: 'My Dashboard', subtitle: 'Your batches, classes and students' }
       : TAB_META[activeTab];
-  // The lines that only the bell shows (a new student, a new teacher) are also read by the teachers, so the principal deleting
-  // one only hides it from the own bell (remembered in this browser). The messages to the parents are really deleted.
-  const hiddenKey = `academia_os_bell_hidden_v1_${user?.id ?? 'x'}`;
-  const [hiddenIds, setHiddenIds] = useState<string[]>(() => {
-    try {
-      const raw = JSON.parse(localStorage.getItem(hiddenKey) || '[]');
-      return Array.isArray(raw) ? raw : [];
-    } catch {
-      return [];
-    }
-  });
-  const hide = (ids: string[]) => {
-    const next = Array.from(new Set([...hiddenIds, ...ids]));
-    setHiddenIds(next);
-    try {
-      localStorage.setItem(hiddenKey, JSON.stringify(next));
-    } catch {
-      /* ignore storage errors */
-    }
-  };
-  const bellLogs = notificationLogs.filter(l => !hiddenIds.includes(l.id));
-
-  const unread = Math.max(0, bellLogs.length - seenCount);
-  // the newest `unread` messages are the ones not seen yet (the list is newest first)
-  // (opening the bell marks them seen, so the number is kept while the list is open: the blue dots stay until it is closed)
-  const [freshCount, setFreshCount] = useState(0);
-  const isNew = (index: number) => index < freshCount;
-
-  const rememberSeen = (count: number) => {
-    setSeenCount(count);
-    try {
-      localStorage.setItem(SEEN_KEY, String(count));
-    } catch {
-      /* ignore storage errors */
-    }
-  };
-
-  // Deleting keeps the "seen" count right: it can never be more than the messages that are left
-  const removeNotification = (log: NotificationLog, index: number) => {
-    setFreshCount(c => (index < c ? c - 1 : c));
-    rememberSeen(Math.min(seenCount, Math.max(0, bellLogs.length - 1)));
-    if (log.channel === 'app') hide([log.id]);
-    else deleteNotification(log.id);
-  };
-  const removeAllNotifications = () => {
-    if (!window.confirm('Delete all notifications from this list?')) return;
-    setFreshCount(0);
-    rememberSeen(0);
-    hide(bellLogs.filter(l => l.channel === 'app').map(l => l.id));
-    for (const l of bellLogs) if (l.channel !== 'app') deleteNotification(l.id);
-  };
-  const recentLogs = bellLogs.slice(0, 6);
-
-  // A click on a line shows the whole message right there (a second click closes it again)
-  const [openLogId, setOpenLogId] = useState<string | null>(null);
-  const toggleLog = (id: string) => setOpenLogId(prev => (prev === id ? null : id));
-
   // Clock tick
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 30000);
@@ -185,7 +92,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     const onMouseDown = (e: MouseEvent) => {
       const target = e.target as Node;
       if (searchRef.current && !searchRef.current.contains(target)) setSearchOpen(false);
-      if (bellRef.current && !bellRef.current.contains(target)) setBellOpen(false);
       if (profileRef.current && !profileRef.current.contains(target)) setProfileOpen(false);
     };
     document.addEventListener('mousedown', onMouseDown);
@@ -208,7 +114,6 @@ export const Navbar: React.FC<NavbarProps> = ({
         inputRef.current?.focus();
       }
       if (e.key === 'Escape') {
-        setBellOpen(false);
         setProfileOpen(false);
       }
     };
@@ -262,35 +167,13 @@ export const Navbar: React.FC<NavbarProps> = ({
     }
   };
 
-  const markNotificationsSeen = () => {
-    setSeenCount(bellLogs.length);
-    try {
-      localStorage.setItem(SEEN_KEY, String(bellLogs.length));
-    } catch {
-      /* ignore storage errors */
-    }
-  };
-
-  const toggleBell = () => {
-    const next = !bellOpen;
-    setBellOpen(next);
-    setProfileOpen(false);
-    setSearchOpen(false);
-    if (next) {
-      setFreshCount(unread);
-      markNotificationsSeen();
-    }
-  };
-
   const toggleProfile = () => {
     setProfileOpen(prev => !prev);
-    setBellOpen(false);
     setSearchOpen(false);
   };
 
   const goTo = (tab: TabId) => {
     onNavigate(tab);
-    setBellOpen(false);
     setProfileOpen(false);
   };
 
@@ -442,114 +325,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
-          {/* A teacher, a student or a parent: the notices of the coaching */}
-          {!canManage && user?.role !== 'super' && <NoticeBell />}
-
-          {/* Notifications bell */}
-          <div ref={bellRef} className={`relative ${canManage ? '' : 'hidden'}`}>
-            <button
-              type="button"
-              onClick={toggleBell}
-              className="relative p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-              title="Notifications"
-            >
-              <Bell className="w-5 h-5" />
-              {unread > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center">
-                  {unread > 9 ? '9+' : unread}
-                </span>
-              )}
-            </button>
-
-            {bellOpen && (
-              <div className="absolute right-0 mt-2 w-[min(24rem,calc(100vw-2rem))] bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden z-40">
-                <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-slate-900">Recent Notifications</h3>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[11px] text-slate-400">{bellLogs.length} total</span>
-                    {bellLogs.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={removeAllNotifications}
-                        className="text-[11px] font-semibold text-rose-600 hover:text-rose-700 hover:underline"
-                      >
-                        Clear all
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {recentLogs.length === 0 ? (
-                  <div className="p-6 text-center text-xs text-slate-400">
-                    No notifications dispatched yet.
-                  </div>
-                ) : (
-                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
-                    {recentLogs.map((log, index) => (
-                      <div
-                        key={log.id}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => toggleLog(log.id)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            toggleLog(log.id);
-                          }
-                        }}
-                        title="Click to read the whole message"
-                        className="group px-4 py-3 hover:bg-slate-50 transition-colors cursor-pointer focus:outline-none focus:bg-slate-50"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span
-                            className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded ${typeStyle(
-                              log.type
-                            )}`}
-                          >
-                            {log.type.replace(/_/g, ' ')}
-                          </span>
-                          <span className="flex items-center gap-1.5">
-                            {isNew(index) && <span className="w-2 h-2 rounded-full bg-blue-500" title="New" />}
-                            <span className="text-[10px] font-mono text-slate-400">{log.timestamp}</span>
-                            <button
-                              type="button"
-                              onClick={e => {
-                                e.stopPropagation(); // deleting must not open it
-                                removeNotification(log, index);
-                              }}
-                              aria-label="Delete this notification"
-                              title="Delete this notification"
-                              className="p-1 -mr-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </span>
-                        </div>
-                        <div className="mt-1.5 flex items-start gap-2">
-                          <MessageSquare className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" />
-                          <div className="min-w-0">
-                            <div className="text-xs font-semibold text-slate-900 truncate">
-                              {log.studentName}
-                              {log.channel !== 'app' && <span className="font-normal text-slate-500"> · to {log.recipientName}</span>}
-                            </div>
-                            <p className={`text-[11px] text-slate-500 mt-0.5 ${openLogId === log.id ? 'whitespace-pre-line break-words' : 'line-clamp-2'}`}>{log.content}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => goTo('notifications')}
-                  className="w-full px-4 py-2.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 border-t border-slate-100 transition-colors"
-                >
-                  Open Parent Broadcast Center →
-                </button>
-              </div>
-            )}
-          </div>
+          {/* The bell of everybody: the notices, and for the principal / a teacher more (see NoticeBell) */}
+          {user?.role !== 'super' && <NoticeBell onOpenBroadcast={canManage ? () => goTo('notifications') : undefined} />}
 
           {/* Profile menu */}
           <div ref={profileRef} className="relative">
