@@ -48,7 +48,7 @@ export const NoticesCard: React.FC<{ onNavigate: Go; limit?: number }> = ({ onNa
               </div>
               <p className="text-[11px] text-slate-500 line-clamp-2 mt-0.5">{n.body}</p>
               <p className="text-[10px] text-slate-400 mt-1">
-                {n.audience === 'all' ? 'Everybody' : n.batchName} · {formatDate(n.createdAt)}
+                {n.audience === 'all' ? 'Everybody' : n.audience === 'teachers' ? 'Teachers' : n.batchName} · {formatDate(n.createdAt)}
               </p>
             </li>
           ))}

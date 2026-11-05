@@ -303,6 +303,30 @@ export async function coachingName(c: Ctx, s: Store): Promise<string> {
 }
 
 /** Which tab of the sign in form a kind of person uses. */
+/** A line in the notification bell of the principal: a new student or teacher came (or was added). It must never break the
+ * request that made it, so a failure is swallowed. */
+export async function notifyNewPerson(
+  s: any,
+  kind: 'new_student' | 'new_teacher',
+  name: string,
+  content: string,
+  batch?: { id: string; name?: string; grade?: string; studentId?: string },
+): Promise<void> {
+  try {
+    const d = new Date();
+    const p = (n: number) => String(n).padStart(2, '0');
+    const timestamp = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+    await s.applyList(
+      'notificationLogs',
+      [{ id: `log-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`, timestamp, type: kind, channel: 'app', recipientName: 'Principal', recipientPhone: '', studentName: name, content, status: 'sent', ...(batch ? { batchId: batch.id, batchName: batch.name ?? '', grade: batch.grade ?? '', studentId: batch.studentId } : {}) }],
+      [],
+    );
+    await s.bump();
+  } catch {
+    /* the notification is a courtesy */
+  }
+}
+
 export const portalOf = (role: string, isParent = false): string =>
   role === 'student' && isParent ? 'parent' : role === 'teacher' || role === 'student' ? 'member' : 'admin';
 

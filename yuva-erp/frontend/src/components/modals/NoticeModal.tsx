@@ -28,7 +28,7 @@ export const NoticeModal: React.FC<NoticeModalProps> = ({ notice, onClose, onSav
   const [form, setForm] = useState({
     title: notice?.title ?? '',
     body: notice?.body ?? '',
-    audience: (office ? notice?.audience : 'batch') ?? ('all' as 'all' | 'batch'),
+    audience: (office ? notice?.audience : 'batch') ?? ('all' as 'all' | 'batch' | 'teachers'),
     batchId: notice?.batchId ?? myBatches[0]?.id ?? '',
     pinned: notice?.pinned ?? false
   });
@@ -101,10 +101,11 @@ export const NoticeModal: React.FC<NoticeModalProps> = ({ notice, onClose, onSav
             <select
               value={form.audience}
               disabled={!office}
-              onChange={e => setForm({ ...form, audience: e.target.value as 'all' | 'batch' })}
+              onChange={e => setForm({ ...form, audience: e.target.value as 'all' | 'batch' | 'teachers' })}
               className={`${inputClass()} bg-white`}
             >
               {office && <option value="all">Everybody (all students)</option>}
+              {office && <option value="teachers">Teachers only (for example a meeting)</option>}
               <option value="batch">One batch</option>
             </select>
           </div>

@@ -18,6 +18,7 @@ import {
   nowIso,
   ok,
   portalOf,
+  notifyNewPerson,
   requireSetup,
   route,
   startSession,
@@ -244,6 +245,7 @@ route('/api/auth/register-teacher', ['POST'], 'public', async (c) => {
   await addUserOrConflict(c, user);
   await s.bump();
   await s.audit(user, 'register-teacher', 'Waiting for approval');
+  await notifyNewPerson(s, 'new_teacher', user.name, `${user.name} asked to join as a teacher${user.subject ? ` (${user.subject})` : ''}. Approve the request in Team & Access.`);
   const coaching = await coachingName(c, s);
   mail(
     user.email,
@@ -477,6 +479,7 @@ route('/api/auth/register-new-student', ['POST'], 'public', async (c) => {
   await s.incField('batches', batch.id, 'enrolledCount', 1);
   await s.bump();
   await s.audit(user, 'register-student', `New registration ${student.rollNo}`);
+  await notifyNewPerson(s, 'new_student', student.name, `${student.name} (Roll No: ${student.rollNo}) registered for ${batch.name}. Confirm the admission and set the fee.`, { id: batch.id, name: batch.name, grade: student.grade, studentId: student.id });
   return startSession(c, user);
 });
 
@@ -708,6 +711,9 @@ route('/api/users', ['POST'], 'admin', async (c) => {
   await addUserOrConflict(c, user);
   await s.bump();
   await s.audit(c.user, 'user-add', `${user.email} (${roleLabel(role)})`);
+  if (!isParent && (role === 'teacher' || role === 'student')) {
+    await notifyNewPerson(s, role === 'teacher' ? 'new_teacher' : 'new_student', user.name, `${user.name} was added as a ${role}.`);
+  }
   await welcomeMail(c, s, user, b.password);
   return { user: auth.publicUser(user) };
 });

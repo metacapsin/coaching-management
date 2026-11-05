@@ -4,7 +4,7 @@ import type { Student } from '../../types';
 import { fillTemplate, openWhatsApp, toLocalISODate, formatDate } from '../utils/helpers';
 import { Pager } from '../ui/Pager';
 import { usePaged } from '../utils/usePaged';
-import { Bell, MessageSquare, Send, CheckCircle2, Edit3 } from 'lucide-react';
+import { Bell, MessageSquare, Send, CheckCircle2, Edit3, Trash2 } from 'lucide-react';
 
 export const NotificationsView: React.FC = () => {
   const {
@@ -15,6 +15,7 @@ export const NotificationsView: React.FC = () => {
     notificationLogs,
     sendNotification,
     updateNotificationStatus,
+    deleteNotification,
     profile
   } = useInstitute();
 
@@ -136,9 +137,11 @@ export const NotificationsView: React.FC = () => {
     setTimeout(() => setDispatchSuccessMsg(''), 5000);
   };
 
-  const pendingLogs = notificationLogs.filter(l => l.status === 'pending');
+  // the lines that only the bell shows (a new student or teacher) are not messages to the parents
+  const parentLogs = notificationLogs.filter(l => l.channel !== 'app');
+  const pendingLogs = parentLogs.filter(l => l.status === 'pending');
   const lq = logQuery.trim().toLowerCase();
-  const shownLogs = (logFilter === 'pending' ? pendingLogs : notificationLogs).filter(
+  const shownLogs = (logFilter === 'pending' ? pendingLogs : parentLogs).filter(
     l => !lq || `${l.recipientName} ${l.studentName ?? ''} ${l.content}`.toLowerCase().includes(lq)
   );
   const pagedLogs = usePaged(shownLogs, 20, logFilter + lq);
@@ -201,7 +204,7 @@ export const NotificationsView: React.FC = () => {
               activeTab === 'logs' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
-            Audit Logs ({notificationLogs.length})
+            Audit Logs ({parentLogs.length})
           </button>
         </div>
       </div>
@@ -487,7 +490,7 @@ export const NotificationsView: React.FC = () => {
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
           <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
             <h3 className="text-sm font-semibold text-slate-900">
-              Notification Gateway Dispatch History ({notificationLogs.length})
+              Notification Gateway Dispatch History ({parentLogs.length})
             </h3>
             <div className="flex items-center gap-2">
               <input
@@ -517,6 +520,7 @@ export const NotificationsView: React.FC = () => {
                   <th className="p-3.5">Channel / Type</th>
                   <th className="p-3.5">Message Content</th>
                   <th className="p-3.5 text-right">Status</th>
+                  <th className="p-3.5 w-10"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -562,6 +566,17 @@ export const NotificationsView: React.FC = () => {
                           {log.status === 'sent' ? 'Sent' : log.status}
                         </span>
                       )}
+                    </td>
+
+                    <td className="p-3.5 text-right">
+                      <button
+                        onClick={() => deleteNotification(log.id)}
+                        aria-label="Delete this message"
+                        title="Delete this message"
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </td>
                   </tr>
                 ))}

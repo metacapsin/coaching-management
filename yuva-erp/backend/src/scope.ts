@@ -24,7 +24,55 @@ const jsRound = (x: number): number => Math.floor(x + 0.5); // like Math.round (
 
 const orNull = (v: any) => (v === undefined ? null : v);
 
+// ---------- who is told about a new student ----------
+
+const subjectKey = (v: any): string => String(v ?? '').trim().toLowerCase();
+
+/** "Class 12", "12th", "12" -> "12". Anything else is compared as lower case text. */
+export function gradeKey(v: any): string {
+  const t = String(v ?? '').trim().toLowerCase();
+  const m = t.match(/(\d{1,2})\s*(?:st|nd|rd|th)?\b/);
+  return m ? String(Number(m[1])) : t;
+}
+
+/** The class written in the name of a batch ("Class 10 Board Champions"), when it says one. */
+const gradeOfBatchName = (name: any): string | null => {
+  const t = String(name ?? '');
+  const m = t.match(/class\s*(\d{1,2})\b/i) || t.match(/\b(\d{1,2})\s*(?:st|nd|rd|th)\b/i);
+  return m ? String(Number(m[1])) : null;
+};
+
+/**
+ * Does this teacher get the line "a new student joined" in the bell? Only when the teacher teaches the subject of the student
+ * (the subjects of the batch the student joined; an English student is told to the English teacher) AND the class of the student
+ * (a student of class 12 is told to the teachers of class 12, known from the classes of their own batches). When the batch has no
+ * subject, or the teacher no subject / class on record, the teacher is told if the batch is one of theirs.
+ */
+export function teacherGetsNewStudent(teacher: any, log: any, batch: any, teacherBatches: any[], teacherStudents: any[]): boolean {
+  const mine = (teacher.batchIds || []).includes(log.batchId);
+  const mySubject = subjectKey(teacher.subject);
+  const batchSubjects: string[] = (batch?.subjects || []).map(subjectKey).filter(Boolean);
+  const subjectOk =
+    mySubject && batchSubjects.length ? batchSubjects.some((s) => s.includes(mySubject) || mySubject.includes(s)) : mine;
+
+  const myGrades = new Set<string>();
+  for (const st of teacherStudents) if (st.id !== log.studentId && st.grade) myGrades.add(gradeKey(st.grade));
+  for (const b of teacherBatches) {
+    const g = gradeOfBatchName(b.name);
+    if (g) myGrades.add(g);
+  }
+  const classOk = log.grade && myGrades.size ? myGrades.has(gradeKey(log.grade)) : mine;
+  return subjectOk && classOk;
+}
+
 // ---------- reading ----------
+
+async function newStudentLogsFor(user: any, store: Store, ids: string[]): Promise<any[]> {
+  const logs = await store.find('notificationLogs', { type: 'new_student', batchId: { $exists: true } });
+  if (!logs.length) return [];
+  const [allBatches, myBatches, myStudents] = [await store.find('batches'), await store.find('batches', { _id: { $in: ids } }), await store.find('students', { batchId: { $in: ids } })];
+  return logs.filter((l) => teacherGetsNewStudent(user, l, allBatches.find((b) => b.id === l.batchId), myBatches, myStudents));
+}
 
 export async function scopeInstitute(user: any, store: Store): Promise<any> {
   const role = user.role;
@@ -56,13 +104,15 @@ export async function scopeInstitute(user: any, store: Store): Promise<any> {
       exams: await store.find('exams', { batchId: { $in: ids } }),
       timetable: await store.find('timetable', { batchId: { $in: ids } }),
       transactions: [],
-      notificationLogs: [],
+      // only the lines "a new student joined" for the subject and the class of this teacher
+      notificationLogs: await newStudentLogsFor(user, store, ids),
       enquiries: [],
       expenses: [],
       salaries: [],
       staffAttendance: [],
       books: await store.find('books'),
-      announcements: await store.find('announcements', { $or: [{ audience: 'all' }, { batchId: { $in: ids } }] }),
+      // for everybody, for the teachers (a meeting) and for the own batches
+      announcements: await store.find('announcements', { $or: [{ audience: 'all' }, { audience: 'teachers' }, { batchId: { $in: ids } }] }),
       materials,
       submissions: await store.find('submissions', { materialId: { $in: (await store.find('materials', { batchId: { $in: ids } })).map((m) => m.id) } }),
     };
@@ -136,7 +186,8 @@ export async function scopeInstitute(user: any, store: Store): Promise<any> {
     timetable: await store.find('timetable', { batchId: orNull(me.batchId) }),
     transactions: await store.find('transactions', { studentId: me.id }),
     notificationLogs: logs,
-    announcements: await store.find('announcements', { $or: [{ audience: 'all' }, { batchId: orNull(me.batchId) }] }),
+    // never the notices for the teachers only
+    announcements: await store.find('announcements', { $or: [{ audience: 'all' }, { audience: 'batch', batchId: orNull(me.batchId) }] }),
     materials: await store.find('materials', { batchId: orNull(me.batchId) }),
     books: await store.find('books'),
     submissions: await store.find('submissions', { studentId: me.id }),

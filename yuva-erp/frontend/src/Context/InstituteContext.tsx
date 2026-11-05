@@ -297,6 +297,7 @@ interface InstituteContextType {
     status?: NotificationLog['status'];
   }) => void;
   updateNotificationStatus: (id: string, status: NotificationLog['status']) => void;
+  deleteNotification: (id: string) => void;
   updateTemplate: (id: string, body: string) => void;
 
   // Data management
@@ -519,6 +520,26 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
 
     setStudents(prev => [newStudent, ...prev]);
+
+    // a line in the notification bell: a new student was admitted
+    setNotificationLogs(prev => [
+      {
+        id: uid('log'),
+        timestamp: toLocalDateTime(),
+        type: 'new_student',
+        channel: 'app',
+        recipientName: 'Principal',
+        recipientPhone: '',
+        studentId,
+        studentName: newStudent.name,
+        content: `${newStudent.name} (Roll No: ${rollNo}) joined ${batches.find(b => b.id === newStudent.batchId)?.name || 'a batch'}.`,
+        batchId: newStudent.batchId,
+        batchName: batches.find(b => b.id === newStudent.batchId)?.name || '',
+        grade: newStudent.grade,
+        status: 'sent'
+      },
+      ...prev
+    ]);
 
     // Update batch enrolled count
     setBatches(prev => prev.map(b => b.id === newStudent.batchId ? { ...b, enrolledCount: b.enrolledCount + 1 } : b));
@@ -976,6 +997,11 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setNotificationLogs(prev => prev.map(l => (l.id === id ? { ...l, status } : l)));
   };
 
+  // A notification that was read can be removed from the list
+  const deleteNotification = (id: string) => {
+    setNotificationLogs(prev => prev.filter(l => l.id !== id));
+  };
+
   const updateTemplate = (id: string, body: string) => {
     setTemplates(prev => prev.map(t => t.id === id ? { ...t, templateBody: body } : t));
   };
@@ -1146,6 +1172,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         deleteMaterial,
         sendNotification,
         updateNotificationStatus,
+        deleteNotification,
         updateTemplate,
         resetToDemoData,
         clearAllData

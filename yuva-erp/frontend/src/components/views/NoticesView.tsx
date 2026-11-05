@@ -90,7 +90,7 @@ export const NoticesView: React.FC = () => {
                     <h2 className="text-sm font-bold text-slate-900">{n.title}</h2>
                     <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
                       <Users className="w-3 h-3" />
-                      {n.audience === 'all' ? 'Everybody' : n.batchName || 'Batch'}
+                      {n.audience === 'all' ? 'Everybody' : n.audience === 'teachers' ? 'Teachers' : n.batchName || 'Batch'}
                     </span>
                   </div>
                   <p className="text-xs text-slate-600 mt-2 whitespace-pre-line leading-relaxed">{n.body}</p>

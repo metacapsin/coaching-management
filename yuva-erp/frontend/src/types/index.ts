@@ -2,8 +2,8 @@ export type StudentStatus = 'active' | 'inactive' | 'trial';
 export type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
 export type PaymentMethod = 'Cash' | 'UPI' | 'Bank Transfer' | 'Cheque' | 'Card';
 export type ExamStatus = 'scheduled' | 'grading' | 'published';
-export type NotificationChannel = 'whatsapp' | 'sms' | 'email';
-export type NotificationType = 'attendance_absent' | 'fee_due' | 'exam_result' | 'general_announcement' | 'schedule_change';
+export type NotificationChannel = 'whatsapp' | 'sms' | 'email' | 'app';
+export type NotificationType = 'attendance_absent' | 'fee_due' | 'exam_result' | 'general_announcement' | 'schedule_change' | 'new_student' | 'new_teacher';
 export type EnquiryStatus = 'new' | 'contacted' | 'demo' | 'follow-up' | 'enrolled' | 'lost';
 export type EnquirySource = 'walk-in' | 'phone' | 'website' | 'referral' | 'social' | 'other';
 export type MaterialType = 'link' | 'note' | 'homework';
@@ -128,6 +128,9 @@ export interface NotificationLog {
   studentId?: string;
   studentName: string;
   content: string;
+  batchId?: string; // 'new_student': the batch, so the teacher of that batch gets the line in the bell
+  batchName?: string;
+  grade?: string; // 'new_student': the class of the student
   status: 'delivered' | 'sent' | 'pending';
 }
 
@@ -180,7 +183,7 @@ export interface Announcement {
   id: string;
   title: string;
   body: string;
-  audience: 'all' | 'batch';
+  audience: 'all' | 'batch' | 'teachers'; // 'teachers': only the teachers (for example a meeting)
   batchId?: string;
   batchName?: string;
   pinned?: boolean;

@@ -355,3 +355,157 @@ describe('Super Admins: there is only one', () => {
     assert.equal((await call('POST', '/api/auth/login', { email: 'two@x.com', password: 'Temp12345pw', portal: 'super' }))[0], 401);
   });
 });
+
+describe('The notification bell: new students and teachers', () => {
+  let admin = '';
+  const s = withServer(async (api) => {
+    admin = (await api.call('POST', '/api/auth/setup', { name: 'P', email: 'p@x.com', password: PASSWORD }))[1].token;
+    await api.call('PUT', '/api/institute', { changes: { batches: { upsert: BATCHES }, students: { upsert: STUDENTS } } }, admin);
+  });
+  const call = (...a: Parameters<Api['call']>) => s.api.call(...a);
+  const bell = async () => ((await call('GET', '/api/sync', null, admin))[1].institute.notificationLogs ?? []).filter((l: any) => l.channel === 'app');
+
+  it('1 a teacher or student added by the principal appears in the bell', async () => {
+    assert.equal((await call('POST', '/api/users', { name: 'Neha Teacher', email: 'neha@x.com', password: PASSWORD, role: 'teacher', batchIds: ['b1'] }, admin))[0], 200);
+    assert.equal((await call('POST', '/api/users', { name: 'Alice Student', email: 'alice@x.com', password: PASSWORD, role: 'student', studentId: 's1' }, admin))[0], 200);
+    const lines = await bell();
+    assert.deepEqual(lines.map((l: any) => [l.type, l.studentName]).sort(), [['new_student', 'Alice Student'], ['new_teacher', 'Neha Teacher']]);
+    assert.ok(lines.every((l: any) => l.timestamp && l.content));
+  });
+
+  it('2 a teacher who asks to join appears in the bell, a parent account does not', async () => {
+    const asked = await call('POST', '/api/auth/register-teacher', { name: 'Ravi Joiner', email: 'ravi@x.com', phone: '9876543210', subject: 'Maths', password: PASSWORD });
+    assert.equal(asked[0], 200);
+    assert.ok((await bell()).some((l: any) => l.type === 'new_teacher' && l.studentName === 'Ravi Joiner'));
+    const before = (await bell()).length;
+    await call('POST', '/api/users', { name: 'Parent Of S2', email: 'parent2@x.com', password: PASSWORD, role: 'student', studentId: 's2', isParent: true }, admin);
+    assert.equal((await bell()).length, before);
+  });
+
+  it('3 the principal can delete a notification and clear the list', async () => {
+    const lines = await bell();
+    const one = lines[0].id;
+    assert.equal((await call('PUT', '/api/institute', { changes: { notificationLogs: { remove: [one] } } }, admin))[0], 200);
+    assert.equal((await bell()).some((l: any) => l.id === one), false);
+    const rest = (await bell()).map((l: any) => l.id);
+    assert.equal((await call('PUT', '/api/institute', { changes: { notificationLogs: { remove: rest } } }, admin))[0], 200);
+    assert.equal((await bell()).length, 0);
+  });
+});
+
+describe('Teacher and student bells', () => {
+  let admin = '';
+  let teacherA = '';
+  let teacherB = '';
+  let student = '';
+  const s = withServer(async (api) => {
+    admin = (await api.call('POST', '/api/auth/setup', { name: 'P', email: 'p@x.com', password: PASSWORD }))[1].token;
+    await api.call('PUT', '/api/institute', { changes: { batches: { upsert: BATCHES }, students: { upsert: STUDENTS } } }, admin);
+    await api.call('POST', '/api/users', { name: 'Teacher A', email: 'ta@x.com', password: PASSWORD, role: 'teacher', batchIds: ['b1'] }, admin);
+    await api.call('POST', '/api/users', { name: 'Teacher B', email: 'tb@x.com', password: PASSWORD, role: 'teacher', batchIds: ['b2'] }, admin);
+    await api.call('POST', '/api/users', { name: 'Alice', email: 'alice@x.com', password: PASSWORD, role: 'student', studentId: 's1' }, admin);
+    teacherA = await tokenOf(api, 'ta@x.com', 'member');
+    teacherB = await tokenOf(api, 'tb@x.com', 'member');
+    student = await tokenOf(api, 'alice@x.com', 'member');
+  });
+  const call = (...a: Parameters<Api['call']>) => s.api.call(...a);
+  const seen = async (token: string, list: string) => (await call('GET', '/api/sync', null, token))[1].institute[list] as any[];
+
+  it('1 a notice for the teachers only (a meeting) reaches the teachers and no student', async () => {
+    const meeting = { id: 'an1', title: 'Teachers meeting', body: 'Friday 4 pm', audience: 'teachers', createdAt: '2026-11-05T08:00:00.000Z', authorId: 'x', authorName: 'P' };
+    const everybody = { id: 'an2', title: 'Holiday', body: 'Closed', audience: 'all', createdAt: '2026-11-05T09:00:00.000Z', authorId: 'x', authorName: 'P' };
+    assert.equal((await call('PUT', '/api/institute', { changes: { announcements: { upsert: [meeting, everybody] } } }, admin))[0], 200);
+    for (const token of [teacherA, teacherB]) assert.deepEqual((await seen(token, 'announcements')).map((a) => a.id).sort(), ['an1', 'an2']);
+    assert.deepEqual((await seen(student, 'announcements')).map((a) => a.id), ['an2']);
+  });
+
+  it('2 a teacher cannot post a notice for all the teachers', async () => {
+    const note = { id: 'an3', title: 'x', body: 'y', audience: 'teachers', createdAt: '2026-11-05T10:00:00.000Z', authorId: 'x', authorName: 'T' };
+    assert.equal((await call('PUT', '/api/institute', { changes: { announcements: { upsert: [note] } } }, teacherA))[0], 403);
+  });
+
+  it('3 a new student of a batch is told to the teacher of that batch only', async () => {
+    const course = { id: 'c1', code: 'C1', name: 'Course', fee: 1000, durationMonths: 12, status: 'active' };
+    await call('PUT', '/api/institute', { changes: { courses: { upsert: [course] }, batches: { upsert: [{ ...BATCHES[1], courseId: 'c1', status: 'active' }] } } }, admin);
+    const orgId = (await call('GET', '/api/auth/me', null, admin))[1].user.orgId;
+    const joined = await call('POST', '/api/auth/register-new-student', {
+      orgId, name: 'Newbie Kid', phone: '9876500001', parentName: 'Pa', parentPhone: '9876500002', email: 'newbie@x.com', password: PASSWORD, courseId: 'c1', batchId: 'b2', grade: 'Class 12',
+    });
+    assert.equal(joined[0], 200, JSON.stringify(joined[1]));
+    const forB = (await seen(teacherB, 'notificationLogs')).filter((l) => l.type === 'new_student');
+    assert.deepEqual(forB.map((l) => l.studentName), ['Newbie Kid']);
+    assert.ok(forB[0].content.includes('Batch B'));
+    assert.deepEqual((await seen(teacherA, 'notificationLogs')).filter((l) => l.type === 'new_student'), []);
+    // the principal sees it too, in the own bell
+    assert.ok((await seen(admin, 'notificationLogs')).some((l) => l.type === 'new_student' && l.studentName === 'Newbie Kid'));
+  });
+});
+
+describe('Who is told about a new student: the subject and the class', () => {
+  let admin = '';
+  let english12 = '';
+  let maths12 = '';
+  let english10 = '';
+  let nobody = '';
+  const s = withServer(async (api) => {
+    admin = (await api.call('POST', '/api/auth/setup', { name: 'P', email: 'p@x.com', password: PASSWORD }))[1].token;
+    const course = { id: 'c1', code: 'C1', name: 'Course', fee: 1000, durationMonths: 12, status: 'active' };
+    const b12 = { ...BATCHES[0], id: 'b12', name: 'Class 12 Batch', courseId: 'c1', subjects: ['English', 'Maths'], status: 'ongoing', maxCapacity: 30 };
+    const b10 = { ...BATCHES[1], id: 'b10', name: 'Class 10 Batch', courseId: 'c1', subjects: ['English', 'Science'], status: 'ongoing', maxCapacity: 30 };
+    const old12 = { ...STUDENTS[0], id: 'o12', batchId: 'b12', grade: 'Class 12' };
+    const old10 = { ...STUDENTS[2], id: 'o10', batchId: 'b10', grade: 'Class 10' };
+    await api.call('PUT', '/api/institute', { changes: { courses: { upsert: [course] }, batches: { upsert: [b12, b10] }, students: { upsert: [old12, old10] } } }, admin);
+    const make = async (name: string, email: string, subject: string, batchIds: string[]) => {
+      await api.call('POST', '/api/users', { name, email, password: PASSWORD, role: 'teacher', subject, batchIds }, admin);
+      return tokenOf(api, email, 'member');
+    };
+    english12 = await make('English 12', 'e12@x.com', 'English', ['b12']);
+    maths12 = await make('Maths 12', 'm12@x.com', 'Maths', ['b12']);
+    english10 = await make('English 10', 'e10@x.com', 'english', ['b10']);
+    nobody = await make('No batch', 'nb@x.com', 'English', []);
+  });
+  const call = (...a: Parameters<Api['call']>) => s.api.call(...a);
+  const told = async (token: string) =>
+    ((await call('GET', '/api/sync', null, token))[1].institute.notificationLogs as any[]).filter((l) => l.type === 'new_student').map((l) => l.studentName);
+
+  const join = (name: string, email: string, batchId: string, grade: string, subjectsOfBatch?: string[]) =>
+    call('POST', '/api/auth/register-new-student', {
+      orgId: undefined, name, phone: '9876500010', parentName: 'Pa', parentPhone: '9876500011', email, password: PASSWORD, courseId: 'c1', batchId, grade, subjectsOfBatch,
+    });
+
+  it('1 a new student of class 12 with English goes to the English teacher of class 12 and the Maths teacher of the same batch', async () => {
+    const orgId = (await call('GET', '/api/auth/me', null, admin))[1].user.orgId;
+    const r = await call('POST', '/api/auth/register-new-student', {
+      orgId, name: 'Twelfth Kid', phone: '9876500010', parentName: 'Pa', parentPhone: '9876500011', email: 'k12@x.com', password: PASSWORD, courseId: 'c1', batchId: 'b12', grade: 'Class 12',
+    });
+    assert.equal(r[0], 200, JSON.stringify(r[1]));
+    assert.deepEqual(await told(english12), ['Twelfth Kid']); // subject and class match
+    assert.deepEqual(await told(maths12), ['Twelfth Kid']); // the batch has Maths too, and the class is the same
+    assert.deepEqual(await told(english10), []); // an English teacher, but of class 10
+    assert.deepEqual(await told(nobody), []); // no batch, no class on record
+  });
+
+  it('2 a new student of class 10 does not go to the teachers of class 12', async () => {
+    const orgId = (await call('GET', '/api/auth/me', null, admin))[1].user.orgId;
+    const r = await call('POST', '/api/auth/register-new-student', {
+      orgId, name: 'Tenth Kid', phone: '9876500020', parentName: 'Pa', parentPhone: '9876500021', email: 'k10@x.com', password: PASSWORD, courseId: 'c1', batchId: 'b10', grade: 'Class 10',
+    });
+    assert.equal(r[0], 200, JSON.stringify(r[1]));
+    assert.deepEqual(await told(english10), ['Tenth Kid']);
+    assert.deepEqual(await told(english12), ['Twelfth Kid']); // still only the first one
+    assert.deepEqual(await told(maths12), ['Twelfth Kid']);
+  });
+
+  it('3 a Maths teacher is not told about a batch that has no Maths', async () => {
+    const orgId = (await call('GET', '/api/auth/me', null, admin))[1].user.orgId;
+    const mathsTen = (await call('POST', '/api/users', { name: 'Maths 10', email: 'm10@x.com', password: PASSWORD, role: 'teacher', subject: 'Maths', batchIds: ['b10'] }, admin))[0];
+    assert.equal(mathsTen, 200);
+    const token = await tokenOf(s.api, 'm10@x.com', 'member');
+    const r = await call('POST', '/api/auth/register-new-student', {
+      orgId, name: 'Tenth Two', phone: '9876500030', parentName: 'Pa', parentPhone: '9876500031', email: 'k10b@x.com', password: PASSWORD, courseId: 'c1', batchId: 'b10', grade: 'Class 10',
+    });
+    assert.equal(r[0], 200, JSON.stringify(r[1]));
+    assert.deepEqual(await told(token), []); // batch b10 teaches English and Science, not Maths
+    assert.ok((await told(english10)).includes('Tenth Two'));
+  });
+});
