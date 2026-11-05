@@ -10,7 +10,7 @@ Which modules are complete, which screens (UI) exist, what is still missing, and
 | 1a | Coaching cards, search, filter | cards, stat boxes, search | `GET /api/super/orgs` | yes |
 | 1b | Approval of coachings (requests, Approve, Reject, switch off/on, delete) | "Requests waiting for your approval" | `/api/super/orgs/<id>/approve ...` | yes |
 | 1c | Subscription and income (monthly fee, payments, Paid / Due) | card + "Record a payment" | `/api/super/orgs/<id>/payments` | yes |
-| 1d | More Super Admins (add, new password, remove) | "Super Admins" panel | `/api/super/admins*` | yes |
+| 1d | **Only one Super Admin** (created once; nobody can add another) | `AuthPage.tsx` | `POST /api/super/setup` (409 when one exists) | yes |
 | 1e | Platform activity log | "Recent activity" panel | `GET /api/super/audit` | yes |
 | 2 | **Login and accounts** | `frontend/src/components/auth/` (3 tabs) | `/api/auth/*`, `/api/users/*` | tests + browser |
 | 2a | Super Admin create + sign in + forgot password (server computer only) | tab "Super Admin" | `/api/super/setup`, `/api/super/forgot-password` | yes |
@@ -50,7 +50,13 @@ Which modules are complete, which screens (UI) exist, what is still missing, and
 | 33 | **Search** in the tests, the message history and the accounts | `ExamsView`, `NotificationsView`, `Teamview` | none | browser |
 | 34 | **Coaching list download** for the Super Admin (CSV, no student data) | `SuperAdminApp.tsx` | `GET /api/super/orgs` | browser |
 | 35 | **Public website** (the first page before sign in: the sign in form in the top part, then why, how it works, features, roles, security, FAQ, footer; the page and the form are dark; it moves: the top message changes by itself, cards rise into place, numbers count up) | `frontend/src/components/landing/LandingPage.tsx` | none | tests + browser |
-| 36 | **Book a demo** (form on the website; the Super Admin reads and deletes the requests) | `DemoRequestForm.tsx`, `LeadsPanel` in `SuperAdminApp.tsx` | `POST /api/public/demo-request`, `GET/DELETE /api/super/leads` | tests + browser |
+| 36 | ~~Book a demo~~ removed from the website and from the Super Admin page (the server routes are still there but no screen uses them) | | | |
+| 37 | **Bell for every role** (principal, teacher, student, parent): the notices of others, a new student / teacher, what a teacher did; click opens the Notice Board on that message; delete / clear all (only from the own bell) | `NoticeBell.tsx`, `bellMemory.ts`, `focusItem.ts` | `GET /api/sync` | tests + browser |
+| 38 | **Sidebar number** on the Notice Board (what is new; gone when the page is opened), "New" tags, "What happened" (principal), "Messages from the coaching" (parent, student) | `App.tsx`, `NoticesView.tsx` | none | tests + browser |
+| 39 | **Notices to the parents AND the students**: homework, tests (the subject and the teacher are named), a reminder the day before a test, the result; the principal's own messages are not in his bell | `parentNotices.ts`, `InstituteContext.tsx` (`notifyHomework`, `notifyTest`, `notifyResults`) | list `notificationLogs` (channel `whatsapp` for the parent, `student` for the student) | tests + browser |
+| 40 | **Who may tell the parents**: homework / test / result: the teacher of that subject (or the principal); absent and late students: the class teacher of the batch (chosen on the batch) or the principal; a teacher's own notices are for the students, not the parents; a parent only reads | `scope.ts`, `AttendanceView.tsx`, `EditbatchModal.tsx` | `PUT /api/institute` (403 otherwise) | tests + browser |
+| 41 | **The teacher confirms** a test / homework that the principal made for him, then the principal tells the parents | `TeacherSelect.tsx`, `ExamsView.tsx`, `MaterialView.tsx` | `exams`, `materials` (`confirmed`) | tests + browser |
+| 42 | **One principal per coaching, no front desk role**; the parent has an own login page `/parent` | `Teamview.tsx`, `ParentLoginPage.tsx` | `POST /api/users` (only teacher / student) | tests + browser |
 
 ## 2. Not built / still missing
 
@@ -78,7 +84,7 @@ Every other route is about accounts, coachings, backups and photos:
 | Public | `GET /api/health`, `GET /api/auth/status`, `POST /api/auth/setup`(old first-run), `POST /api/auth/login`, `POST /api/auth/forgot-password`, `POST /api/auth/register-teacher`, `register-student`, `register-new-student`, `GET /api/public/registration-options`, `GET /api/public/coachings`, `POST /api/public/register-coaching`, `GET /api/photos/<student>/<token>` |
 | Signed in | `POST /api/auth/logout`, `GET /api/auth/me`, `POST /api/auth/change-password`, `POST /api/auth/change-email`, `PUT /api/homework/<id>` (student), `PUT /api/auth/profile`, `GET /api/sync`, `PUT /api/institute` |
 | Principal | `POST /api/users`, `.../<id>/approve`, `/reject`, `/batches`, `/role`, `/reset-password`, `DELETE /api/users/<id>`, `GET /api/audit`, `GET/POST /api/backups`, `GET /api/backup`, `POST /api/backup/restore`, `GET /api/backups/<id>`, `POST /api/backups/<id>/restore` |
-| Super Admin | `GET /api/super/status`, `POST /api/super/setup`, `POST /api/super/forgot-password`, `GET/POST /api/super/admins`, `.../admins/<id>/reset-password`, `DELETE .../admins/<id>`, `GET /api/super/audit`, `GET/POST /api/super/orgs`, `PUT/DELETE /api/super/orgs/<id>`, `.../approve`, `/reject`, `/suspend`, `/activate`, `/payments`, `/reset-admin-password` |
+| Super Admin | `GET /api/super/status`, `POST /api/super/setup`, `POST /api/super/forgot-password`, `GET /api/super/audit`, `GET/POST /api/super/orgs`, `PUT/DELETE /api/super/orgs/<id>`, `.../approve`, `/reject`, `/suspend`, `/activate`, `/payments`, `/reset-admin-password` |
 
 ## 4. Where the code is
 

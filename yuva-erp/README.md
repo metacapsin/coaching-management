@@ -100,7 +100,7 @@ The first run downloads a MongoDB program once (about 800 MB, kept in your user 
 | Reports | Principal | Fees, attendance, exam results, admissions (profit and loss for the principal); CSV and print |
 | Parent Broadcasts | Principal | Templates and a message queue |
 | Team & Access | Principal | Teacher, student and parent accounts, batches, password reset |
-| **Public website** | Everybody | The first page before sign in: what AcademiaOS is, how it works, features, who uses it, security, FAQ and a "Book a demo" form. The sign in form (3 tabs) sits in the top part of the same page, so there is no separate login page. The Super Admin reads the demo requests on the platform page |
+| **Public website** | Everybody | The first page before sign in: what AcademiaOS is, how it works, features, who uses it, security, FAQ. The sign in form (3 tabs) sits in the top part of the same page, so there is no separate login page. |
 | **Parent login** | Parent | A parent signs in on an own page, `/parent` (link under the main sign in form), or creates an account there, and sees the child's attendance, fees, results and notices (read only). The principal can also make it in the student's Dossier |
 | **Staff attendance** | Principal only | Tab in Expenses & Profit: teachers and staff present / half day / leave / absent, with a month count |
 | **Library** | Everybody reads; the principal adds | Books shared with a link (PDF, Drive, website): students and teachers press Read and it opens online |
@@ -108,6 +108,17 @@ The first run downloads a MongoDB program once (about 800 MB, kept in your user 
 
 A new coaching opens with sample data so every screen can be seen at once (`AUTO_DEMO_FOR_NEW_COACHING` in
 `frontend/src/Context/InstituteContext.tsx`; "Delete all data" in the Institute Profile clears it for real use).
+
+## Notices, the bell and who may tell the parents
+
+- **Bell** (every role): the notices that somebody else wrote; the principal also gets "a new student / teacher" and what a teacher did;
+  a teacher gets "a new student" of the own subject and class and the tests / homework to confirm; a parent gets the messages about
+  the child. A click opens the Notice Board on that message. The red number on the Notice Board (side menu) is what is new.
+- **Homework and tests** go to ALL the parents and students of the batch, naming the subject and the teacher; the day before a test
+  there is a reminder, and when the result is published the marks go to the parent and the student.
+- **Who tells:** the teacher of that subject (or the principal). When the principal makes a test / homework for a teacher, the teacher
+  confirms the date first. **Absent and late students:** the class teacher of the batch (the principal chooses it in Edit Batch) or the
+  principal. A teacher's own notices are for the students only. A parent only reads.
 
 ## Backups
 
