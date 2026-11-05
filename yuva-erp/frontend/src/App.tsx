@@ -9,7 +9,7 @@ import { AuthProvider, useAuth, roleLabel, accountLabel } from './Context/AuthCo
 import { canAccessTab, canManageInstitute } from './Context/Access';
 import { useLang } from './i18n/LangContext';
 import type { TabId } from './Context/Access';
-import { hasSuperSession, useSyncStatus } from './components/utils/api';
+import { useSyncStatus } from './components/utils/api';
 import { useBellMemory } from './components/utils/bellMemory';
 import { tabPath, useTabRoute } from './components/utils/useTabRoute';
 
@@ -352,19 +352,6 @@ function MainApp() {
 
         {/* Sidebar Footer */}
         <div className="p-4 border-t border-slate-800/80 text-[11px] text-slate-400 space-y-3">
-          {/* The Super Admin entered this coaching: one click back to the coaching list */}
-          {hasSuperSession() && (
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                void signOut();
-              }}
-              className="w-full px-3 py-2 text-xs font-semibold text-indigo-200 bg-indigo-500/20 hover:bg-indigo-500/30 rounded-lg transition-colors"
-            >
-              ← Back to Super Admin
-            </button>
-          )}
-
           {/* Signed-in user + Sign Out */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">

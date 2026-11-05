@@ -13,7 +13,7 @@ export const SITE_INFO = {
 export const SOCIAL: { key: 'facebook' | 'x' | 'linkedin' | 'instagram' | 'medium' | 'reviews'; label: string; url: string }[] = [
   { key: 'facebook', label: 'Facebook', url: 'https://www.facebook.com' },
   { key: 'x', label: 'X', url: 'https://x.com' },
-  { key: 'linkedin', label: 'LinkedIn', url: 'https://www.linkedin.com' },
+  { key: 'linkedin', label: 'LinkedIn', url: 'https://www.linkedin.com/in/md-sahil-alam-2604883a6' }, // the profile of Md Sahil Alam
   { key: 'instagram', label: 'Instagram', url: 'https://www.instagram.com' },
   { key: 'medium', label: 'Medium', url: 'https://medium.com' },
   { key: 'reviews', label: 'Reviews', url: 'https://www.google.com/search?q=Bytechnik+reviews' }
