@@ -14,7 +14,7 @@ const TYPE_STYLE = {
 } as const;
 
 export const MaterialView: React.FC = () => {
-  const { materials, batches, students, submissions, deleteMaterial, markHomework, notifyHomework } = useInstitute();
+  const { materials, batches, students, submissions, deleteMaterial, markHomework, notifyHomework, mayTellAbout, confirmMaterial } = useInstitute();
   const { user } = useAuth();
   const role = user?.role;
   const office = canManageInstitute(role);
@@ -156,7 +156,25 @@ export const MaterialView: React.FC = () => {
                   </div>
                   {canChange(m) && (
                     <div className="flex gap-1 shrink-0">
-                      {m.type === 'homework' && (
+                      {m.type === 'homework' && m.confirmed === false && office && (
+                        <span className="px-2 py-1 text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg" title="The teacher has to confirm first">
+                          Waiting for {m.teacherName || 'the teacher'} to confirm
+                        </span>
+                      )}
+                      {m.type === 'homework' && m.confirmed === false && role === 'teacher' && (!m.teacherId || m.teacherId === user?.id) && mayTellAbout(m.subject) && (
+                        <button
+                          title="Yes, I gave this homework"
+                          onClick={() => {
+                            confirmMaterial(m.id);
+                            flash('Confirmed. The principal can tell the parents and the students now.');
+                          }}
+                          className="px-2 py-1 text-[11px] font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg flex items-center gap-1"
+                        >
+                          <CheckCircle2 className="w-3 h-3" />
+                          Confirm
+                        </button>
+                      )}
+                      {m.type === 'homework' && m.confirmed !== false && mayTellAbout(m.subject) && (
                         <button
                           title="Tell the parents of this batch about this homework (and a test that is coming)"
                           onClick={() => {

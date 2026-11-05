@@ -13,7 +13,7 @@ import { canManageInstitute } from '../../Context/Access';
 import { Award, Plus, FileText, Printer, Send, Pencil, Trash2, Ticket } from 'lucide-react';
 
 export const ExamsView: React.FC = () => {
-  const { exams, students, sendNotification, templates, deleteExam, profile, notifyTest } = useInstitute();
+  const { exams, students, sendNotification, templates, deleteExam, profile, notifyTest, mayTellAbout, confirmExam } = useInstitute();
   const { user } = useAuth();
   const office = canManageInstitute(user?.role);
   const [editingExam, setEditingExam] = useState<Exam | null>(null);
@@ -263,7 +263,25 @@ export const ExamsView: React.FC = () => {
                     Enter / Edit Scores
                   </button>
 
-                  {(office || user?.role === 'teacher') && currentExam.status !== 'published' && currentExam.date >= toLocalISODate() && (
+                  {currentExam.confirmed === false && office && (
+                    <span className="px-3 py-1.5 text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg" title="The teacher has to confirm the date first">
+                      Waiting for {currentExam.teacherName || 'the teacher'} to confirm the date
+                    </span>
+                  )}
+                  {currentExam.confirmed === false && user?.role === 'teacher' && (!currentExam.teacherId || currentExam.teacherId === user.id) && mayTellAbout(currentExam.subject) && (
+                    <button
+                      onClick={() => {
+                        confirmExam(currentExam.id);
+                        setTestNotice({ examId: currentExam.id, text: 'Confirmed. The principal can tell the parents and the students now.' });
+                        setTimeout(() => setTestNotice(null), 6000);
+                      }}
+                      title="Yes, I take this test on this date"
+                      className="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors flex items-center gap-1.5"
+                    >
+                      Confirm: I take this test on {formatDate(currentExam.date)}
+                    </button>
+                  )}
+                  {(office || (user?.role === 'teacher' && mayTellAbout(currentExam.subject))) && currentExam.confirmed !== false && currentExam.status !== 'published' && currentExam.date >= toLocalISODate() && (
                     <button
                       onClick={() => void handleTestNotice(currentExam)}
                       title="Tell the parents of this batch the date of the test"
@@ -432,8 +450,8 @@ export const ExamsView: React.FC = () => {
         <CreateExamModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
-          onSuccess={told => {
-            setScheduledNotice(told > 0 ? `Test scheduled. The ${told} student${told === 1 ? '' : 's'} and the parent${told === 1 ? '' : 's'} were told: it is in their bell and on their Notice Board. The message to the parents also waits in Parent Broadcasts for WhatsApp.` : 'Test scheduled. There is no student in this batch yet, so nobody was told.');
+          onSuccess={(told, mayTell, waitingFor) => {
+            setScheduledNotice(waitingFor ? `Test scheduled. Waiting for ${waitingFor} to confirm the date. After that, press "Tell parents about this test" to tell the parents and the students.` : !mayTell ? 'Test scheduled. The parents were not told: only the teacher of this subject (or the principal) tells the parents about a test.' : told > 0 ? `Test scheduled. The ${told} student${told === 1 ? '' : 's'} and the parent${told === 1 ? '' : 's'} were told: it is in their bell and on their Notice Board. The message to the parents also waits in Parent Broadcasts for WhatsApp.` : 'Test scheduled. There is no student in this batch yet, so nobody was told.');
             setTimeout(() => setScheduledNotice(''), 7000);
           }}
         />

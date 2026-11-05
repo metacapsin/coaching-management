@@ -48,8 +48,8 @@ import {
   initialMaterials
 } from '../data/mockData';
 import { nextRollNumber } from '../components/utils/rollNo';
-import { toLocalISODate, toLocalDateTime, uid, fillTemplate, formatDate, payPageLink, withPayLink } from '../components/utils/helpers';
-import { homeworkNotice, studentHomeworkNotice, studentTestNotice, studentTestReminder, testNotice, testReminder } from '../components/utils/parentNotices';
+import { toLocalISODate, toLocalDateTime, uid, fillTemplate, formatDate, payPageLink, rankOf, withPayLink } from '../components/utils/helpers';
+import { homeworkNotice, sameSubject, studentHomeworkNotice, studentResultNotice, studentTestNotice, studentTestReminder, testNotice, testReminder } from '../components/utils/parentNotices';
 
 export const DEFAULT_PHOTO = '/avatar.svg';
 
@@ -297,10 +297,16 @@ interface InstituteContextType {
     content: string;
     status?: NotificationLog['status'];
     id?: string; // a fixed id: the same message is never made twice
+    subject?: string; // homework / test: the subject
   }) => void;
+  // May this person tell the parents about this subject? The principal always; a teacher only for the own subject.
+  mayTellAbout: (subject: string) => boolean;
   // Tell ALL the parents of the batch (not one student): a test is coming / homework was given. Returns how many parents were told.
   notifyHomework: (material: StudyMaterial) => number;
   notifyTest: (exam: Exam, kind?: 'new' | 'again') => number;
+  // The teacher confirms the date of a test / a homework that the principal made. Then the principal tells the parents.
+  confirmExam: (id: string) => void;
+  confirmMaterial: (id: string) => void;
   updateNotificationStatus: (id: string, status: NotificationLog['status']) => void;
   deleteNotification: (id: string) => void;
   updateTemplate: (id: string, body: string) => void;
@@ -313,7 +319,7 @@ interface InstituteContextType {
 export const InstituteContext = createContext<InstituteContextType | null>(null);
 
 export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, users } = useAuth();
   const roleRef = useRef(user?.role);
   roleRef.current = user?.role;
   const linkStatus = useSyncStatus();
@@ -786,14 +792,21 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // ----- exams -----
 
   const addExam = (examData: Omit<Exam, 'id' | 'status' | 'results'>) => {
+    // A teacher who makes the test takes it, and tells the parents and the students at once. When the principal makes it for a teacher,
+    // the teacher has to confirm the date first; then the principal tells them.
+    const byTeacher = user?.role === 'teacher';
+    const teacher = byTeacher ? { teacherId: user?.id, teacherName: user?.name } : { teacherId: examData.teacherId, teacherName: examData.teacherName };
+    const waiting = !byTeacher && !!teacher.teacherId;
     const newExam: Exam = {
       ...examData,
+      ...(teacher.teacherId ? teacher : {}),
       id: uid('ex'),
       status: 'scheduled',
+      confirmed: !waiting,
       results: {}
     };
     setExams(prev => [newExam, ...prev]);
-    notifyTest(newExam, 'new'); // the parents of the batch are told at once
+    if (!waiting) notifyTest(newExam, 'new');
     return newExam;
   };
 
@@ -802,6 +815,9 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const updateExamMarks = (examId: string, results: Record<string, { marksObtained: number; remarks?: string; absent?: boolean }>, publish = false) => {
+    const before = exams.find(e => e.id === examId);
+    // the first time the result is published: the parents and the students are told the marks
+    if (publish && before && before.status !== 'published') notifyResults(before, results);
     setExams(prev => prev.map(e => {
       if (e.id === examId) {
         return {
@@ -952,15 +968,21 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // ----- study material -----
 
   const addMaterial = (data: Omit<StudyMaterial, 'id' | 'createdAt' | 'authorId' | 'authorName'>) => {
+    const byTeacher = user?.role === 'teacher';
+    const homework = data.type === 'homework';
+    const teacher = byTeacher ? { teacherId: user?.id, teacherName: user?.name } : { teacherId: data.teacherId, teacherName: data.teacherName };
+    const waiting = homework && !byTeacher && !!teacher.teacherId; // the principal made it for a teacher: the teacher confirms first
     const material: StudyMaterial = {
       ...data,
+      ...(homework && teacher.teacherId ? teacher : {}),
+      ...(homework ? { confirmed: !waiting } : {}),
       id: uid('mat'),
       createdAt: new Date().toISOString(),
       authorId: user?.id || '',
       authorName: user?.name || ''
     };
     setMaterials(prev => [material, ...prev]);
-    if (material.type === 'homework') notifyHomework(material); // the parents of the batch are told at once
+    if (homework && !waiting) notifyHomework(material); // the parents of the batch are told at once
     return material;
   };
 
@@ -984,9 +1006,11 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     content: string;
     status?: NotificationLog['status'];
     id?: string;
+    subject?: string;
   }) => {
     const newLog: NotificationLog = {
       id: notif.id ?? uid('log'),
+      ...(notif.subject ? { subject: notif.subject } : {}),
       timestamp: toLocalDateTime(),
       type: notif.type,
       channel: notif.channel,
@@ -1007,16 +1031,19 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const batchKids = (batchId: string) => students.filter(s => s.batchId === batchId && s.status !== 'inactive');
 
   // When a TEACHER did it, the principal gets a line in the bell: so he knows, and can send it again from the page
-  const tellPrincipal = (type: 'homework' | 'test_notice', batchName: string, content: string) => {
+  const tellPrincipal = (type: 'homework' | 'test_notice' | 'exam_result', subject: string, batchName: string, content: string) => {
     if (user?.role !== 'teacher') return;
     setNotificationLogs(prev => [
-      { id: uid('log'), timestamp: toLocalDateTime(), type, channel: 'app', recipientName: 'Principal', recipientPhone: '', studentName: batchName, content, status: 'sent' },
+      { id: uid('log'), timestamp: toLocalDateTime(), type, subject, channel: 'app', recipientName: 'Principal', recipientPhone: '', studentName: batchName, content, status: 'sent' },
       ...prev
     ]);
   };
 
+  // Only the teacher of that subject (and the principal) tells the parents about homework and a test
+  const mayTellAbout = (subject: string): boolean => user?.role !== 'teacher' || sameSubject(user?.subject, subject);
+
   const notifyHomework = (m: StudyMaterial): number => {
-    if (m.type !== 'homework') return 0;
+    if (m.type !== 'homework' || m.confirmed === false || !mayTellAbout(m.subject)) return 0; // (not before the teacher confirmed)
     const kids = batchKids(m.batchId);
     const today = toLocalISODate();
     // a test that is coming for this batch is told in the same message
@@ -1027,6 +1054,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     for (const st of kids) {
       sendNotification({
         type: 'homework',
+        subject: m.subject,
         channel: 'whatsapp',
         recipientName: st.parentName,
         recipientPhone: st.parentPhone,
@@ -1034,7 +1062,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         studentId: st.id,
         content: homeworkNotice(
           { parentName: st.parentName, studentName: st.name, coaching: profile.name },
-          { title: m.title, description: m.description, subject: m.subject, batchName: m.batchName, dueDate: m.dueDate },
+          { title: m.title, description: m.description, subject: m.subject, batchName: m.batchName, dueDate: m.dueDate, teacherName: m.teacherName },
           today,
           nextTest
         ),
@@ -1043,6 +1071,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       // and the student gets it too, in the own words (it is on the student login: bell and Notice Board)
       sendNotification({
         type: 'homework',
+        subject: m.subject,
         channel: 'student',
         recipientName: st.name,
         recipientPhone: '',
@@ -1050,7 +1079,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         studentId: st.id,
         content: studentHomeworkNotice(
           { studentName: st.name, coaching: profile.name },
-          { title: m.title, description: m.description, subject: m.subject, batchName: m.batchName, dueDate: m.dueDate },
+          { title: m.title, description: m.description, subject: m.subject, batchName: m.batchName, dueDate: m.dueDate, teacherName: m.teacherName },
           today,
           nextTest
         ),
@@ -1058,7 +1087,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       });
     }
     if (kids.length > 0) {
-      tellPrincipal('homework', m.batchName, `${user?.name || 'A teacher'} gave homework "${m.title}"${m.dueDate ? ` (submit by ${formatDate(m.dueDate)})` : ''} to ${m.batchName}. The parents of ${kids.length} student${kids.length === 1 ? '' : 's'} were told.`);
+      tellPrincipal('homework', m.subject, m.batchName, `${user?.name || 'A teacher'} gave homework "${m.title}"${m.dueDate ? ` (submit by ${formatDate(m.dueDate)})` : ''} to ${m.batchName}. The parents of ${kids.length} student${kids.length === 1 ? '' : 's'} were told.`);
     }
     return kids.length;
   };
@@ -1066,14 +1095,16 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const tomorrowISO = () => toLocalISODate(new Date(Date.now() + 86400000));
 
   const notifyTest = (exam: Exam, kind: 'new' | 'again' = 'again'): number => {
+    if (exam.confirmed === false || !mayTellAbout(exam.subject)) return 0; // (not before the teacher confirmed the date)
     const kids = batchKids(exam.batchId);
     const today = toLocalISODate();
-    const info = { title: exam.title, subject: exam.subject, date: exam.date, maxMarks: exam.maxMarks, topics: exam.syllabusTopics || [] };
+    const info = { title: exam.title, subject: exam.subject, date: exam.date, maxMarks: exam.maxMarks, topics: exam.syllabusTopics || [], teacherName: exam.teacherName };
     const tomorrow = exam.date === tomorrowISO();
     for (const st of kids) {
       const who = { parentName: st.parentName, studentName: st.name, coaching: profile.name };
       sendNotification({
         type: 'test_notice',
+        subject: exam.subject,
         channel: 'whatsapp',
         recipientName: st.parentName,
         recipientPhone: st.parentPhone,
@@ -1086,6 +1117,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       });
       sendNotification({
         type: 'test_notice',
+        subject: exam.subject,
         channel: 'student',
         recipientName: st.name,
         recipientPhone: '',
@@ -1097,9 +1129,72 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       });
     }
     if (kids.length > 0) {
-      tellPrincipal('test_notice', exam.batchName, `${user?.name || 'A teacher'} scheduled the test "${exam.title}" for ${exam.batchName} on ${formatDate(exam.date)}. The parents of ${kids.length} student${kids.length === 1 ? '' : 's'} were told.`);
+      tellPrincipal('test_notice', exam.subject, exam.batchName, `${user?.name || 'A teacher'} scheduled the test "${exam.title}" for ${exam.batchName} on ${formatDate(exam.date)}. The parents of ${kids.length} student${kids.length === 1 ? '' : 's'} were told.`);
     }
     return kids.length;
+  };
+
+  // The teacher confirms: "yes, I take this test on this date" / "yes, I gave this homework". The principal gets a line in the bell and
+  // can tell the parents and the students now.
+  const confirmExam = (id: string) => {
+    const e = exams.find(x => x.id === id);
+    if (!e) return;
+    setExams(prev => prev.map(x => (x.id === id ? { ...x, confirmed: true } : x)));
+    tellPrincipal('test_notice', e.subject, e.batchName, `${user?.name || 'The teacher'} confirmed the ${e.subject} test "${e.title}" on ${formatDate(e.date)}. You can tell the parents and the students now (Exams page).`);
+  };
+  const confirmMaterial = (id: string) => {
+    const m = materials.find(x => x.id === id);
+    if (!m) return;
+    setMaterials(prev => prev.map(x => (x.id === id ? { ...x, confirmed: true } : x)));
+    tellPrincipal('homework', m.subject, m.batchName, `${user?.name || 'The teacher'} confirmed the ${m.subject} homework "${m.title}". You can tell the parents and the students now (Study Material page).`);
+  };
+
+  // The result of a test is out: every parent (the result template of the institute) and every student (own words) gets the marks
+  // and the rank. Only for the students who were graded. By the teacher of that subject, or by the principal.
+  const notifyResults = (exam: Exam, results: Exam['results']): number => {
+    if (!mayTellAbout(exam.subject)) return 0;
+    const template = templates.find(t => t.type === 'exam_result') || templates[0];
+    const graded = batchKids(exam.batchId).filter(st => results[st.id] && !results[st.id].absent);
+    const scores = graded.map(st => results[st.id].marksObtained);
+    for (const st of graded) {
+      const r = results[st.id];
+      const rank = rankOf(r.marksObtained, scores);
+      if (template) {
+        sendNotification({
+          type: 'exam_result',
+          subject: exam.subject,
+          channel: 'whatsapp',
+          recipientName: st.parentName,
+          recipientPhone: st.parentPhone,
+          studentName: st.name,
+          studentId: st.id,
+          content: fillTemplate(template.templateBody, {
+            parent_name: st.parentName,
+            student_name: st.name,
+            exam_name: exam.title,
+            exam_date: exam.date,
+            marks_obtained: r.marksObtained,
+            max_marks: exam.maxMarks,
+            batch_rank: rank,
+            remarks: r.remarks || 'Good attempt'
+          }),
+          status: 'pending'
+        });
+      }
+      sendNotification({
+        type: 'exam_result',
+        subject: exam.subject,
+        channel: 'student',
+        recipientName: st.name,
+        recipientPhone: '',
+        studentName: st.name,
+        studentId: st.id,
+        content: studentResultNotice({ studentName: st.name, coaching: profile.name }, { title: exam.title, subject: exam.subject, score: r.marksObtained, maxMarks: exam.maxMarks, rank, remarks: r.remarks }),
+        status: 'sent'
+      });
+    }
+    if (graded.length > 0) tellPrincipal('exam_result', exam.subject, exam.batchName, `${user?.name || 'A teacher'} published the result of "${exam.title}" (${exam.subject}). The parents and the students of ${graded.length} student${graded.length === 1 ? '' : 's'} were told.`);
+    return graded.length;
   };
 
   // The day before a test: every parent of the batch gets a reminder "the test is TOMORROW" (once, even if many people open the app)
@@ -1108,8 +1203,8 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (!ready || onboarding || (user?.role !== 'admin' && user?.role !== 'teacher')) return;
     const tomorrow = tomorrowISO();
     for (const exam of exams) {
-      if (exam.status !== 'scheduled' || exam.date !== tomorrow) continue;
-      const info = { title: exam.title, subject: exam.subject, date: exam.date, maxMarks: exam.maxMarks, topics: exam.syllabusTopics || [] };
+      if (exam.status !== 'scheduled' || exam.date !== tomorrow || exam.confirmed === false || !mayTellAbout(exam.subject)) continue;
+      const info = { title: exam.title, subject: exam.subject, date: exam.date, maxMarks: exam.maxMarks, topics: exam.syllabusTopics || [], teacherName: exam.teacherName };
       for (const st of batchKids(exam.batchId)) {
         const id = `log-testrem-${exam.id}-${st.id}`;
         if (reminded.current.has(id) || notificationLogs.some(l => l.id === id)) continue;
@@ -1117,6 +1212,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         sendNotification({
           id,
           type: 'test_notice',
+          subject: exam.subject,
           channel: 'whatsapp',
           recipientName: st.parentName,
           recipientPhone: st.parentPhone,
@@ -1128,6 +1224,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         sendNotification({
           id: `log-testrem-s-${exam.id}-${st.id}`,
           type: 'test_notice',
+          subject: exam.subject,
           channel: 'student',
           recipientName: st.name,
           recipientPhone: '',
@@ -1319,8 +1416,11 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         updateMaterial,
         deleteMaterial,
         sendNotification,
+        mayTellAbout,
         notifyHomework,
         notifyTest,
+        confirmExam,
+        confirmMaterial,
         updateNotificationStatus,
         deleteNotification,
         updateTemplate,

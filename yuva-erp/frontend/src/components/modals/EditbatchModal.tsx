@@ -207,7 +207,7 @@ export const EditBatchModal: React.FC<EditBatchModalProps> = ({ batch, enrolled,
               onChange={e => setForm({ ...form, classTeacherId: e.target.value })}
               className={inputClass(false)}
             >
-              <option value="">None (every teacher of the batch can tell the parents about absent / late students)</option>
+              <option value="">None (only the principal tells the parents about absent / late students)</option>
               {teachers.map(t => (
                 <option key={t.id} value={t.id}>
                   {t.name}
@@ -215,7 +215,7 @@ export const EditBatchModal: React.FC<EditBatchModalProps> = ({ batch, enrolled,
                 </option>
               ))}
             </select>
-            <p className="text-[11px] text-slate-400 mt-1">Once you choose a class teacher, only that teacher (and you) tell the parents when a student is absent or late.</p>
+            <p className="text-[11px] text-slate-400 mt-1">Only the class teacher (and the principal) tells the parents when a student is absent or late. With none chosen, the principal does it.</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

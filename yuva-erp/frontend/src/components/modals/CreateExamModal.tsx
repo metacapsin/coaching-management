@@ -2,13 +2,16 @@ import React, { useState } from 'react';
 import { useEscape } from '../ui/useEscape';
 import { NeedFirst } from '../ui/NeedFirst';
 import { useInstitute } from '../../Context/InstituteContext';
+import { useAuth } from '../../Context/AuthContext';
+import { canManageInstitute } from '../../Context/Access';
+import { TeacherSelect, useTeacherOf } from '../ui/TeacherSelect';
 import { toLocalISODate } from '../utils/helpers';
 import { X, Award, Check } from 'lucide-react';
 
 interface CreateExamModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess?: (told: number) => void; // how many parents were told about the test
+  onSuccess?: (told: number, mayTell: boolean, waitingFor?: string) => void; // how many were told about the test, may this person tell them, who has to confirm first
 }
 
 export const CreateExamModal: React.FC<CreateExamModalProps> = ({
@@ -17,13 +20,14 @@ export const CreateExamModal: React.FC<CreateExamModalProps> = ({
   onSuccess
 }) => {
   useEscape(onClose);
-  const { batches, exams, students, addExam } = useInstitute();
+  const { batches, exams, students, addExam, mayTellAbout } = useInstitute();
 
   const [formData, setFormData] = useState({
     code: '',
     title: '',
     batchId: batches[0]?.id || '',
     subject: '',
+    teacherId: '',
     date: toLocalISODate(),
     maxMarks: 100,
     passMarks: 35,
@@ -31,6 +35,9 @@ export const CreateExamModal: React.FC<CreateExamModalProps> = ({
   });
 
   const [error, setError] = useState('');
+  const { user } = useAuth();
+  const principal = canManageInstitute(user?.role);
+  const { resolve } = useTeacherOf(formData.batchId, formData.subject);
 
   if (!isOpen) return null;
 
@@ -74,13 +81,14 @@ export const CreateExamModal: React.FC<CreateExamModalProps> = ({
       batchId: formData.batchId,
       batchName: selectedBatch ? selectedBatch.name : 'Target Batch',
       subject: formData.subject.trim(),
+      ...(principal ? resolve(formData.teacherId) ?? {} : {}), // the teacher who takes it (a teacher who makes the test takes it)
       date: formData.date,
       maxMarks: Number(formData.maxMarks),
       passMarks: Number(formData.passMarks),
       syllabusTopics: topics.length > 0 ? topics : ['General Full Syllabus']
     });
 
-    if (onSuccess) onSuccess(students.filter(s => s.batchId === formData.batchId && s.status !== 'inactive').length); // the parents are told by addExam
+    if (onSuccess) onSuccess(students.filter(s => s.batchId === formData.batchId && s.status !== 'inactive').length, mayTellAbout(formData.subject.trim()), principal ? resolve(formData.teacherId)?.teacherName : undefined); // the parents are told by addExam, or after the teacher confirms
     onClose();
   };
 
@@ -139,6 +147,8 @@ export const CreateExamModal: React.FC<CreateExamModalProps> = ({
               </select>
             </div>
           </div>
+
+          {principal && <TeacherSelect batchId={formData.batchId} subject={formData.subject} value={formData.teacherId} onChange={id => setFormData({ ...formData, teacherId: id })} label="Teacher who takes the test" />}
 
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Exam Title</label>

@@ -102,6 +102,9 @@ export interface Exam {
   maxMarks: number;
   passMarks: number;
   status: ExamStatus;
+  teacherId?: string; // the teacher who takes the test (chosen by the principal, or the teacher who made it)
+  teacherName?: string;
+  confirmed?: boolean; // false: the principal made it and the teacher has not yet confirmed the date
   syllabusTopics: string[];
   results: Record<string, { marksObtained: number; remarks?: string; absent?: boolean }>;
 }
@@ -132,6 +135,7 @@ export interface NotificationLog {
   batchId?: string; // 'new_student': the batch, so the teacher of that batch gets the line in the bell
   batchName?: string;
   grade?: string; // 'new_student': the class of the student
+  subject?: string; // 'homework' / 'test_notice': the subject, so only the teacher of that subject tells the parents
   status: 'delivered' | 'sent' | 'pending';
 }
 
@@ -204,6 +208,9 @@ export interface StudyMaterial {
   batchName: string;
   subject: string;
   dueDate?: string; // homework: YYYY-MM-DD
+  teacherId?: string; // homework: the teacher of the subject
+  teacherName?: string;
+  confirmed?: boolean; // homework made by the principal: false until the teacher confirms
   createdAt: string;
   authorId: string;
   authorName: string;

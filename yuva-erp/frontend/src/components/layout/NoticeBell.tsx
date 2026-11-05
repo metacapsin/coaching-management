@@ -4,9 +4,10 @@ import { useInstitute } from '../../Context/InstituteContext';
 import { useAuth } from '../../Context/AuthContext';
 import { addIds, useBellMemory } from '../utils/bellMemory';
 import { requestFocus } from '../utils/focusItem';
-import type { TabId } from '../../Context/Access';
 import { formatDateTime } from '../utils/helpers';
 import type { NotificationLog } from '../../types';
+import { sameSubject } from '../utils/parentNotices';
+import type { TabId } from '../../Context/Access';
 
 // The bell of everybody (principal, teacher, student, parent). One list, newest first:
 //   everybody      the notices of the coaching that somebody else wrote (a notice for all, for the own batch, for the teachers)
@@ -17,7 +18,7 @@ import type { NotificationLog } from '../../types';
 // A parent only reads: no page lets a parent or a student write a notice (the server refuses it too).
 type Item = {
   id: string;
-  kind: 'notice' | 'log';
+  kind: 'notice' | 'log' | 'confirm';
   log?: NotificationLog;
   label: string;
   tone: string;
@@ -26,7 +27,7 @@ type Item = {
   time: number;
   when: string;
   pinned?: boolean;
-  tab: 'notices'; // the page of this message
+  tab: TabId; // the page of this message (a notice, the Notice Board; a request to confirm, the page with the Confirm button)
 };
 
 const LOG_LABEL: Record<string, [string, string]> = {
@@ -45,7 +46,7 @@ const LOG_LABEL: Record<string, [string, string]> = {
 const logTime = (ts: string) => new Date(ts.replace(' ', 'T')).getTime() || 0;
 
 export const NoticeBell: React.FC<{ onOpen: (tab: TabId) => void }> = ({ onOpen }) => {
-  const { announcements, notificationLogs } = useInstitute();
+  const { announcements, notificationLogs, exams, materials } = useInstitute();
   const { user } = useAuth();
   const { memory, update } = useBellMemory(user?.id);
   const [open, setOpen] = useState(false);
@@ -103,8 +104,40 @@ export const NoticeBell: React.FC<{ onOpen: (tab: TabId) => void }> = ({ onOpen 
         tab: 'notices'
       });
     }
+    // a teacher: the principal asks to confirm a test / a homework (it goes away when the teacher confirms)
+    if (role === 'teacher') {
+      const now = Date.now();
+      for (const e of exams) {
+        if (e.confirmed !== false || (e.teacherId && e.teacherId !== user?.id) || !sameSubject(user?.subject, e.subject)) continue;
+        list.push({
+          id: `confirm-${e.id}`,
+          kind: 'confirm',
+          label: 'Please confirm',
+          tone: 'bg-rose-100 text-rose-700',
+          title: `${e.subject} test on ${formatDateTime(e.date)}`.replace(/, \d\d:\d\d.*$/, ''),
+          body: `The principal made the test "${e.title}" for ${e.batchName}. Please confirm the date on the Exams page.`,
+          time: now,
+          when: e.date,
+          tab: 'exams'
+        });
+      }
+      for (const m of materials) {
+        if (m.type !== 'homework' || m.confirmed !== false || (m.teacherId && m.teacherId !== user?.id) || !sameSubject(user?.subject, m.subject)) continue;
+        list.push({
+          id: `confirm-${m.id}`,
+          kind: 'confirm',
+          label: 'Please confirm',
+          tone: 'bg-rose-100 text-rose-700',
+          title: `${m.subject} homework: ${m.title}`,
+          body: `The principal made this homework for ${m.batchName}. Please confirm it on the Study Material page.`,
+          time: now,
+          when: m.dueDate || '',
+          tab: 'material'
+        });
+      }
+    }
     return list.filter(i => !memory.hidden.includes(i.id)).sort((x, y) => y.time - x.time);
-  }, [announcements, notificationLogs, memory.hidden, role, user?.id]);
+  }, [announcements, notificationLogs, exams, materials, memory.hidden, role, user?.id, user?.subject]);
 
   const unread = items.filter(i => !memory.seen.includes(i.id)).length;
 
@@ -131,9 +164,9 @@ export const NoticeBell: React.FC<{ onOpen: (tab: TabId) => void }> = ({ onOpen 
     update(m => ({
       ...m,
       seen: addIds(m.seen, [item.id]),
-      pageNotices: addIds(m.pageNotices, [item.id])
+      pageNotices: item.tab === 'notices' ? addIds(m.pageNotices, [item.id]) : m.pageNotices
     }));
-    requestFocus({ tab: item.tab, id: item.id }); // before the page opens: it lights up the message
+    if (item.tab === 'notices') requestFocus({ tab: 'notices', id: item.id }); // before the page opens: it lights up the message
     setOpen(false);
     onOpen(item.tab);
   };
@@ -188,7 +221,7 @@ export const NoticeBell: React.FC<{ onOpen: (tab: TabId) => void }> = ({ onOpen 
                       openItem(n);
                     }
                   }}
-                  title="Open on the Notice Board"
+                  title={n.tab === 'notices' ? 'Open on the Notice Board' : 'Open the page to confirm'}
                   className="px-4 py-2.5 hover:bg-slate-50 transition-colors cursor-pointer focus:outline-none focus:bg-slate-50"
                 >
                   <div className="flex items-center justify-between gap-2">

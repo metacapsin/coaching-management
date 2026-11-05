@@ -82,13 +82,9 @@ export const AttendanceView: React.FC = () => {
   const totalCount = batchStudents.length;
   const attendanceRate = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
 
-  // Absent and late students. The parents are told by the principal, or by the CLASS TEACHER of the batch.
-  // (while the principal has not chosen a class teacher for the batch, every teacher of the batch can)
-  const mayTell = (s: { batchId: string }) => {
-    if (canManageInstitute(user?.role)) return true;
-    const classTeacher = batches.find(b => b.id === s.batchId)?.classTeacherId;
-    return classTeacher ? classTeacher === user?.id : true;
-  };
+  // Absent and late students. The parents are told by the CLASS TEACHER of the batch, and by the principal (who does it alone for a
+  // batch that has no class teacher).
+  const mayTell = (s: { batchId: string }) => canManageInstitute(user?.role) || batches.find(b => b.id === s.batchId)?.classTeacherId === user?.id;
   const absentStudents = batchStudents.filter(s => localRecords[s.id] === 'absent' && mayTell(s));
   const lateStudents = batchStudents.filter(s => localRecords[s.id] === 'late' && mayTell(s));
   const toTell = absentStudents.length + lateStudents.length;

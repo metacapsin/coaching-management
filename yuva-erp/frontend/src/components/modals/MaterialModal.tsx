@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NeedFirst } from '../ui/NeedFirst';
 import { useInstitute } from '../../Context/InstituteContext';
+import { TeacherSelect, useTeacherOf } from '../ui/TeacherSelect';
 import { useAuth } from '../../Context/AuthContext';
 import { canManageInstitute } from '../../Context/Access';
 import type { MaterialType, StudyMaterial } from '../../types';
@@ -26,7 +27,7 @@ export const TYPE_LABEL: Record<MaterialType, string> = {
 
 // Add or edit study material for a batch (teachers: only their own batches)
 export const MaterialModal: React.FC<MaterialModalProps> = ({ material, onClose, onSaved }) => {
-  const { batches, students, addMaterial, updateMaterial } = useInstitute();
+  const { batches, students, addMaterial, updateMaterial, mayTellAbout } = useInstitute();
   const { user } = useAuth();
   const office = canManageInstitute(user?.role);
   const myBatches = office ? batches : batches.filter(b => (user?.batchIds || []).includes(b.id));
@@ -37,9 +38,11 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({ material, onClose,
     type: material?.type ?? ('link' as MaterialType),
     url: material?.url ?? '',
     batchId: material?.batchId ?? myBatches[0]?.id ?? '',
-    subject: material?.subject ?? '',
-    dueDate: material?.dueDate ?? ''
+    subject: material?.subject ?? (office ? '' : user?.subject ?? ''), // a teacher: the own subject
+    dueDate: material?.dueDate ?? '',
+    teacherId: material?.teacherId ?? ''
   });
+  const { resolve } = useTeacherOf(form.batchId, form.subject);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const batch = batches.find(b => b.id === form.batchId);
@@ -64,12 +67,18 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({ material, onClose,
       batchId: form.batchId,
       batchName: batch?.name || '',
       subject: form.subject.trim() || batch?.subjects?.[0] || 'General',
-      dueDate: form.type === 'homework' && form.dueDate ? form.dueDate : undefined
+      dueDate: form.type === 'homework' && form.dueDate ? form.dueDate : undefined,
+      ...(office && form.type === 'homework' ? resolve(form.teacherId) ?? {} : {}) // the teacher who gave it (named in the notice)
     };
+    const waitingFor = office && form.type === 'homework' ? resolve(form.teacherId)?.teacherName : undefined;
     if (material) updateMaterial(material.id, data);
     else {
       addMaterial(data); // homework: the parents of the batch are told at once
-      if (data.type === 'homework') {
+      if (waitingFor) {
+        onSaved?.(`Homework saved. Waiting for ${waitingFor} to confirm it. After that, press "Tell parents" on the card to tell the parents and the students.`);
+      } else if (data.type === 'homework' && !mayTellAbout(data.subject)) {
+        onSaved?.(`Homework saved. The parents were not told: only the teacher of ${data.subject} (or the principal) tells the parents about ${data.subject} homework.`);
+      } else if (data.type === 'homework') {
         const told = students.filter(s => s.batchId === data.batchId && s.status !== 'inactive').length;
         onSaved?.(told > 0 ? `Homework saved. The ${told} student${told === 1 ? '' : 's'} and the parent${told === 1 ? '' : 's'} were told: it is in their bell and on their Notice Board. The message to the parents also waits in Parent Broadcasts for WhatsApp.` : 'Homework saved. There is no student in this batch yet, so nobody was told.');
       }
@@ -160,6 +169,10 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({ material, onClose,
             </div>
           )}
         </div>
+
+        {office && form.type === 'homework' && (
+          <TeacherSelect batchId={form.batchId} subject={form.subject} value={form.teacherId} onChange={id => setForm({ ...form, teacherId: id })} label="Teacher who gave the homework" className={`${inputClass()} bg-white`} />
+        )}
 
         <div>
           <label className="block text-xs font-medium text-slate-700 mb-1">

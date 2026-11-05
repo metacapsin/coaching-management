@@ -14,8 +14,14 @@ const logs = [
   { id: 'log2', timestamp: '2026-11-05 10:39', type: 'fee_due', channel: 'whatsapp', studentName: 'sharique', recipientName: 'khatim', content: 'Dear khatim, a pending installment of 1,45,000 is due.', status: 'pending' },
   { id: 'log3', timestamp: '2026-11-05 11:00', type: 'homework', channel: 'student', studentName: 'Alice', recipientName: 'Alice', content: 'Hi Alice, today you got homework in Maths.', status: 'sent' }
 ];
-vi.mock('../Context/InstituteContext', () => ({ useInstitute: () => ({ announcements, notificationLogs: logs }) }));
-vi.mock('../Context/AuthContext', () => ({ useAuth: () => ({ user: { id: `u-${role}${isParent ? '-parent' : ''}`, role, isParent } }) }));
+const exams = [
+  { id: 'ex1', title: 'Unit test 4', subject: 'Physics', batchName: 'Class 12 Batch', date: '2026-11-08', confirmed: false, teacherId: 'u-teacher' },
+  { id: 'ex2', title: 'Maths test', subject: 'Maths', batchName: 'Class 12 Batch', date: '2026-11-09', confirmed: false } // another subject
+];
+const materials = [{ id: 'm1', type: 'homework', title: 'Optics worksheet', subject: 'Physics', batchName: 'Class 12 Batch', dueDate: '2026-11-09', confirmed: false }];
+vi.mock('../Context/InstituteContext', () => ({ useInstitute: () => ({ announcements, notificationLogs: logs, exams, materials }) }));
+let subject = '';
+vi.mock('../Context/AuthContext', () => ({ useAuth: () => ({ user: { id: `u-${role}${isParent ? '-parent' : ''}`, role, isParent, subject } }) }));
 
 import { NoticeBell } from '../components/layout/NoticeBell';
 import { getBellMemory } from '../components/utils/bellMemory';
@@ -24,6 +30,7 @@ beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
   isParent = false;
+  subject = '';
 });
 afterEach(cleanup);
 
@@ -34,7 +41,7 @@ describe('the bell of everybody', () => {
   it('a teacher sees the notices of others and the new student of the batch, with a number on the bell', () => {
     role = 'teacher';
     render(<NoticeBell onOpen={noop} />);
-    expect(bell().textContent).toBe('4'); // the meeting, the holiday, the notice of the principal, the new student (not the fee message)
+    expect(bell().textContent).toBe('7'); // the meeting, the holiday, the notice of the principal, the new student, and three things to confirm (no subject on record: not limited)
     fireEvent.click(bell());
     expect(screen.getByText('Teachers meeting')).not.toBeNull();
     expect(screen.getByText('Holiday')).not.toBeNull();
@@ -42,6 +49,19 @@ describe('the bell of everybody', () => {
     expect(screen.getByText('My own notice')).not.toBeNull(); // written by the principal, so it is a notice of somebody else for the teacher
     expect(screen.queryByText(/sharique/)).toBeNull();
     expect(bell().textContent).toBe(''); // opening it means seen: the number is gone
+  });
+
+  it('a teacher is asked to confirm a test / homework of the own subject that the principal made; a click opens the page with the Confirm button', () => {
+    role = 'teacher';
+    subject = 'Physics';
+    const opened: string[] = [];
+    render(<NoticeBell onOpen={tab => opened.push(tab)} />);
+    fireEvent.click(bell());
+    expect(screen.getAllByText('Please confirm').length).toBe(2); // the Physics test and the Physics homework (not the Maths test)
+    expect(screen.getByText(/Physics homework: Optics worksheet/)).not.toBeNull();
+    expect(screen.queryByText(/Maths test/)).toBeNull();
+    fireEvent.click(screen.getByText(/Physics homework: Optics worksheet/));
+    expect(opened).toEqual(['material']);
   });
 
   it('the principal gets what comes to him (notices of others, a new student) but NOT the messages that he sends to the parents', () => {

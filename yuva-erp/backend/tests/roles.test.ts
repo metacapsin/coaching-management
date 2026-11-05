@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
-import { Api, BATCHES, PASSWORD, STUDENTS, dropDb, makeApi, newDb, startMongo, stopMongo } from './helpers.ts';
+import { Api, BATCHES, EXAM, PASSWORD, STUDENTS, dropDb, makeApi, newDb, startMongo, stopMongo } from './helpers.ts';
 
 before(startMongo);
 after(stopMongo);
@@ -611,7 +611,7 @@ describe('What a teacher may tell the parents and the students', () => {
 
   it('1 a teacher tells the parents ONLY about homework and tests, of the own batches', async () => {
     assert.equal((await put({ notificationLogs: { upsert: [log('ok1', 'homework', 's1', 'whatsapp'), log('ok2', 'test_notice', 's2', 'student')] } }, teacher))[0], 200);
-    for (const type of ['fee_due', 'general_announcement', 'exam_result']) { // (absent / late: see the class teacher tests)
+    for (const type of ['fee_due', 'general_announcement']) { // (absent / late: see the class teacher tests)
       assert.equal((await put({ notificationLogs: { upsert: [log(`no-${type}`, type, 's1', 'whatsapp')] } }, teacher))[0], 403, type); // not a notice of a teacher
     }
     assert.equal((await put({ notificationLogs: { upsert: [log('other-batch', 'homework', 's3', 'whatsapp')] } }, teacher))[0], 403); // s3 is in batch b2
@@ -680,7 +680,7 @@ describe('Absent and late students: only the class teacher or the principal tell
   });
 });
 
-describe('Absent and late students: a batch without a class teacher', () => {
+describe('Absent and late students: a batch without a class teacher is the work of the principal', () => {
   let admin = '';
   let teacher = '';
   const s = withServer(async (api) => {
@@ -693,9 +693,10 @@ describe('Absent and late students: a batch without a class teacher', () => {
   const log = (id: string, studentId: string) => ({ id, timestamp: '2026-11-05 12:00', type: 'attendance_late', channel: 'whatsapp', recipientName: 'x', recipientPhone: '1', studentId, studentName: 'n', content: 'late', status: 'pending' });
   const put = (logs: any[], token: string) => call('PUT', '/api/institute', { changes: { notificationLogs: { upsert: logs } } }, token);
 
-  it('1 no class teacher chosen: every teacher of the batch can tell the parents; not for another batch', async () => {
-    assert.equal((await put([log('ok', 's3')], teacher))[0], 200); // s3 is in b2, the batch of this teacher
-    assert.equal((await put([log('no', 's1')], teacher))[0], 403); // s1 is in b1
+  it('1 no class teacher chosen: no teacher can tell the parents about absent / late students, the principal does it', async () => {
+    assert.equal((await put([log('no1', 's3')], teacher))[0], 403); // a teacher of the batch, but no class teacher is chosen
+    assert.equal((await put([log('no2', 's1')], teacher))[0], 403); // another batch
+    assert.equal((await put([log('by-principal', 's3')], admin))[0], 200);
   });
 
   it('2 once a class teacher is chosen, only that teacher can', async () => {
@@ -704,5 +705,80 @@ describe('Absent and late students: a batch without a class teacher', () => {
     assert.equal((await put([log('blocked', 's3')], teacher))[0], 403);
     await call('PUT', '/api/institute', { changes: { batches: { upsert: [{ ...BATCHES[1], classTeacherId: other }] } } }, admin);
     assert.equal((await put([log('allowed', 's3')], teacher))[0], 200);
+  });
+});
+
+describe('Homework and tests: only the teacher of that subject tells the parents', () => {
+  let admin = '';
+  let physics = '';
+  let noSubject = '';
+  const s = withServer(async (api) => {
+    admin = (await api.call('POST', '/api/auth/setup', { name: 'P', email: 'p@x.com', password: PASSWORD }))[1].token;
+    await api.call('PUT', '/api/institute', { changes: { batches: { upsert: BATCHES }, students: { upsert: STUDENTS } } }, admin);
+    await api.call('POST', '/api/users', { name: 'Physics Teacher', email: 'ph@x.com', password: PASSWORD, role: 'teacher', subject: 'Physics', batchIds: ['b1'] }, admin);
+    await api.call('POST', '/api/users', { name: 'No Subject', email: 'ns@x.com', password: PASSWORD, role: 'teacher', batchIds: ['b1'] }, admin);
+    physics = await tokenOf(api, 'ph@x.com', 'member');
+    noSubject = await tokenOf(api, 'ns@x.com', 'member');
+  });
+  const call = (...a: Parameters<Api['call']>) => s.api.call(...a);
+  const log = (id: string, type: string, subject?: string, channel = 'whatsapp') => ({
+    id, timestamp: '2026-11-05 12:00', type, channel, recipientName: 'x', recipientPhone: '1', studentId: 's1', studentName: 'n', content: 'x', status: 'pending', ...(subject ? { subject } : {}),
+  });
+  const put = (logs: any[], token: string) => call('PUT', '/api/institute', { changes: { notificationLogs: { upsert: logs } } }, token);
+
+  it('1 a Physics teacher tells about Physics homework and tests, not about Maths', async () => {
+    assert.equal((await put([log('hw', 'homework', 'Physics')], physics))[0], 200);
+    assert.equal((await put([log('t1', 'test_notice', 'physics', 'student')], physics))[0], 200);
+    assert.equal((await put([log('line', 'homework', 'Physics', 'app')], physics))[0], 200); // the line for the principal
+    assert.equal((await put([log('hw-m', 'homework', 'Maths')], physics))[0], 403);
+    assert.equal((await put([log('t-m', 'test_notice', 'Maths')], physics))[0], 403);
+    assert.equal((await put([log('hw-none', 'homework')], physics))[0], 403); // no subject written: cannot be checked
+  });
+
+  it('2 the principal tells about any subject; a teacher with no subject on record is not limited', async () => {
+    assert.equal((await put([log('p1', 'homework', 'Maths')], admin))[0], 200);
+    assert.equal((await put([log('n1', 'homework', 'Maths')], noSubject))[0], 200);
+  });
+});
+
+describe('Results, and the teacher confirming a test of the principal', () => {
+  let admin = '';
+  let physics = '';
+  let teacherId = '';
+  const s = withServer(async (api) => {
+    admin = (await api.call('POST', '/api/auth/setup', { name: 'P', email: 'p@x.com', password: PASSWORD }))[1].token;
+    await api.call('PUT', '/api/institute', { changes: { batches: { upsert: BATCHES }, students: { upsert: STUDENTS } } }, admin);
+    teacherId = (await api.call('POST', '/api/users', { name: 'Physics Teacher', email: 'ph@x.com', password: PASSWORD, role: 'teacher', subject: 'Physics', batchIds: ['b1'] }, admin))[1].user.id;
+    physics = await tokenOf(api, 'ph@x.com', 'member');
+  });
+  const call = (...a: Parameters<Api['call']>) => s.api.call(...a);
+  const put = (changes: any, token: string) => call('PUT', '/api/institute', { changes }, token);
+  const result = (id: string, subject: string) => ({
+    id, timestamp: '2026-11-05 12:00', type: 'exam_result', channel: 'whatsapp', recipientName: 'x', recipientPhone: '1', studentId: 's1', studentName: 'n', content: 'result', status: 'pending', subject,
+  });
+
+  it('1 a teacher tells the result of the own subject only', async () => {
+    assert.equal((await put({ notificationLogs: { upsert: [result('r1', 'Physics')] } }, physics))[0], 200);
+    assert.equal((await put({ notificationLogs: { upsert: [result('r2', 'Maths')] } }, physics))[0], 403);
+    assert.equal((await put({ notificationLogs: { upsert: [result('r3', 'Maths')] } }, admin))[0], 200); // the principal: any subject
+  });
+
+  it('2 the principal makes a test for a teacher (waiting), the teacher confirms it', async () => {
+    const exam = { ...EXAM, id: 'e-wait', batchId: 'b1', subject: 'Physics', teacherId, teacherName: 'Physics Teacher', confirmed: false, results: {}, status: 'scheduled' };
+    assert.equal((await put({ exams: { upsert: [exam] } }, admin))[0], 200);
+    const seen = ((await call('GET', '/api/sync', null, physics))[1].institute.exams as any[]).find((e) => e.id === 'e-wait');
+    assert.equal(seen.confirmed, false); // the teacher sees it, waiting
+    assert.equal((await put({ exams: { upsert: [{ ...seen, confirmed: true }] } }, physics))[0], 200); // the teacher confirms
+    const after = ((await call('GET', '/api/sync', null, admin))[1].institute.exams as any[]).find((e) => e.id === 'e-wait');
+    assert.equal(after.confirmed, true); // the principal sees it confirmed
+  });
+
+  it('3 a homework of the principal is confirmed by its own teacher only, not by another teacher', async () => {
+    await call('POST', '/api/users', { name: 'Maths Teacher', email: 'mt@x.com', password: PASSWORD, role: 'teacher', subject: 'Maths', batchIds: ['b1'] }, admin);
+    const maths = await tokenOf(s.api, 'mt@x.com', 'member');
+    const hw = { id: 'hw-wait', title: 'Optics', description: 'x', type: 'homework', batchId: 'b1', batchName: 'Batch A', subject: 'Physics', teacherId, teacherName: 'Physics Teacher', confirmed: false, createdAt: '2026-11-05T09:00:00.000Z', authorId: 'p', authorName: 'P' };
+    assert.equal((await put({ materials: { upsert: [hw] } }, admin))[0], 200);
+    assert.equal((await put({ materials: { upsert: [{ ...hw, confirmed: true }] } }, maths))[0], 403); // another teacher
+    assert.equal((await put({ materials: { upsert: [{ ...hw, confirmed: true }] } }, physics))[0], 200); // its own teacher
   });
 });

@@ -67,6 +67,15 @@ export function teacherGetsNewStudent(teacher: any, log: any, batch: any, teache
 
 // ---------- reading ----------
 
+/** May this teacher confirm this test / homework? It is his (or nobody's) and of his subject (when he has one on record). */
+const mayConfirm = (user: any, item: any): boolean => {
+  if (item.teacherId && item.teacherId !== user.id) return false;
+  const mine = String(user.subject ?? '').trim().toLowerCase();
+  if (!mine) return true;
+  const subject = String(item.subject ?? '').trim().toLowerCase();
+  return !!subject && (subject.includes(mine) || mine.includes(subject));
+};
+
 const teacherIds = async (store: Store): Promise<string[]> => (await store.usersAll()).filter((u) => u.role === 'teacher').map((u) => u.id);
 
 /** For a parent: leave out the notices that a teacher wrote (also the old ones that have no author role: the author is known). */
@@ -244,6 +253,11 @@ async function teacherPlan(name: string, change: Plan, user: any, store: Store):
       if (!ids.includes(m.batchId) || (m.id in existing && !ids.includes(existing[m.id].batchId))) {
         throw new HttpError(403, 'You can only post study material for your own batches.');
       }
+      // a homework that the principal made for a teacher is confirmed by THAT teacher only (of that subject)
+      const was = existing[m.id];
+      if (was && was.confirmed === false && m.confirmed === true && !mayConfirm(user, was)) {
+        throw new HttpError(403, 'Only the teacher of this homework can confirm it.');
+      }
     }
     for (const rid of change.remove) {
       if (rid in existing && !ids.includes(existing[rid].batchId)) throw new HttpError(403, 'You can only remove study material of your own batches.');
@@ -282,11 +296,14 @@ async function teacherPlan(name: string, change: Plan, user: any, store: Store):
       const existing = byId[e.id];
       if (existing) {
         if (!ids.includes(existing.batchId)) throw new HttpError(403, 'You can only change tests of your own batches.');
-        // For an existing test only the marks and the status can change
+        // For an existing test only the marks and the status can change, and the teacher can CONFIRM a test that the principal made
+        // for him (the date): only the teacher of that test, of that subject.
+        const confirming = existing.confirmed === false && e.confirmed === true && mayConfirm(user, existing);
         upsert.push({
           ...existing,
           results: e.results !== undefined && e.results !== null ? e.results : existing.results,
           status: e.status !== undefined && e.status !== null ? e.status : existing.status,
+          ...(confirming ? { confirmed: true } : {}),
         });
       } else {
         if (!ids.includes(e.batchId)) throw new HttpError(403, 'You can only add tests for your own batches.');
@@ -302,16 +319,23 @@ async function teacherPlan(name: string, change: Plan, user: any, store: Store):
     const known = await store.getMany('notificationLogs', change.upsert.map((l) => l.id));
     const fresh = change.upsert.filter((l) => !(l.id in known));
     const kids = new Set((await store.find('students', { batchId: { $in: ids } })).map((s) => s.id));
-    // absent and late students: the CLASS TEACHER of the batch tells the parents (the principal chooses it on the batch). While no class
-    // teacher is chosen, every teacher of the batch can; after it is chosen, only that teacher.
-    const classBatchIds = (await store.find('batches', { _id: { $in: ids } })).filter((b) => (b.classTeacherId ? b.classTeacherId === user.id : true)).map((b) => b.id);
+    // absent and late students: ONLY the CLASS TEACHER of the batch (the principal chooses it on the batch) tells the parents. Where no
+    // class teacher is chosen, the principal does it.
+    const classBatchIds = (await store.find('batches', { _id: { $in: ids } })).filter((b) => b.classTeacherId === user.id).map((b) => b.id);
     const classKids = new Set((await store.find('students', { batchId: { $in: classBatchIds } })).map((s) => s.id));
+    // homework and tests: only the teacher of THAT SUBJECT (when the teacher has a subject on record), for the own batches
+    const mySubject = String(user.subject ?? '').trim().toLowerCase();
+    const ofMySubject = (l: any) => {
+      if (!mySubject) return true;
+      const subject = String(l.subject ?? '').trim().toLowerCase();
+      return !!subject && (subject.includes(mySubject) || mySubject.includes(subject));
+    };
     for (const l of fresh) {
-      const kind = l.type === 'homework' || l.type === 'test_notice';
+      const kind = (l.type === 'homework' || l.type === 'test_notice' || l.type === 'exam_result') && ofMySubject(l);
       const mine = l.channel === 'app' || (typeof l.studentId === 'string' && kids.has(l.studentId));
       const attendance = (l.type === 'attendance_absent' || l.type === 'attendance_late') && l.channel !== 'app' && typeof l.studentId === 'string' && classKids.has(l.studentId);
       if (!(kind && mine) && !attendance) {
-        throw new HttpError(403, 'A teacher can tell the parents about homework and tests of the own batches. Absent and late students: only the class teacher of the batch (or the principal).');
+        throw new HttpError(403, 'A teacher tells the parents only about the homework, tests and results of the own subject, for the own batches. Absent and late students: only the class teacher of the batch (or the principal).');
       }
     }
     return { upsert: fresh, remove: [] };
