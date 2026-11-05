@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
+import { useAuth } from '../../Context/AuthContext';
+import { canManageInstitute } from '../../Context/Access';
 import type { AttendanceStatus } from '../../types';
 import { AttendanceAbsentAlertModal } from '../modals/AttendanceAbsentAlertModal';
 import { downloadCsv, toLocalISODate } from '../utils/helpers';
@@ -13,6 +15,7 @@ export const AttendanceView: React.FC = () => {
     markAttendance, 
     getAttendanceForBatchAndDate 
   } = useInstitute();
+  const { user } = useAuth();
 
   // '__all' shows every student in one list (the default); a batch can be chosen to see only its students
   const ALL = '__all';
@@ -99,7 +102,8 @@ export const AttendanceView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          {absentCount > 0 && (
+          {/* an absent alert to the parents is for the principal: a teacher tells the parents only about homework and tests */}
+          {absentCount > 0 && canManageInstitute(user?.role) && (
             <button
               onClick={() => setIsAbsentModalOpen(true)}
               className="px-3.5 py-2 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors flex items-center gap-1.5 shadow-xs"

@@ -32,7 +32,9 @@ export const NoticesView: React.FC = () => {
     if (role === 'admin') return notificationLogs.filter(l => l.channel === 'app'); // new student / teacher, a teacher gave homework or a test
     if (role === 'teacher') return notificationLogs.filter(l => l.type === 'new_student');
     // a parent: the messages that the coaching sent about the child (the server sends them to the parent account only)
-    if (isParent) return notificationLogs.filter(l => l.channel !== 'app');
+    if (isParent) return notificationLogs.filter(l => l.channel !== 'app' && l.channel !== 'student');
+    // a student: the homework and test notices that are written for the student
+    if (role === 'student') return notificationLogs.filter(l => l.channel === 'student');
     return [];
   }, [notificationLogs, role, isParent]);
 
@@ -104,8 +106,8 @@ export const NoticesView: React.FC = () => {
       {activity.length > 0 && (
         <section className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
           <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/50">
-            <h2 className="text-sm font-bold text-slate-900">{isParent ? 'Messages from the coaching' : 'What happened'}</h2>
-            <p className="text-[11px] text-slate-500">{isParent ? 'What the coaching sent about your child, newest first.' : 'New students and teachers, and the homework and tests that the teachers gave. Newest first.'}</p>
+            <h2 className="text-sm font-bold text-slate-900">{isParent || role === 'student' ? 'Messages from the coaching' : 'What happened'}</h2>
+            <p className="text-[11px] text-slate-500">{isParent ? 'What the coaching sent about your child, newest first.' : role === 'student' ? 'Your homework and tests, newest first.' : 'New students and teachers, and the homework and tests that the teachers gave. Newest first.'}</p>
           </div>
           <ul className="divide-y divide-slate-100">
             {activity.map(l => (
@@ -119,7 +121,7 @@ export const NoticesView: React.FC = () => {
                 </span>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-semibold text-slate-900">{l.studentName}</span>
+                    <span className="text-sm font-semibold text-slate-900">{l.channel === 'student' ? (l.type === 'homework' ? 'Homework' : 'Test') : l.studentName}</span>
                     <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{l.type === 'new_student' ? 'New student' : l.type === 'new_teacher' ? 'New teacher' : l.type === 'homework' ? 'Homework' : l.type === 'test_notice' ? 'Test' : l.type.replace(/_/g, ' ')}</span>
                     {freshIds.includes(l.id) && <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-rose-600 text-white">New</span>}
                   </div>

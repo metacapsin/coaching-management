@@ -161,7 +161,7 @@ export const MaterialView: React.FC = () => {
                           title="Tell the parents of this batch about this homework (and a test that is coming)"
                           onClick={() => {
                             const told = notifyHomework(m);
-                            flash(told > 0 ? `The parents of ${told} student${told === 1 ? '' : 's'} were told about this homework.` : 'There is no student in this batch yet.');
+                            flash(told > 0 ? `The ${told} student${told === 1 ? '' : 's'} and the parent${told === 1 ? '' : 's'} were told about this homework.` : 'There is no student in this batch yet.');
                           }}
                           className="px-2 py-1 text-[11px] font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg flex items-center gap-1"
                         >

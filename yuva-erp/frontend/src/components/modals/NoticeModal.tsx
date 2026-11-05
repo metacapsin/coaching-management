@@ -61,7 +61,7 @@ export const NoticeModal: React.FC<NoticeModalProps> = ({ notice, onClose, onSav
   return (
     <ModalShell
       title={notice ? 'Edit Notice' : 'New Notice'}
-      subtitle={office ? 'Visible to students on their portal' : 'For students of your batches'}
+      subtitle={office ? 'Visible to students and parents on their portal' : 'For the students of your batches. The parents are told only about homework and tests.'}
       icon={Megaphone}
       iconClass="bg-indigo-600"
       width="lg"

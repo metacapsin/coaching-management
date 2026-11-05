@@ -116,7 +116,7 @@ export const ExamsView: React.FC = () => {
     }
     setTestNotice({
       examId: exam.id,
-      text: queued > 0 ? `The parents of ${queued} student${queued === 1 ? '' : 's'} were told: it is in their bell, and waiting in Parent Broadcasts for WhatsApp.${emailPart}` : 'There is no student in this batch yet.'
+      text: queued > 0 ? `The ${queued} student${queued === 1 ? '' : 's'} and the parent${queued === 1 ? '' : 's'} were told: it is in their bell and on their Notice Board. The message to the parents also waits in Parent Broadcasts for WhatsApp.${emailPart}` : 'There is no student in this batch yet.'
     });
     setTimeout(() => setTestNotice(null), 6000);
   };
@@ -433,7 +433,7 @@ export const ExamsView: React.FC = () => {
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
           onSuccess={told => {
-            setScheduledNotice(told > 0 ? `Test scheduled. The parents of ${told} student${told === 1 ? '' : 's'} were told: it is in their bell, and waiting in Parent Broadcasts for WhatsApp.` : 'Test scheduled. There is no student in this batch yet, so no parent was told.');
+            setScheduledNotice(told > 0 ? `Test scheduled. The ${told} student${told === 1 ? '' : 's'} and the parent${told === 1 ? '' : 's'} were told: it is in their bell and on their Notice Board. The message to the parents also waits in Parent Broadcasts for WhatsApp.` : 'Test scheduled. There is no student in this batch yet, so nobody was told.');
             setTimeout(() => setScheduledNotice(''), 7000);
           }}
         />

@@ -11,7 +11,8 @@ const announcements = [
 ];
 const logs = [
   { id: 'log1', timestamp: '2026-11-05 10:13', type: 'new_student', channel: 'app', studentName: 'Newbie Kid', content: 'Newbie Kid (Roll No: 05) joined Batch A.', batchId: 'b1', status: 'sent' },
-  { id: 'log2', timestamp: '2026-11-05 10:39', type: 'fee_due', channel: 'whatsapp', studentName: 'sharique', recipientName: 'khatim', content: 'Dear khatim, a pending installment of 1,45,000 is due.', status: 'pending' }
+  { id: 'log2', timestamp: '2026-11-05 10:39', type: 'fee_due', channel: 'whatsapp', studentName: 'sharique', recipientName: 'khatim', content: 'Dear khatim, a pending installment of 1,45,000 is due.', status: 'pending' },
+  { id: 'log3', timestamp: '2026-11-05 11:00', type: 'homework', channel: 'student', studentName: 'Alice', recipientName: 'Alice', content: 'Hi Alice, today you got homework in Maths.', status: 'sent' }
 ];
 vi.mock('../Context/InstituteContext', () => ({ useInstitute: () => ({ announcements, notificationLogs: logs }) }));
 vi.mock('../Context/AuthContext', () => ({ useAuth: () => ({ user: { id: `u-${role}${isParent ? '-parent' : ''}`, role, isParent } }) }));
@@ -65,13 +66,16 @@ describe('the bell of everybody', () => {
     expect(screen.queryByText('Newbie Kid')).toBeNull();
   });
 
-  it('a student only reads the notices: no message for the parent, no new student line', () => {
+  it('a student gets the notices and the homework / test notice written for the student: no message for the parent, no new student line', () => {
     role = 'student';
     render(<NoticeBell onOpen={noop} />);
+    expect(bell().textContent).toBe('4'); // three notices and the homework notice for the student
     fireEvent.click(bell());
     expect(screen.queryByText('Newbie Kid')).toBeNull();
     expect(screen.queryByText(/sharique/)).toBeNull();
     expect(screen.getByText('Holiday')).not.toBeNull();
+    expect(screen.getByText('From your coaching')).not.toBeNull();
+    expect(screen.getByText('Homework')).not.toBeNull();
   });
 
   it('a click opens the Notice Board with that message and counts as read', () => {

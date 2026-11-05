@@ -586,3 +586,52 @@ describe('Homework and tests: the notice to all the parents of the batch', () =>
     assert.equal((await logs(admin)).filter((l) => l.id === 'log-testrem-e1-s1').length, 1);
   });
 });
+
+describe('What a teacher may tell the parents and the students', () => {
+  let admin = '';
+  let teacher = '';
+  let student = '';
+  let parent = '';
+  const s = withServer(async (api) => {
+    admin = (await api.call('POST', '/api/auth/setup', { name: 'P', email: 'p@x.com', password: PASSWORD }))[1].token;
+    await api.call('PUT', '/api/institute', { changes: { batches: { upsert: BATCHES }, students: { upsert: STUDENTS } } }, admin);
+    await api.call('POST', '/api/users', { name: 'Teacher A', email: 'ta@x.com', password: PASSWORD, role: 'teacher', batchIds: ['b1'] }, admin);
+    await api.call('POST', '/api/users', { name: 'Alice', email: 'alice@x.com', password: PASSWORD, role: 'student', studentId: 's1' }, admin);
+    await api.call('POST', '/api/users', { name: 'Mrs Alice', email: 'pa@x.com', password: PASSWORD, role: 'student', studentId: 's1', isParent: true }, admin);
+    teacher = await tokenOf(api, 'ta@x.com', 'member');
+    student = await tokenOf(api, 'alice@x.com', 'member');
+    parent = await tokenOf(api, 'pa@x.com', 'parent');
+  });
+  const call = (...a: Parameters<Api['call']>) => s.api.call(...a);
+  const put = (changes: any, token: string) => call('PUT', '/api/institute', { changes }, token);
+  const log = (id: string, type: string, studentId: string, channel: string) => ({
+    id, timestamp: '2026-11-05 12:00', type, channel, recipientName: 'x', recipientPhone: '', studentId, studentName: 'n', content: `${type} ${channel}`, status: 'sent',
+  });
+  const logsOf = async (token: string) => ((await call('GET', '/api/sync', null, token))[1].institute.notificationLogs as any[]).map((l) => l.id);
+
+  it('1 a teacher tells the parents ONLY about homework and tests, of the own batches', async () => {
+    assert.equal((await put({ notificationLogs: { upsert: [log('ok1', 'homework', 's1', 'whatsapp'), log('ok2', 'test_notice', 's2', 'student')] } }, teacher))[0], 200);
+    for (const type of ['attendance_absent', 'fee_due', 'general_announcement', 'exam_result']) {
+      assert.equal((await put({ notificationLogs: { upsert: [log(`no-${type}`, type, 's1', 'whatsapp')] } }, teacher))[0], 403, type); // not a notice of a teacher
+    }
+    assert.equal((await put({ notificationLogs: { upsert: [log('other-batch', 'homework', 's3', 'whatsapp')] } }, teacher))[0], 403); // s3 is in batch b2
+    assert.equal((await put({ notificationLogs: { upsert: [log('ok3', 'homework', 's1', 'whatsapp')] } }, admin))[0], 200); // the principal can send anything
+  });
+
+  it('2 the student gets the notice written for the student, the parent the one written for the parent', async () => {
+    await put({ notificationLogs: { upsert: [log('s1-student', 'homework', 's1', 'student')] } }, teacher);
+    assert.ok((await logsOf(student)).includes('s1-student')); // channel student
+    assert.ok(!(await logsOf(student)).includes('ok1')); // the message to the parent is not the student's
+    assert.ok((await logsOf(parent)).includes('ok1'));
+    assert.ok(!(await logsOf(parent)).includes('s1-student')); // the copy for the student is not the parent's
+  });
+
+  it('3 a notice that a teacher writes (a holiday, anything) is for the students, not for the parents; the notices of the principal are for both', async () => {
+    const note = (id: string, by: string) => ({ id, title: id, body: 'text', audience: 'batch', batchId: 'b1', batchName: 'Batch A', createdAt: '2026-11-05T09:00:00.000Z', authorId: by, authorName: by });
+    assert.equal((await put({ announcements: { upsert: [note('teacher-note', 'x')] } }, teacher))[0], 200);
+    assert.equal((await put({ announcements: { upsert: [{ ...note('principal-note', 'y'), audience: 'all' }] } }, admin))[0], 200);
+    const ids = async (token: string) => ((await call('GET', '/api/sync', null, token))[1].institute.announcements as any[]).map((a) => a.id).sort();
+    assert.deepEqual(await ids(student), ['principal-note', 'teacher-note']);
+    assert.deepEqual(await ids(parent), ['principal-note']); // the parent does not get the notice of the teacher
+  });
+});

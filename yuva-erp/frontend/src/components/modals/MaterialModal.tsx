@@ -71,7 +71,7 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({ material, onClose,
       addMaterial(data); // homework: the parents of the batch are told at once
       if (data.type === 'homework') {
         const told = students.filter(s => s.batchId === data.batchId && s.status !== 'inactive').length;
-        onSaved?.(told > 0 ? `Homework saved. The parents of ${told} student${told === 1 ? '' : 's'} were told: it is in their bell and waiting in Parent Broadcasts for WhatsApp.` : 'Homework saved. There is no student in this batch yet, so no parent was told.');
+        onSaved?.(told > 0 ? `Homework saved. The ${told} student${told === 1 ? '' : 's'} and the parent${told === 1 ? '' : 's'} were told: it is in their bell and on their Notice Board. The message to the parents also waits in Parent Broadcasts for WhatsApp.` : 'Homework saved. There is no student in this batch yet, so nobody was told.');
       }
     }
     onClose();

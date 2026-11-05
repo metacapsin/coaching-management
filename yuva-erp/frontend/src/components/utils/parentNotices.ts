@@ -38,6 +38,23 @@ export const testNotice = (who: Who, test: TestInfo, today: string): string =>
   `Maximum marks: ${test.maxMarks}.${topicsOf(test) ? ` It covers: ${topicsOf(test)}.` : ''} ` +
   `Please make sure ${who.studentName} is well prepared and revises at home. - ${who.coaching}`;
 
+// ---- the same notices, written for the STUDENT (not "Dear <parent>")
+type Me = { studentName: string; coaching: string };
+
+export const studentTestNotice = (me: Me, test: TestInfo, today: string): string =>
+  `Hi ${me.studentName}, you have a test ${whenText(test.date, today)}: ${test.title}${test.subject ? ` (${test.subject})` : ''}. ` +
+  `Maximum marks: ${test.maxMarks}.${topicsOf(test) ? ` It covers: ${topicsOf(test)}.` : ''} Revise well and be on time. - ${me.coaching}`;
+
+export const studentTestReminder = (me: Me, test: TestInfo): string =>
+  `Reminder: you have a test TOMORROW (${formatDate(test.date)}): ${test.title}${test.subject ? ` (${test.subject})` : ''}. ` +
+  `Maximum marks: ${test.maxMarks}.${topicsOf(test) ? ` It covers: ${topicsOf(test)}.` : ''} Revise tonight and come on time. - ${me.coaching}`;
+
+export const studentHomeworkNotice = (me: Me, hw: HomeworkInfo, today: string, nextTest?: TestInfo): string =>
+  `Hi ${me.studentName}, today you got homework${hw.subject ? ` in ${hw.subject}` : ''}: "${hw.title}".` +
+  `${hw.description ? ` ${hw.description.replace(/\s+/g, ' ').trim()}` : ''}` +
+  `${hw.dueDate ? ` Submit it by ${dueText(hw.dueDate, today)}.` : ''}` +
+  `${nextTest ? ` Also note: a test is coming ${whenText(nextTest.date, today)}: ${nextTest.title}${nextTest.subject ? ` (${nextTest.subject})` : ''}.` : ''} - ${me.coaching}`;
+
 /** The day before the test. */
 export const testReminder = (who: Who, test: TestInfo): string =>
   `Reminder: ${who.studentName} has a test TOMORROW (${formatDate(test.date)}): ${test.title}${test.subject ? ` (${test.subject})` : ''}. ` +

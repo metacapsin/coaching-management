@@ -138,7 +138,7 @@ export const NotificationsView: React.FC = () => {
   };
 
   // the lines that only the bell shows (a new student or teacher) are not messages to the parents
-  const parentLogs = notificationLogs.filter(l => l.channel !== 'app');
+  const parentLogs = notificationLogs.filter(l => l.channel !== 'app' && l.channel !== 'student');
 
   const pendingLogs = parentLogs.filter(l => l.status === 'pending');
   const lq = logQuery.trim().toLowerCase();

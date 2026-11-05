@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dueText, homeworkNotice, testNotice, testReminder, whenText } from '../components/utils/parentNotices';
+import { dueText, homeworkNotice, studentHomeworkNotice, studentTestNotice, studentTestReminder, testNotice, testReminder, whenText } from '../components/utils/parentNotices';
 
 const who = { parentName: 'Mrs Alice', studentName: 'Alice', coaching: 'Apex Academy' };
 const test = { title: 'Unit test 3', subject: 'Physics', date: '2026-11-10', maxMarks: 50, topics: ['Motion', 'Force'] };
@@ -29,6 +29,16 @@ describe('the notices to the parents', () => {
     expect(text).toContain('TOMORROW');
     expect(text).toContain('Alice');
     expect(text).toContain('Unit test 3');
+  });
+
+  it('the notices for the student speak to the student, not to the parent', () => {
+    const me = { studentName: 'Alice', coaching: 'Apex Academy' };
+    const hw = { title: 'Calculus set 4', description: 'Solve questions 1 to 25.', subject: 'Maths', batchName: 'Class 12 Batch', dueDate: '2026-11-06' };
+    expect(studentHomeworkNotice(me, hw, '2026-11-05', test)).toContain('Hi Alice, today you got homework in Maths: "Calculus set 4"');
+    expect(studentHomeworkNotice(me, hw, '2026-11-05')).toContain('Submit it by tomorrow (6 Nov 2026)');
+    expect(studentHomeworkNotice(me, hw, '2026-11-05')).not.toContain('Dear');
+    expect(studentTestNotice(me, test, '2026-11-05')).toContain('you have a test on 10 Nov 2026 (in 5 days)');
+    expect(studentTestReminder(me, test)).toContain('you have a test TOMORROW');
   });
 
   it('the homework notice says what it is, until when, and tells a test that is coming', () => {

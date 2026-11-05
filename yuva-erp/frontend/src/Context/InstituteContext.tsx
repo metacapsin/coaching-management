@@ -49,7 +49,7 @@ import {
 } from '../data/mockData';
 import { nextRollNumber } from '../components/utils/rollNo';
 import { toLocalISODate, toLocalDateTime, uid, fillTemplate, formatDate, payPageLink, withPayLink } from '../components/utils/helpers';
-import { homeworkNotice, testNotice, testReminder } from '../components/utils/parentNotices';
+import { homeworkNotice, studentHomeworkNotice, studentTestNotice, studentTestReminder, testNotice, testReminder } from '../components/utils/parentNotices';
 
 export const DEFAULT_PHOTO = '/avatar.svg';
 
@@ -1040,6 +1040,22 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         ),
         status: 'pending'
       });
+      // and the student gets it too, in the own words (it is on the student login: bell and Notice Board)
+      sendNotification({
+        type: 'homework',
+        channel: 'student',
+        recipientName: st.name,
+        recipientPhone: '',
+        studentName: st.name,
+        studentId: st.id,
+        content: studentHomeworkNotice(
+          { studentName: st.name, coaching: profile.name },
+          { title: m.title, description: m.description, subject: m.subject, batchName: m.batchName, dueDate: m.dueDate },
+          today,
+          nextTest
+        ),
+        status: 'sent'
+      });
     }
     if (kids.length > 0) {
       tellPrincipal('homework', m.batchName, `${user?.name || 'A teacher'} gave homework "${m.title}"${m.dueDate ? ` (submit by ${formatDate(m.dueDate)})` : ''} to ${m.batchName}. The parents of ${kids.length} student${kids.length === 1 ? '' : 's'} were told.`);
@@ -1067,6 +1083,17 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         status: 'pending',
         // a test for tomorrow is the reminder already: the day-before reminder must not send it a second time
         ...(kind === 'new' && tomorrow ? { id: `log-testrem-${exam.id}-${st.id}` } : {})
+      });
+      sendNotification({
+        type: 'test_notice',
+        channel: 'student',
+        recipientName: st.name,
+        recipientPhone: '',
+        studentName: st.name,
+        studentId: st.id,
+        content: tomorrow ? studentTestReminder({ studentName: st.name, coaching: profile.name }, info) : studentTestNotice({ studentName: st.name, coaching: profile.name }, info, today),
+        status: 'sent',
+        ...(kind === 'new' && tomorrow ? { id: `log-testrem-s-${exam.id}-${st.id}` } : {})
       });
     }
     if (kids.length > 0) {
@@ -1097,6 +1124,17 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           studentId: st.id,
           content: testReminder({ parentName: st.parentName, studentName: st.name, coaching: profile.name }, info),
           status: 'pending'
+        });
+        sendNotification({
+          id: `log-testrem-s-${exam.id}-${st.id}`,
+          type: 'test_notice',
+          channel: 'student',
+          recipientName: st.name,
+          recipientPhone: '',
+          studentName: st.name,
+          studentId: st.id,
+          content: studentTestReminder({ studentName: st.name, coaching: profile.name }, info),
+          status: 'sent'
         });
       }
     }

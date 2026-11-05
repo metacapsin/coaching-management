@@ -67,6 +67,12 @@ export function teacherGetsNewStudent(teacher: any, log: any, batch: any, teache
 
 // ---------- reading ----------
 
+const teacherIds = async (store: Store): Promise<string[]> => (await store.usersAll()).filter((u) => u.role === 'teacher').map((u) => u.id);
+
+/** For a parent: leave out the notices that a teacher wrote (also the old ones that have no author role: the author is known). */
+const parentOnly = (user: any, teachers: string[], query: any): any =>
+  user.isParent ? { $and: [query, { authorRole: { $ne: 'teacher' } }, { authorId: { $nin: teachers } }] } : query;
+
 async function newStudentLogsFor(user: any, store: Store, ids: string[]): Promise<any[]> {
   const logs = await store.find('notificationLogs', { type: 'new_student', batchId: { $exists: true } });
   if (!logs.length) return [];
@@ -176,11 +182,12 @@ export async function scopeInstitute(user: any, store: Store): Promise<any> {
 
   // The messages that the principal sends to the parent of this student (absent, fee, result...) are for the PARENT account: the
   // student does not get them. Never the lines of the bell of the principal and the teachers (a new student, a new teacher).
-  const logs = user.isParent
-    ? (await store.find('notificationLogs'))
-        .filter((log) => log.channel !== 'app')
-        .filter((log) => (log.studentId ? log.studentId === me.id : log.studentName === me.name))
-    : [];
+  // The notices about homework and tests are written twice: for the parent (channel whatsapp) and for the student (channel 'student').
+  const logs = (await store.find('notificationLogs')).filter((log) => {
+    const mine = log.studentId ? log.studentId === me.id : log.studentName === me.name;
+    if (!mine || log.channel === 'app') return false;
+    return user.isParent ? log.channel !== 'student' : log.channel === 'student';
+  });
 
   return {
     ...empty,
@@ -192,8 +199,9 @@ export async function scopeInstitute(user: any, store: Store): Promise<any> {
     timetable: await store.find('timetable', { batchId: orNull(me.batchId) }),
     transactions: await store.find('transactions', { studentId: me.id }),
     notificationLogs: logs,
-    // never the notices for the teachers only
-    announcements: await store.find('announcements', { $or: [{ audience: 'all' }, { audience: 'batch', batchId: orNull(me.batchId) }] }),
+    // never the notices for the teachers only; and a PARENT does not get the notices that a teacher wrote (a holiday, anything else): a
+    // teacher tells the parents only about homework and tests (those are messages, above)
+    announcements: await store.find('announcements', parentOnly(user, await teacherIds(store), { $or: [{ audience: 'all' }, { audience: 'batch', batchId: orNull(me.batchId) }] })),
     materials: await store.find('materials', { batchId: orNull(me.batchId) }),
     books: await store.find('books'),
     submissions: await store.find('submissions', { studentId: me.id }),
@@ -250,7 +258,7 @@ async function teacherPlan(name: string, change: Plan, user: any, store: Store):
     for (const a of change.upsert) {
       if (a.audience !== 'batch' || !ids.includes(a.batchId)) throw new HttpError(403, 'You can only post notices to your own batches.');
       if (a.id in existing && existing[a.id].authorId !== user.id) throw new HttpError(403, 'You can only change your own notices.');
-      upsert.push({ ...a, authorId: user.id, authorName: user.name });
+      upsert.push({ ...a, authorId: user.id, authorName: user.name, authorRole: 'teacher' });
     }
     for (const rid of change.remove) {
       if (rid in existing && existing[rid].authorId !== user.id) throw new HttpError(403, 'You can only remove your own notices.');
@@ -289,9 +297,17 @@ async function teacherPlan(name: string, change: Plan, user: any, store: Store):
   }
 
   if (name === 'notificationLogs') {
-    // Messages can be added, never changed
+    // Messages can be added, never changed. A teacher tells the parents ONLY about homework and tests (of the own batches); a holiday
+    // or any other notice, an absent alert, a fee reminder... is for the principal. (The "line for the principal" is allowed too.)
     const known = await store.getMany('notificationLogs', change.upsert.map((l) => l.id));
-    return { upsert: change.upsert.filter((l) => !(l.id in known)), remove: [] };
+    const fresh = change.upsert.filter((l) => !(l.id in known));
+    const kids = new Set((await store.find('students', { batchId: { $in: ids } })).map((s) => s.id));
+    for (const l of fresh) {
+      const kind = l.type === 'homework' || l.type === 'test_notice';
+      const mine = l.channel === 'app' || (typeof l.studentId === 'string' && kids.has(l.studentId));
+      if (!kind || !mine) throw new HttpError(403, 'A teacher can tell the parents only about homework and tests of the own batches.');
+    }
+    return { upsert: fresh, remove: [] };
   }
 
   throw new HttpError(403, `Teachers cannot change ${name}.`);

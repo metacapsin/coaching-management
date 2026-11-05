@@ -82,7 +82,9 @@ function MainApp() {
       : user?.role === 'teacher'
       ? notificationLogs.filter(l => l.type === 'new_student')
       : user?.role === 'student' && user.isParent
-      ? notificationLogs.filter(l => l.channel !== 'app') // the messages of the coaching about the child
+      ? notificationLogs.filter(l => l.channel !== 'app' && l.channel !== 'student') // the messages of the coaching about the child
+      : user?.role === 'student'
+      ? notificationLogs.filter(l => l.channel === 'student') // homework and tests, written for the student
       : [];
   const newNotices =
     announcements.filter(a => a.authorId !== user?.id && !bellMemory.pageNotices.includes(a.id)).length +

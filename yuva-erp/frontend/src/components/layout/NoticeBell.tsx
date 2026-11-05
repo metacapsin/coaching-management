@@ -85,7 +85,8 @@ export const NoticeBell: React.FC<{ onOpen: (tab: TabId) => void }> = ({ onOpen 
     for (const l of notificationLogs) {
       if (role === 'teacher' && l.type !== 'new_student') continue;
       if (role === 'admin' && l.channel !== 'app') continue; // the messages to the parents are not notifications for the principal
-      if (role === 'student' && (!user?.isParent || l.channel === 'app')) continue; // a student gets no message that is for the parent
+      // a parent gets the messages written for the parent; a student the ones written for the student (homework, tests)
+      if (role === 'student' && (l.channel === 'app' || (user?.isParent ? l.channel === 'student' : l.channel !== 'student'))) continue;
       if (role !== 'admin' && role !== 'teacher' && role !== 'student') continue;
       const [label, tone] = LOG_LABEL[l.type] ?? ['Message', 'bg-slate-100 text-slate-700'];
       list.push({
@@ -94,7 +95,7 @@ export const NoticeBell: React.FC<{ onOpen: (tab: TabId) => void }> = ({ onOpen 
         log: l,
         label,
         tone,
-        title: l.studentName,
+        title: l.channel === 'student' ? 'From your coaching' : l.studentName,
         body: l.content,
         time: logTime(l.timestamp),
         when: formatDateTime(l.timestamp.replace(' ', 'T')),
