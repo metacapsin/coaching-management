@@ -43,6 +43,7 @@ const TAB_META: Record<TabId, { title: string; subtitle: string }> = {
   enquiries: { title: 'Enquiries', subtitle: 'Admission leads and follow-ups' },
   notices: { title: 'Notice Board', subtitle: 'Announcements for students and batches' },
   material: { title: 'Study Material', subtitle: 'Notes, links and homework by batch' },
+  leave: { title: 'Apply for Leave', subtitle: 'Ask the principal for leave' },
   reports: { title: 'Reports', subtitle: 'Fees, attendance, results and admissions' },
   expenses: { title: 'Expenses & Profit', subtitle: 'What the coaching spends and what is left' },
   library: { title: 'Library', subtitle: 'Books to read online' }

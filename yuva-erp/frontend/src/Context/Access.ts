@@ -10,6 +10,7 @@ export type TabId =
   | 'batches'
   | 'notices'
   | 'material'
+  | 'leave'
   | 'reports'
   | 'expenses'
   | 'library'
@@ -41,9 +42,11 @@ export const ROLE_TABS: Record<UserRole, TabId[]> = {
     'settings'
   ],
   // Teacher: own dashboard + own batches only (the server sends only their data)
-  teacher: ['dashboard', 'attendance', 'exams', 'notices', 'material', 'library', 'team'],
+  // (leave: a teacher asks for the own leave; the principal decides)
+  teacher: ['dashboard', 'attendance', 'exams', 'notices', 'material', 'leave', 'library', 'team'],
   // Student: own portal, notices and study material of the batch
-  student: ['dashboard', 'notices', 'material', 'library', 'team']
+  // (leave: a student asks; the page itself says a parent only reads)
+  student: ['dashboard', 'notices', 'material', 'leave', 'library', 'team']
 };
 
 export const canAccessTab = (role: UserRole | undefined, tab: TabId) =>

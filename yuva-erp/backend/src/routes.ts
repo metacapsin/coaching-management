@@ -832,7 +832,10 @@ route('/api/homework/<material_id>', ['PUT'], 'user', async (c) => {
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 const MIN_REASON = 15;
-const LEAVE_KINDS = ['Sick', 'Family function', 'Travel', 'Exam / other class', 'Other'];
+const LEAVE_KINDS = {
+  student: ['Sick', 'Family function', 'Travel', 'Exam / other class', 'Other'],
+  teacher: ['Sick', 'Casual', 'Family function', 'Travel', 'Other'],
+};
 const MAX_LEAVE_DAYS = 30;
 const dayNumber = (iso: string): number => Math.round(Date.parse(`${iso}T00:00:00Z`) / 86400000);
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -881,53 +884,57 @@ async function tellParentAboutLeave(c: any, leave: any, kind: 'asked' | 'approve
 }
 
 route('/api/leaves', ['POST'], 'user', async (c) => {
-  if (c.user.role !== 'student' || c.user.isParent) throw new HttpError(403, 'Only a student asks for leave.');
+  // a student or a teacher asks (a parent only reads); the form is the same, the teacher has no parent and no batch
+  const isStudent = c.user.role === 'student' && !c.user.isParent;
+  const isTeacher = c.user.role === 'teacher';
+  if (!isStudent && !isTeacher) throw new HttpError(403, 'Only a student or a teacher asks for leave.');
   const s = c.store;
-  const me = c.user.studentId ? await s.getItem('students', c.user.studentId) : null;
-  if (!me) throw new HttpError(404, 'Student not found.');
+  const me = isStudent && c.user.studentId ? await s.getItem('students', c.user.studentId) : null;
+  if (isStudent && !me) throw new HttpError(404, 'Student not found.');
   const b = c.body();
   const fromDate = text(b.fromDate, 10);
   const toDate = text(b.toDate, 10) || fromDate;
   const reason = text(b.reason, 600);
-  const kind = LEAVE_KINDS.includes(text(b.kind, 30)) ? text(b.kind, 30) : '';
+  const kinds = isStudent ? LEAVE_KINDS.student : LEAVE_KINDS.teacher;
+  const kind = kinds.includes(text(b.kind, 30)) ? text(b.kind, 30) : '';
+  const signature = text(b.signature, 80);
   if (!ISO_DAY.test(fromDate) || !ISO_DAY.test(toDate) || Number.isNaN(Date.parse(fromDate)) || Number.isNaN(Date.parse(toDate))) throw new HttpError(400, 'Choose the dates of the leave.');
   if (fromDate < todayLocal()) throw new HttpError(400, 'Ask for leave before the day, not for a day that is already over.');
   if (toDate < fromDate) throw new HttpError(400, 'The last day cannot be before the first day.');
   if (dayNumber(toDate) - dayNumber(fromDate) + 1 > MAX_LEAVE_DAYS) throw new HttpError(400, `One request can be for ${MAX_LEAVE_DAYS} days at most.`);
   if (reason.length < MIN_REASON) throw new HttpError(400, `Write the full reason for the leave (at least ${MIN_REASON} letters): why do you need it?`);
-  const mine = await s.find('leaveRequests', { studentId: me.id, status: { $in: ['pending', 'approved'] } });
+  if (b.declaration !== true) throw new HttpError(400, 'Tick that the details are correct.');
+  if (signature.length < 3) throw new HttpError(400, 'Type your full name as the signature.');
+  const mine = await s.find('leaveRequests', { ...(isStudent ? { studentId: me.id } : { teacherId: c.user.id }), status: { $in: ['pending', 'approved'] } });
   if (mine.some((l) => l.fromDate <= toDate && fromDate <= l.toDate)) throw new HttpError(409, 'You already have a leave request for these days.');
-  const batch = me.batchId ? await s.getItem('batches', me.batchId) : null;
   const id = newId('leave');
-  await s.applyList(
-    'leaveRequests',
-    [
-      {
-        id,
-        studentId: me.id,
-        studentName: me.name,
-        rollNo: me.rollNo ?? '',
-        batchId: me.batchId ?? '',
-        batchName: batch?.name ?? '',
-        parentName: me.parentName ?? '',
-        parentPhone: me.parentPhone ?? '',
-        fromDate,
-        toDate,
-        reason,
-        kind,
-        status: 'pending',
-        createdAt: nowIso(),
-      },
-    ],
-    [],
-  );
+  const common = { id, fromDate, toDate, reason, kind, hasProof: b.hasProof === true, signature, status: 'pending', createdAt: nowIso() };
+  let record: any;
+  if (isStudent) {
+    const batch = me.batchId ? await s.getItem('batches', me.batchId) : null;
+    record = {
+      ...common,
+      role: 'student',
+      studentId: me.id,
+      studentName: me.name,
+      rollNo: me.rollNo ?? '',
+      batchId: me.batchId ?? '',
+      batchName: batch?.name ?? '',
+      parentName: me.parentName ?? '',
+      parentPhone: me.parentPhone ?? '',
+    };
+  } else {
+    // studentName holds the NAME of the person for both roles (the old field); a teacher has no roll number, batch or parent here
+    record = { ...common, role: 'teacher', teacherId: c.user.id, studentName: c.user.name, subject: c.user.subject ?? '' };
+  }
+  await s.applyList('leaveRequests', [record], []);
   await s.bump();
-  await s.audit(c.user, 'leave-ask', `${me.name} ${fromDate}..${toDate}`);
-  await tellParentAboutLeave(c, { id, studentId: me.id, studentName: me.name, rollNo: me.rollNo ?? '', parentName: me.parentName ?? '', parentPhone: me.parentPhone ?? '', fromDate, toDate, reason, kind }, 'asked');
+  await s.audit(c.user, 'leave-ask', `${record.studentName} ${fromDate}..${toDate}`);
+  if (isStudent) await tellParentAboutLeave(c, record, 'asked'); // the parent of a student gets the same news; nobody else
   return { ok: true, id };
 });
 
-/** The principal decides (approved / rejected); the student can take back a request that is still waiting (cancelled). */
+/** The principal decides (approved / rejected); the person who asked can take back a request that is still waiting (cancelled). */
 route('/api/leaves/<leave_id>', ['PUT'], 'user', async (c) => {
   const s = c.store;
   const leave = await s.getItem('leaveRequests', c.req.params.leave_id as string);
@@ -935,9 +942,12 @@ route('/api/leaves/<leave_id>', ['PUT'], 'user', async (c) => {
   if (leave.status !== 'pending') throw new HttpError(409, 'This request was already answered.');
   const b = c.body();
   const decision = text(b.decision, 20);
+  const isTeacherLeave = leave.role === 'teacher';
 
-  if (c.user.role === 'student' && !c.user.isParent) {
-    if (leave.studentId !== c.user.studentId) throw new HttpError(404, 'Leave request not found.');
+  const isStudent = c.user.role === 'student' && !c.user.isParent;
+  if (isStudent || c.user.role === 'teacher') {
+    const own = isStudent ? leave.studentId === c.user.studentId : leave.teacherId === c.user.id;
+    if (!own) throw new HttpError(404, 'Leave request not found.');
     if (decision !== 'cancelled') throw new HttpError(403, 'Only the principal approves or rejects leave.');
     await s.applyList('leaveRequests', [{ ...leave, status: 'cancelled', decidedAt: nowIso() }], []);
     await s.bump();
@@ -947,16 +957,17 @@ route('/api/leaves/<leave_id>', ['PUT'], 'user', async (c) => {
   if (c.user.role !== 'admin') throw new HttpError(403, 'Only the principal approves or rejects leave.');
   if (decision !== 'approved' && decision !== 'rejected') throw new HttpError(400, 'Approve or reject the leave.');
   const note = text(b.note, 400);
-  if (decision === 'approved' && b.parentConfirmed !== true) throw new HttpError(400, 'Call the parent and confirm the reason first, then tick that you did.');
+  // a student's reason is checked with the parent by a call; a teacher has no parent to call
+  if (decision === 'approved' && !isTeacherLeave && b.parentConfirmed !== true) throw new HttpError(400, 'Call the parent and confirm the reason first, then tick that you did.');
   if (decision === 'rejected' && note.length < 5) throw new HttpError(400, 'Write why the leave is not given.');
   await s.applyList(
     'leaveRequests',
-    [{ ...leave, status: decision, decisionNote: note, decidedAt: nowIso(), decidedBy: c.user.name, ...(decision === 'approved' ? { parentConfirmedBy: c.user.name } : {}) }],
+    [{ ...leave, status: decision, decisionNote: note, decidedAt: nowIso(), decidedBy: c.user.name, ...(decision === 'approved' && !isTeacherLeave ? { parentConfirmedBy: c.user.name } : {}) }],
     [],
   );
   await s.bump();
   await s.audit(c.user, `leave-${decision}`, `${leave.studentName} ${leave.fromDate}..${leave.toDate}`);
-  await tellParentAboutLeave(c, { ...leave, decisionNote: note }, decision);
+  if (!isTeacherLeave) await tellParentAboutLeave(c, { ...leave, decisionNote: note }, decision);
   return ok();
 });
 

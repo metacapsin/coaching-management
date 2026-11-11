@@ -262,7 +262,7 @@ interface InstituteContextType {
 
   // Homework (a student marks it as done)
   markHomework: (materialId: string, done: boolean) => Promise<void>;
-  askLeave: (input: { fromDate: string; toDate: string; reason: string; kind?: string }) => Promise<void>;
+  askLeave: (input: { fromDate: string; toDate: string; reason: string; kind?: string; hasProof?: boolean; declaration?: boolean; signature?: string }) => Promise<void>;
   decideLeave: (id: string, input: { decision: 'approved' | 'rejected'; note: string; parentConfirmed: boolean }) => Promise<void>;
   cancelLeave: (id: string) => Promise<void>;
 
@@ -936,7 +936,7 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   // ----- leave (the student asks, the principal decides; these go to their own routes, not through the data sync) -----
 
-  const askLeave = async (input: { fromDate: string; toDate: string; reason: string; kind?: string }) => {
+  const askLeave = async (input: { fromDate: string; toDate: string; reason: string; kind?: string; hasProof?: boolean; declaration?: boolean; signature?: string }) => {
     await request('POST', '/leaves', input);
     await refreshNow(true);
   };

@@ -14,6 +14,7 @@ export const TAB_PATHS: Record<TabId, string> = {
   notifications: '/broadcasts',
   notices: '/notices',
   material: '/study-material',
+  leave: '/leave',
   library: '/library',
   reports: '/reports',
   expenses: '/expenses',

@@ -223,7 +223,7 @@ export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }>
             </div>
           </div>
           <button
-            onClick={() => onNavigate('notices')}
+            onClick={() => onNavigate('leave')}
             className="px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm shrink-0"
           >
             Ask for leave

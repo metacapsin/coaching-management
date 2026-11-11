@@ -4,7 +4,7 @@ import { useAuth } from '../../Context/AuthContext';
 import { canManageInstitute } from '../../Context/Access';
 import type { Announcement } from '../../types';
 import { NoticeModal } from '../modals/NoticeModal';
-import { PrincipalLeave, StudentLeave } from './LeaveSection';
+import { PrincipalLeave } from './LeaveSection';
 import { formatDateTime } from '../utils/helpers';
 import { addIds, useBellMemory } from '../utils/bellMemory';
 import { FLASH_CLASS, useFocusFlash } from '../utils/focusItem';
@@ -106,7 +106,6 @@ export const NoticesView: React.FC = () => {
       )}
 
       {role === 'admin' && <PrincipalLeave freshIds={freshIds} flashId={flashId} />}
-      {role === 'student' && !isParent && <StudentLeave />}
 
       {activity.length > 0 && (
         <section className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">

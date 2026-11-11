@@ -130,8 +130,8 @@ export async function scopeInstitute(user: any, store: Store): Promise<any> {
       announcements: await store.find('announcements', { $or: [{ audience: 'all' }, { audience: 'teachers' }, { batchId: { $in: ids } }] }),
       materials,
       submissions: await store.find('submissions', { materialId: { $in: (await store.find('materials', { batchId: { $in: ids } })).map((m) => m.id) } }),
-      // leave is between the student and the principal only: a teacher does not get it
-      leaveRequests: [],
+      // a teacher gets only the own leave requests (never the leave of a student)
+      leaveRequests: await store.find('leaveRequests', { teacherId: user.id }),
     };
   }
 

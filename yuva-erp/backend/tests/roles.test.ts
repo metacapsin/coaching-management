@@ -811,15 +811,16 @@ describe('Leave of a student: the student asks, the principal calls the parent a
   let id = '';
 
   it('1 the student needs dates and the full reason', async () => {
-    const ask = (b: any, tok = student) => call('POST', '/api/leaves', b, tok);
+    const ask = (b: any, tok = student) => call('POST', '/api/leaves', { declaration: true, signature: 'Alice Verma', ...b }, tok);
     assert.equal((await ask({ fromDate: day(2), toDate: day(3), reason: 'sick' }))[0], 400); // too short
     assert.equal((await ask({ fromDate: day(2), toDate: day(3), reason: '' }))[0], 400);
     assert.equal((await ask({ fromDate: day(-1), toDate: day(1), reason }))[0], 400); // already over
     assert.equal((await ask({ fromDate: day(3), toDate: day(2), reason }))[0], 400); // backwards
     assert.equal((await ask({ fromDate: 'tomorrow', reason }))[0], 400);
     assert.equal((await ask({ fromDate: day(2), toDate: day(60), reason }))[0], 400); // too long
-    assert.equal((await ask({ fromDate: day(2), toDate: day(3), reason }, teacher))[0], 403); // only a student
-    assert.equal((await ask({ fromDate: day(2), toDate: day(3), reason }, admin))[0], 403);
+    assert.equal((await ask({ fromDate: day(2), toDate: day(3), reason }, admin))[0], 403); // the principal does not ask
+    assert.equal((await call('POST', '/api/leaves', { fromDate: day(2), toDate: day(3), reason }, student))[0], 400); // no declaration, no signature
+    assert.equal((await call('POST', '/api/leaves', { fromDate: day(2), toDate: day(3), reason, declaration: true, signature: 'x' }, student))[0], 400);
     assert.equal((await ask({ fromDate: day(2), toDate: day(3), reason }, parent))[0], 403); // a parent only reads
     const [status, data] = await ask({ fromDate: day(2), toDate: day(3), reason });
     assert.equal(status, 200);
@@ -847,7 +848,7 @@ describe('Leave of a student: the student asks, the principal calls the parent a
   it('4 only the principal decides; approving needs the call to the parent, rejecting needs a reason', async () => {
     const decide = (b: any, tok = admin) => call('PUT', `/api/leaves/${id}`, b, tok);
     assert.equal((await decide({ decision: 'approved', parentConfirmed: true }, student))[0], 403);
-    assert.equal((await decide({ decision: 'approved', parentConfirmed: true }, teacher))[0], 403);
+    assert.equal((await decide({ decision: 'approved', parentConfirmed: true }, teacher))[0], 404); // not his request
     assert.equal((await decide({ decision: 'approved', parentConfirmed: true }, parent))[0], 403); // a parent only reads
     assert.equal((await decide({ decision: 'cancelled' }, parent))[0], 403);
     assert.equal((await decide({ decision: 'approved', parentConfirmed: true }, other))[0], 404); // not his request
@@ -866,9 +867,9 @@ describe('Leave of a student: the student asks, the principal calls the parent a
   });
 
   it('6 a rejected request, and a student takes back a waiting request', async () => {
-    const [, a] = await call('POST', '/api/leaves', { fromDate: day(10), toDate: day(10), reason }, student);
+    const [, a] = await call('POST', '/api/leaves', { fromDate: day(10), toDate: day(10), reason, declaration: true, signature: 'Alice Verma' }, student);
     assert.equal((await call('PUT', `/api/leaves/${a.id}`, { decision: 'rejected', note: 'Test week, please come' }, admin))[0], 200);
-    const [, b] = await call('POST', '/api/leaves', { fromDate: day(12), toDate: day(12), reason }, student);
+    const [, b] = await call('POST', '/api/leaves', { fromDate: day(12), toDate: day(12), reason, declaration: true, signature: 'Alice Verma' }, student);
     assert.equal((await call('PUT', `/api/leaves/${b.id}`, { decision: 'cancelled' }, other))[0], 404); // not his
     assert.equal((await call('PUT', `/api/leaves/${b.id}`, { decision: 'approved', parentConfirmed: true }, student))[0], 403);
     assert.equal((await call('PUT', `/api/leaves/${b.id}`, { decision: 'cancelled' }, student))[0], 200);
@@ -889,5 +890,39 @@ describe('Leave of a student: the student asks, the principal calls the parent a
     assert.equal((await call('GET', '/api/sync', null, student))[1].institute.notificationLogs.filter((l: any) => l.type === 'leave').length, 0);
     assert.equal((await call('GET', '/api/sync', null, teacher))[1].institute.notificationLogs.filter((l: any) => l.type === 'leave').length, 0);
     assert.equal((await call('GET', '/api/sync', null, other))[1].institute.notificationLogs.filter((l: any) => l.type === 'leave').length, 0);
+  });
+  it('8 a teacher asks for the own leave: only the principal gets it, no parent text, no parent call', async () => {
+    const ask = (b: any, tok = teacher) => call('POST', '/api/leaves', { declaration: true, signature: 'Tina Teacher', ...b }, tok);
+    assert.equal((await ask({ fromDate: day(20), toDate: day(21), reason: 'short' }))[0], 400);
+    assert.equal((await ask({ fromDate: day(20), toDate: day(21), reason, kind: 'Casual', signature: '' }))[0], 400);
+    const [status, data] = await ask({ fromDate: day(20), toDate: day(21), reason, kind: 'Casual', hasProof: true });
+    assert.equal(status, 200);
+    assert.equal((await ask({ fromDate: day(21), toDate: day(22), reason }))[0], 409); // the days overlap
+    const mine = (await call('GET', '/api/sync', null, teacher))[1].institute.leaveRequests;
+    assert.deepEqual(mine.map((l: any) => [l.role, l.studentName, l.kind, l.hasProof, l.parentName]), [['teacher', 'T', 'Casual', true, undefined]]);
+    // the principal sees it; no student and no parent sees it; the parent got no text about it
+    const seen = (await call('GET', '/api/sync', null, admin))[1].institute.leaveRequests.filter((l: any) => l.role === 'teacher');
+    assert.equal(seen.length, 1);
+    for (const tok of [student, other, parent]) {
+      assert.ok((await call('GET', '/api/sync', null, tok))[1].institute.leaveRequests.every((l: any) => l.role !== 'teacher'));
+    }
+    const texts = (await call('GET', '/api/sync', null, parent))[1].institute.notificationLogs.filter((l: any) => l.type === 'leave').map((l: any) => l.content as string);
+    assert.ok(texts.every((t) => !t.includes('Casual')));
+    // only the principal decides; approving needs no call to a parent
+    assert.equal((await call('PUT', `/api/leaves/${data.id}`, { decision: 'approved' }, teacher))[0], 403);
+    assert.equal((await call('PUT', `/api/leaves/${data.id}`, { decision: 'approved' }, student))[0], 404);
+    assert.equal((await call('PUT', `/api/leaves/${data.id}`, { decision: 'approved' }, admin))[0], 200);
+    const after = (await call('GET', '/api/sync', null, teacher))[1].institute.leaveRequests[0];
+    assert.deepEqual([after.status, after.parentConfirmedBy], ['approved', undefined]);
+    // the texts to the parents are still only about the students
+    const parentTexts = (await call('GET', '/api/sync', null, parent))[1].institute.notificationLogs.filter((l: any) => l.type === 'leave');
+    assert.equal(parentTexts.length, texts.length);
+  });
+
+  it('9 a teacher takes back a waiting request; nobody else can; a teacher cannot read the leave of a student', async () => {
+    const [, d] = await call('POST', '/api/leaves', { fromDate: day(30), toDate: day(30), reason, declaration: true, signature: 'Tina Teacher' }, teacher);
+    assert.equal((await call('PUT', `/api/leaves/${d.id}`, { decision: 'cancelled' }, student))[0], 404);
+    assert.equal((await call('PUT', `/api/leaves/${d.id}`, { decision: 'cancelled' }, teacher))[0], 200);
+    assert.ok((await call('GET', '/api/sync', null, teacher))[1].institute.leaveRequests.every((l: any) => l.role === 'teacher'));
   });
 });

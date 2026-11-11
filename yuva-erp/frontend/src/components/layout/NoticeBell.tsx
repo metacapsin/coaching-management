@@ -145,9 +145,9 @@ export const NoticeBell: React.FC<{ onOpen: (tab: TabId) => void }> = ({ onOpen 
         list.push({
           id: `leave-${l.id}`,
           kind: 'leave',
-          label: 'Leave request',
+          label: l.role === 'teacher' ? 'Teacher leave' : 'Leave request',
           tone: 'bg-indigo-100 text-indigo-700',
-          title: `${l.studentName} wants leave on ${leaveDates(l)}`,
+          title: `${l.role === 'teacher' ? 'Teacher ' : ''}${l.studentName} wants leave on ${leaveDates(l)}`,
           body: l.reason,
           time: new Date(l.createdAt).getTime() || 0,
           when: formatDateTime(l.createdAt),

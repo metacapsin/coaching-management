@@ -244,13 +244,18 @@ export interface Submission {
 export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 export interface LeaveRequest {
   id: string;
-  studentId: string;
-  studentName: string;
-  rollNo: string;
-  batchId: string;
-  batchName: string;
-  parentName: string;
-  parentPhone: string;
+  role?: 'student' | 'teacher'; // who asked (older requests: a student)
+  studentId?: string;
+  teacherId?: string;
+  studentName: string; // the NAME of the person (student or teacher)
+  subject?: string; // a teacher
+  rollNo?: string;
+  batchId?: string;
+  batchName?: string;
+  parentName?: string;
+  parentPhone?: string;
+  hasProof?: boolean;
+  signature?: string;
   fromDate: string;
   toDate: string;
   reason: string;

@@ -24,6 +24,7 @@ import { SettingsView } from './components/views/SettingsView';
 import { EnquiriesView } from './components/views/EnquiriesView';
 import { NoticesView } from './components/views/NoticesView';
 import { MaterialView } from './components/views/MaterialView';
+import { LeavePage } from './components/views/LeavePage';
 import { ReportsView } from './components/views/ReportsView';
 import { ExpensesView } from './components/views/ExpensesView';
 import { LibraryView } from './components/views/LibraryView';
@@ -66,7 +67,8 @@ import {
   BookOpen,
   BarChart3,
   Wallet,
-  Library
+  Library,
+  CalendarOff
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { FeeTransaction, Student } from './types';
@@ -150,6 +152,7 @@ function MainApp() {
     { id: 'notifications', label: 'Parent Broadcasts', icon: Bell },
     { id: 'notices', label: 'Notice Board', icon: Megaphone, badge: newNotices, fresh: true },
     { id: 'material', label: role === 'student' ? 'Study Material' : 'Study Material & Homework', icon: BookOpen },
+    { id: 'leave', label: 'Apply for Leave', icon: CalendarOff },
     { id: 'library', label: 'Library', icon: Library },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
     { id: 'expenses', label: 'Expenses & Profit', icon: Wallet },
@@ -158,7 +161,7 @@ function MainApp() {
   ];
 
   // Each role sees only the pages it is allowed to open
-  const visibleNavItems = navItems.filter(item => canAccessTab(role, item.id));
+  const visibleNavItems = navItems.filter(item => canAccessTab(role, item.id) && !(item.id === 'leave' && user?.isParent)); // a parent has no leave to ask
 
   // the name of the open page is in the title of the browser tab
   const pageName = navItems.find(item => item.id === activeTab)?.label ?? 'Dashboard';
@@ -233,6 +236,8 @@ function MainApp() {
         return <NoticesView />;
       case 'material':
         return <MaterialView />;
+      case 'leave':
+        return <LeavePage />;
       case 'reports':
         return <ReportsView />;
       case 'expenses':
