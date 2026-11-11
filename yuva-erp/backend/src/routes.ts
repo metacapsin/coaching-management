@@ -826,7 +826,7 @@ route('/api/homework/<material_id>', ['PUT'], 'user', async (c) => {
   return ok();
 });
 
-// ---------- leave of a student ----------
+// ---------- leave of a student and of a teacher ----------
 // A student asks the principal for leave (dates + the full reason). The principal calls the parent to check the reason and then
 // approves or rejects it. Only an APPROVED leave is a leave. Nobody writes this list through the normal data sync.
 
@@ -883,6 +883,78 @@ async function tellParentAboutLeave(c: any, leave: any, kind: 'asked' | 'approve
   }
 }
 
+/** The same news also goes by EMAIL (a courtesy: a failed email never breaks the leave). Who gets what:
+ *   a student asks    the principal (to answer it), the parent, and the teachers of the batch of the student (so they know why the student
+ *                     is not in the class)
+ *   a teacher asks    the principal only
+ *   the answer        the person who asked (the student / the teacher), the parent of the student and, when the leave is approved, the
+ *                     teachers of the batch */
+async function emailAboutLeave(c: any, leave: any, stage: 'asked' | 'approved' | 'rejected'): Promise<void> {
+  try {
+    const s = c.store;
+    const coaching = await coachingName(c, s);
+    const users = (await s.usersAll()).filter((u: any) => (u.status || 'active') === 'active');
+    const isTeacherLeave = leave.role === 'teacher';
+    const days = leaveDays(leave);
+    const who: string = leave.studentName;
+    const sent = new Set<string>(); // one email per address
+    const send = (to: string | undefined, subject: string, heading: string, lines: string[], look: any) => {
+      const address = String(to ?? '').trim().toLowerCase();
+      if (!address.includes('@') || sent.has(address)) return;
+      sent.add(address);
+      mail(to as string, subject, heading, lines, look);
+    };
+    const detailRows: [string, any][] = isTeacherLeave
+      ? [['Teacher', who], ['Subject', leave.subject], ['Leave', `${days.replace(/^(on|from) /, '')}`], ['Type', leave.kind], ['Certificate / proof', leave.hasProof ? 'Can be shown' : ''], ['Coaching', coaching]]
+      : [['Student', who], ['Batch', leave.batchName], ['Roll No', leave.rollNo], ['Leave', `${days.replace(/^(on|from) /, '')}`], ['Type', leave.kind], ['Parent', [leave.parentName, leave.parentPhone].filter(Boolean).join(' · ')], ['Certificate / proof', leave.hasProof ? 'Can be shown' : ''], ['Coaching', coaching]];
+    const reasonLine = `Reason: ${leave.reason}`;
+
+    const admins = users.filter((u: any) => u.role === 'admin');
+    // the parent: the email on the admission form and the email of the parent login
+    const student = !isTeacherLeave && leave.studentId ? await s.getItem('students', leave.studentId) : null;
+    const parentLogin = !isTeacherLeave ? users.find((u: any) => u.role === 'student' && u.isParent && u.studentId === leave.studentId) : null;
+    const parents = [{ email: student?.parentEmail, name: leave.parentName }, { email: parentLogin?.email, name: parentLogin?.name || leave.parentName }];
+    // the teachers of the batch of the student
+    const teachers = isTeacherLeave ? [] : users.filter((u: any) => u.role === 'teacher' && (u.batchIds || []).includes(leave.batchId));
+    // the person who asked
+    const asker = isTeacherLeave ? users.find((u: any) => u.id === leave.teacherId) : users.find((u: any) => u.role === 'student' && !u.isParent && u.studentId === leave.studentId);
+
+    if (stage === 'asked') {
+      for (const a of admins) {
+        send(a.email, `Leave request: ${who} wants leave ${days}`, `${isTeacherLeave ? 'Teacher ' : ''}${who} has asked for leave ${days}`, [reasonLine, isTeacherLeave ? 'Please approve the leave or write why it is not given.' : 'Please call the parent to check the reason, then approve the leave or write why it is not given. You find the request on the Notice Board.'], { details: detailRows, button: ['Open the Notice Board', c.loginLink('admin')], name: a.name });
+      }
+      if (!isTeacherLeave) {
+        for (const pr of parents) {
+          send(pr.email, `${who} has asked for leave ${days}`, `${who} has sent a notice to the principal and wants to take leave ${days}`, [reasonLine, 'The principal may call you to confirm the reason. If this is not true, please tell him.'], { details: detailRows, button: ['Open AcademiaOS', c.loginLink('parent')], name: pr.name });
+        }
+        for (const t of teachers) {
+          send(t.email, `${who} (${leave.batchName}) has asked for leave ${days}`, `${who} of ${leave.batchName || 'your batch'} may not be in the class ${days}`, [`${who} has asked the principal for leave. ${reasonLine}`, 'The principal has not answered yet. You get another email when he does.'], { details: detailRows, button: ['Open AcademiaOS', c.loginLink('member')], name: t.name });
+        }
+      }
+      return;
+    }
+
+    const approved = stage === 'approved';
+    const answer = approved ? 'approved' : 'not given';
+    const note = leave.decisionNote ? `Note of the principal: ${leave.decisionNote}` : '';
+    const look = (name: string, portal: string) => ({ details: detailRows, accent: approved ? GREEN : RED, button: ['Open AcademiaOS', c.loginLink(portal)] as [string, string], name });
+    // the person who asked
+    send(asker?.email, `Your leave ${days} is ${answer}`, approved ? `Your leave ${days} is approved` : `Your leave ${days} is not given`, [note || (approved ? 'You can take the leave.' : 'Please come as usual.')].filter(Boolean), look(asker?.name || who, isTeacherLeave ? 'member' : 'member'));
+    if (!isTeacherLeave) {
+      for (const pr of parents) {
+        send(pr.email, `Leave of ${who} ${days} is ${answer}`, approved ? `The principal approved the leave of ${who} ${days}` : `The principal did not give the leave of ${who} ${days}`, [reasonLine, note].filter(Boolean), look(pr.name, 'parent'));
+      }
+      if (approved) {
+        for (const t of teachers) {
+          send(t.email, `${who} (${leave.batchName}) is on leave ${days}`, `${who} of ${leave.batchName || 'your batch'} will not be in the class ${days}`, [`The principal approved the leave. ${reasonLine}`], look(t.name, 'member'));
+        }
+      }
+    }
+  } catch {
+    /* a courtesy */
+  }
+}
+
 route('/api/leaves', ['POST'], 'user', async (c) => {
   // a student or a teacher asks (a parent only reads); the form is the same, the teacher has no parent and no batch
   const isStudent = c.user.role === 'student' && !c.user.isParent;
@@ -931,6 +1003,7 @@ route('/api/leaves', ['POST'], 'user', async (c) => {
   await s.bump();
   await s.audit(c.user, 'leave-ask', `${record.studentName} ${fromDate}..${toDate}`);
   if (isStudent) await tellParentAboutLeave(c, record, 'asked'); // the parent of a student gets the same news; nobody else
+  await emailAboutLeave(c, record, 'asked');
   return { ok: true, id };
 });
 
@@ -968,6 +1041,7 @@ route('/api/leaves/<leave_id>', ['PUT'], 'user', async (c) => {
   await s.bump();
   await s.audit(c.user, `leave-${decision}`, `${leave.studentName} ${leave.fromDate}..${leave.toDate}`);
   if (!isTeacherLeave) await tellParentAboutLeave(c, { ...leave, decisionNote: note }, decision);
+  await emailAboutLeave(c, { ...leave, decisionNote: note }, decision);
   return ok();
 });
 

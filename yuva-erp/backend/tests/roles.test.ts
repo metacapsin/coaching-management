@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
-import { Api, BATCHES, EXAM, PASSWORD, STUDENTS, dropDb, makeApi, newDb, startMongo, stopMongo } from './helpers.ts';
+import { Api, BATCHES, EXAM, PASSWORD, STUDENTS, captureMail, dropDb, makeApi, newDb, startMongo, stopMongo } from './helpers.ts';
 
 before(startMongo);
 after(stopMongo);
@@ -917,6 +917,84 @@ describe('Leave of a student: the student asks, the principal calls the parent a
     // the texts to the parents are still only about the students
     const parentTexts = (await call('GET', '/api/sync', null, parent))[1].institute.notificationLogs.filter((l: any) => l.type === 'leave');
     assert.equal(parentTexts.length, texts.length);
+  });
+
+  it('10 the same news goes by email: a student asks (principal, parent, teachers of the batch), the answer (student, parent, teachers)', async () => {
+    // a teacher of ANOTHER batch must not be told
+    await call('POST', '/api/users', { name: 'T Two', email: 't2@x.com', password: PASSWORD, role: 'teacher', batchIds: ['b2'] }, admin);
+    const to = (m: ReturnType<typeof captureMail>) => m.sent.map((x) => x[0]).sort();
+    const mail = captureMail();
+    let id = '';
+    try {
+      const [status, data] = await call('POST', '/api/leaves', { fromDate: day(40), toDate: day(41), reason, kind: 'Family function', declaration: true, signature: 'Alice Verma' }, student);
+      assert.equal(status, 200);
+      id = data.id;
+    } finally {
+      mail.stop();
+    }
+    // the principal, the parent (login) and the teacher of the batch of Alice; not the teacher of another batch, not Alice herself
+    assert.deepEqual(to(mail), ['p@x.com', 'pa@x.com', 't@x.com']);
+    const principalMail = mail.sent.find((m) => m[0] === 'p@x.com')!;
+    assert.ok(principalMail[1].includes('Leave request') && principalMail[2].includes(reason) && principalMail[2].includes('call the parent'));
+    const teacherMail = mail.sent.find((m) => m[0] === 't@x.com')!;
+    assert.ok(teacherMail[2].includes('Alice') && teacherMail[2].includes(reason) && teacherMail[2].includes('not answered yet')); // why she is not in the class
+    assert.ok(mail.sent.find((m) => m[0] === 'pa@x.com')![2].includes('If this is not true'));
+    for (const m of mail.sent) assert.ok(m[2].includes('http'), m[1]); // every email has a link
+
+    // the principal approves: Alice, the parent and the teacher of the batch are told
+    const mail2 = captureMail();
+    try {
+      assert.equal((await call('PUT', `/api/leaves/${id}`, { decision: 'approved', parentConfirmed: true, note: 'Parent said yes' }, admin))[0], 200);
+    } finally {
+      mail2.stop();
+    }
+    assert.deepEqual(to(mail2), ['alice@x.com', 'pa@x.com', 't@x.com']);
+    assert.ok(mail2.sent.every((m) => m[1].includes('approved') || m[1].includes('on leave')));
+    assert.ok(mail2.sent.find((m) => m[0] === 'alice@x.com')![2].includes('Parent said yes'));
+
+    // not given: Alice and the parent, NOT the teachers
+    const mail3 = captureMail();
+    try {
+      const [, d] = await call('POST', '/api/leaves', { fromDate: day(50), toDate: day(50), reason, declaration: true, signature: 'Alice Verma' }, student);
+      mail3.sent.length = 0;
+      assert.equal((await call('PUT', `/api/leaves/${d.id}`, { decision: 'rejected', note: 'Test on that day' }, admin))[0], 200);
+    } finally {
+      mail3.stop();
+    }
+    assert.deepEqual(to(mail3), ['alice@x.com', 'pa@x.com']);
+    assert.ok(mail3.sent[0][1].includes('not given'));
+  });
+
+  it('11 a teacher asks for leave: the email goes to the principal only; the answer to the teacher only', async () => {
+    const mail = captureMail();
+    let id = '';
+    try {
+      const [, d] = await call('POST', '/api/leaves', { fromDate: day(60), toDate: day(60), reason, declaration: true, signature: 'T Teacher' }, teacher);
+      id = d.id;
+    } finally {
+      mail.stop();
+    }
+    assert.deepEqual(mail.sent.map((m) => m[0]), ['p@x.com']); // no parent, no student, no other teacher
+    // no other teacher can read it, take it back or answer it; no student, no parent; the bells and the messages have nothing about it
+    const other = await tokenOf(s.api, 't2@x.com', 'member');
+    assert.deepEqual((await call('GET', '/api/sync', null, other))[1].institute.leaveRequests, []);
+    assert.equal((await call('PUT', `/api/leaves/${id}`, { decision: 'cancelled' }, other))[0], 404);
+    assert.equal((await call('PUT', `/api/leaves/${id}`, { decision: 'approved' }, other))[0], 404);
+    for (const tok of [student, parent]) {
+      const inst = (await call('GET', '/api/sync', null, tok))[1].institute;
+      assert.ok(inst.leaveRequests.every((l: any) => l.role !== 'teacher'));
+      assert.ok(inst.notificationLogs.every((l: any) => !String(l.content).includes('T Teacher') && l.studentName !== 'T'));
+    }
+    const board = (await call('GET', '/api/sync', null, other))[1].institute;
+    assert.ok(board.notificationLogs.every((l: any) => l.type !== 'leave'));
+    assert.ok(mail.sent[0][1].includes('Leave request'));
+    const mail2 = captureMail();
+    try {
+      assert.equal((await call('PUT', `/api/leaves/${id}`, { decision: 'approved' }, admin))[0], 200);
+    } finally {
+      mail2.stop();
+    }
+    assert.deepEqual(mail2.sent.map((m) => m[0]), ['t@x.com']);
   });
 
   it('9 a teacher takes back a waiting request; nobody else can; a teacher cannot read the leave of a student', async () => {
