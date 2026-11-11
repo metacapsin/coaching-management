@@ -122,7 +122,7 @@ export const PrintableFeeReceiptModal: React.FC<PrintableFeeReceiptModalProps> =
             </div>
 
             <div className="text-right">
-              <span className="inline-block px-2.5 py-1 text-xs font-bold uppercase tracking-wider bg-slate-900 text-white rounded">
+              <span className="inline-block px-2.5 py-1 text-xs font-bold uppercase tracking-wider bg-indigo-600 text-white rounded">
                 Official Fee Receipt
               </span>
               <p className="text-sm font-mono font-bold text-slate-900 mt-2">{transaction.receiptNo}</p>

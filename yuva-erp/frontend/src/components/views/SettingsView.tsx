@@ -138,7 +138,7 @@ export const SettingsView: React.FC = () => {
       <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-slate-800 text-white">
+            <span className="p-1.5 rounded-lg bg-indigo-600 text-white">
               <Settings className="w-5 h-5" />
             </span>
             <h1 className="text-xl font-bold text-slate-900 tracking-tight">Institute Settings & Data Management</h1>
