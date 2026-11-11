@@ -492,6 +492,27 @@ route('/api/auth/logout', ['POST'], 'any', async (c) => {
 
 route('/api/auth/me', ['GET'], 'any', (c) => ({ user: auth.publicUser(c.user) }));
 
+/** A student, a parent or a teacher changed the password, the email or the mobile number of the own login: the PRINCIPAL is told by
+ * email (never the password itself). A courtesy: a failed email never breaks the change. */
+async function tellPrincipalAboutAccount(c: any, what: string, rows: [string, any][], lines: string[] = []): Promise<void> {
+  try {
+    const u = c.user;
+    if (u.role !== 'student' && u.role !== 'teacher') return; // the principal changes the own login without telling anybody
+    const kind = u.role === 'teacher' ? 'Teacher' : u.isParent ? 'Parent' : 'Student';
+    const coaching = await coachingName(c, c.store);
+    await tellPrincipals(
+      c,
+      c.store,
+      `${u.name} (${kind}) changed ${what}`,
+      `${u.name} changed ${what}`,
+      [`${kind} ${u.name} changed ${what} of the own login.`, ...lines],
+      [['Person', u.name], ['Role', kind], ['Email', u.email], ...rows, ['Coaching', coaching]],
+    );
+  } catch {
+    /* a courtesy */
+  }
+}
+
 route('/api/auth/change-password', ['POST'], 'any', async (c) => {
   const s = c.store;
   const b = c.body();
@@ -506,6 +527,7 @@ route('/api/auth/change-password', ['POST'], 'any', async (c) => {
   await s.saveUser(c.user);
   await auth.destroySessionsOf(s, c.user.id, c.token); // other devices must sign in again
   await s.audit(c.user, 'change-password');
+  await tellPrincipalAboutAccount(c, 'the password', [], ['The password itself is never sent by email.', 'If this was not the person, you can set a new password in Team & Access.']);
   return ok();
 });
 
@@ -1075,33 +1097,35 @@ route('/api/auth/change-email', ['POST'], 'any', async (c) => {
     throw err;
   }
   await c.store.audit(c.user, 'change-email', `${old} -> ${next}`);
+  await tellPrincipalAboutAccount(c, 'the email', [['Old email', old], ['New email', next]]);
   return { user: auth.publicUser(c.user) };
 });
 
-/** Everybody can change their own phone number; everybody except students also their name
- * (a student's name belongs to the admission record). */
+/** The mobile number of the own login. A student, a parent and a teacher change ONLY this (and the password and the email, on their
+ * own routes): the name and the subject belong to the admission record / the principal. The principal tells the name of the own login. */
 route('/api/auth/profile', ['PUT'], 'user', async (c) => {
   const s = c.store;
   const b = c.body();
   const user = c.user;
-  if (user.role !== 'student' && 'name' in b) {
+  const office = user.role === 'admin' || user.role === 'super';
+  if (!office && ('name' in b || 'subject' in b)) throw new HttpError(403, 'Your name and subject are changed by the principal. You can change your mobile number, your email and your password.');
+  if (office && 'name' in b) {
     const name = text(b.name);
     if (!name) throw new HttpError(400, 'Please enter your name.');
     user.name = name;
   }
+  const oldPhone: string = user.phone ?? '';
   if ('phone' in b) {
     const phone = text(b.phone, 30);
     if (phone && last10(phone).length < 10) throw new HttpError(400, 'Please enter a valid 10-digit mobile number.');
     if (phone) user.phone = phone;
     else delete user.phone;
   }
-  if ('subject' in b && user.role === 'teacher') {
-    const subject = text(b.subject);
-    if (subject) user.subject = subject;
-    else delete user.subject;
-  }
   await s.saveUser(user);
   await s.bump();
   await s.audit(c.user, 'profile', 'Own details changed');
+  if (last10(oldPhone) !== last10(user.phone ?? '') || (oldPhone === '') !== ((user.phone ?? '') === '')) {
+    await tellPrincipalAboutAccount(c, 'the mobile number', [['Old mobile number', oldPhone || '(none)'], ['New mobile number', user.phone || '(none)']]);
+  }
   return { user: auth.publicUser(user) };
 });

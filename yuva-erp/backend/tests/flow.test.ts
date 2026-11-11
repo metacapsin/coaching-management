@@ -537,17 +537,25 @@ describe('Features: photos, notices, material, enquiries, backups, own details',
   });
 
   feature('own details', async () => {
-    const [status, data] = await api.call('PUT', '/api/auth/profile', { name: 'Tina T', phone: '9800000099', subject: 'Physics' }, teacher);
+    // a teacher and a student change the mobile number only (the email and the password have their own routes)
+    const [status, data] = await api.call('PUT', '/api/auth/profile', { phone: '9800000099' }, teacher);
     assert.equal(status, 200);
-    assert.deepEqual([data.user.name, data.user.phone, data.user.subject], ['Tina T', '9800000099', 'Physics']);
+    assert.equal(data.user.phone, '9800000099');
     const users = (await api.call('GET', '/api/sync', null, admin))[1].users;
-    assert.equal(users.find((u: any) => u.email === 't@x.com').name, 'Tina T');
+    assert.equal(users.find((u: any) => u.email === 't@x.com').phone, '9800000099');
     assert.equal((await api.call('PUT', '/api/auth/profile', { phone: '123' }, teacher))[0], 400);
-    assert.equal((await api.call('PUT', '/api/auth/profile', { name: '' }, teacher))[0], 400);
-    // a student can change the phone number, not the name
-    const [, d2] = await api.call('PUT', '/api/auth/profile', { name: 'Hacker', phone: '9800000088' }, alice);
+    // the name and the subject are not theirs to change (the principal does it)
+    assert.equal((await api.call('PUT', '/api/auth/profile', { name: 'Tina T' }, teacher))[0], 403);
+    assert.equal((await api.call('PUT', '/api/auth/profile', { subject: 'Physics' }, teacher))[0], 403);
+    const [, d2] = await api.call('PUT', '/api/auth/profile', { phone: '9800000088' }, alice);
     assert.deepEqual([d2.user.name, d2.user.phone], ['Alice', '9800000088']);
+    assert.equal((await api.call('PUT', '/api/auth/profile', { name: 'Hacker', phone: '9800000077' }, alice))[0], 403);
+    assert.equal((await api.call('GET', '/api/auth/me', null, alice))[1].user.phone, '9800000088'); // nothing of the refused change
     assert.equal((await api.call('PUT', '/api/auth/profile', { phone: '9800000088' }))[0], 401);
+    // the principal changes the name of the own login
+    const [st3, d3] = await api.call('PUT', '/api/auth/profile', { name: 'Principal P' }, admin);
+    assert.deepEqual([st3, d3.user.name], [200, 'Principal P']);
+    assert.equal((await api.call('PUT', '/api/auth/profile', { name: '' }, admin))[0], 400);
   });
 });
 

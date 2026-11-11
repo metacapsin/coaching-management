@@ -1043,3 +1043,84 @@ describe('Leave of a student: the student asks, the principal calls the parent a
     assert.ok((await call('GET', '/api/sync', null, teacher))[1].institute.leaveRequests.every((l: any) => l.role === 'teacher'));
   });
 });
+
+describe('My Account: a student, a parent and a teacher change the password, the email or the mobile number, the principal is told', () => {
+  let admin = '';
+  let teacher = '';
+  let student = '';
+  let parent = '';
+  const s = withServer(async (api) => {
+    admin = (await api.call('POST', '/api/auth/setup', { name: 'P', email: 'p@x.com', password: PASSWORD }))[1].token;
+    await api.call('PUT', '/api/institute', { changes: { batches: { upsert: BATCHES }, students: { upsert: STUDENTS } } }, admin);
+    await api.call('POST', '/api/users', { name: 'Tina', email: 't@x.com', password: PASSWORD, role: 'teacher', subject: 'Maths', batchIds: ['b1'], phone: '9800000001' }, admin);
+    await api.call('POST', '/api/users', { name: 'Alice', email: 'alice@x.com', password: PASSWORD, role: 'student', studentId: 's1' }, admin);
+    await api.call('POST', '/api/users', { name: 'Alice Parent', email: 'pa@x.com', password: PASSWORD, role: 'student', studentId: 's1', isParent: true }, admin);
+    teacher = await tokenOf(api, 't@x.com', 'member');
+    student = await tokenOf(api, 'alice@x.com', 'member');
+    parent = await tokenOf(api, 'pa@x.com', 'parent');
+  });
+  const call = (...a: Parameters<Api['call']>) => s.api.call(...a);
+
+  it('1 the mobile number: the principal gets an email with the old and the new number, only when it really changed', async () => {
+    const mail = captureMail();
+    try {
+      assert.equal((await call('PUT', '/api/auth/profile', { phone: '9811122233' }, teacher))[0], 200);
+      assert.equal((await call('PUT', '/api/auth/profile', { phone: '9811122233' }, teacher))[0], 200); // the same number: nothing to tell
+    } finally {
+      mail.stop();
+    }
+    assert.deepEqual(mail.sent.map((m) => m[0]), ['p@x.com']);
+    assert.ok(mail.sent[0][1].includes('Tina') && mail.sent[0][1].includes('mobile number'));
+    assert.ok(mail.sent[0][2].includes('9800000001') && mail.sent[0][2].includes('9811122233') && mail.sent[0][2].includes('Teacher'));
+    assert.ok(mail.sent[0][2].includes('http')); // a link to sign in
+  });
+
+  it('2 the password: the principal is told, the password itself is never in the email', async () => {
+    const mail = captureMail();
+    try {
+      assert.equal((await call('POST', '/api/auth/change-password', { currentPassword: PASSWORD, newPassword: 'Brand-New-pw-98765' }, student))[0], 200);
+    } finally {
+      mail.stop();
+    }
+    assert.deepEqual(mail.sent.map((m) => m[0]), ['p@x.com']);
+    assert.ok(mail.sent[0][1].includes('Alice') && mail.sent[0][1].includes('password'));
+    assert.ok(!mail.sent[0][2].includes('Brand-New-pw-98765') && !mail.sent[0][2].includes(PASSWORD));
+    // a wrong current password changes nothing and tells nobody
+    const mail2 = captureMail();
+    try {
+      assert.equal((await call('POST', '/api/auth/change-password', { currentPassword: 'wrong', newPassword: 'Another-pw-12345' }, teacher))[0], 400);
+    } finally {
+      mail2.stop();
+    }
+    assert.equal(mail2.sent.length, 0);
+  });
+
+  it('3 the email of the login: the principal gets the old and the new email; a parent is called Parent', async () => {
+    const mail = captureMail();
+    try {
+      assert.equal((await call('POST', '/api/auth/change-email', { currentPassword: PASSWORD, newEmail: 'tina.new@x.com' }, teacher))[0], 200);
+      assert.equal((await call('PUT', '/api/auth/profile', { phone: '9822233344' }, parent))[0], 200);
+    } finally {
+      mail.stop();
+    }
+    assert.deepEqual(mail.sent.map((m) => m[0]), ['p@x.com', 'p@x.com']);
+    assert.ok(mail.sent[0][2].includes('t@x.com') && mail.sent[0][2].includes('tina.new@x.com'));
+    assert.ok(mail.sent[1][1].includes('Parent') && mail.sent[1][1].includes('mobile number'));
+  });
+
+  it('4 the name and the subject cannot be changed by a student, a parent or a teacher; the principal changes his own name without telling anybody', async () => {
+    for (const tok of [teacher, student, parent]) {
+      assert.equal((await call('PUT', '/api/auth/profile', { name: 'Somebody Else' }, tok))[0], 403);
+    }
+    assert.equal((await call('PUT', '/api/auth/profile', { subject: 'Physics' }, teacher))[0], 403);
+    const users = (await call('GET', '/api/sync', null, admin))[1].users;
+    assert.equal(users.find((u: any) => u.id !== undefined && u.email === 'tina.new@x.com').subject, 'Maths'); // the subject is still his own
+    const mail = captureMail();
+    try {
+      assert.equal((await call('PUT', '/api/auth/profile', { name: 'Principal Rakesh', phone: '9833344455' }, admin))[0], 200);
+    } finally {
+      mail.stop();
+    }
+    assert.equal(mail.sent.length, 0);
+  });
+});

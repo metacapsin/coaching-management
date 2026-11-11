@@ -133,23 +133,23 @@ type Credentials = { name: string; email: string; password: string; heading: str
 
 // ---------- Component ----------
 
-// Everybody can change their own phone number; everybody except students also their name
+// A student, a parent and a teacher change only the mobile number here (and the email and the password below): the name and the subject
+// are set by the principal. The principal gets an email when one of them changes. The principal can also change the own name.
 const MyDetails: React.FC<{ onDone: (type: 'success' | 'error', text: string) => void }> = ({ onDone }) => {
   const { user } = useAuth();
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
-  const [subject, setSubject] = useState(user?.subject || '');
   const [busy, setBusy] = useState(false);
   if (!user) return null;
+  const canName = user.role === 'admin' || user.role === 'super'; // only the principal changes the own name
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
     try {
       await updateOwnDetails({
-        ...(user.role !== 'student' ? { name: name.trim() } : {}),
-        phone: phone.trim(),
-        ...(user.role === 'teacher' ? { subject: subject.trim() } : {})
+        ...(canName ? { name: name.trim() } : {}),
+        phone: phone.trim()
       });
       await refreshNow(true);
       onDone('success', 'Your details were saved.');
@@ -164,23 +164,23 @@ const MyDetails: React.FC<{ onDone: (type: 'success' | 'error', text: string) =>
   return (
     <form onSubmit={save} className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
       <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">My details</h3>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">Name</label>
-          <input value={name} disabled={user.role === 'student'} onChange={e => setName(e.target.value)} className={cls} />
-          {user.role === 'student' && <p className="text-[11px] text-slate-400 mt-1">Your name comes from the admission record.</p>}
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">Mobile number</label>
-          <input value={phone} onChange={e => setPhone(e.target.value)} className={cls} />
-        </div>
-        {user.role === 'teacher' && (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {canName && (
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Subject</label>
-            <input value={subject} onChange={e => setSubject(e.target.value)} className={cls} />
+            <label className="block text-xs font-medium text-slate-700 mb-1">Name</label>
+            <input value={name} onChange={e => setName(e.target.value)} className={cls} />
           </div>
         )}
+        <div>
+          <label className="block text-xs font-medium text-slate-700 mb-1">Mobile number</label>
+          <input value={phone} onChange={e => setPhone(e.target.value)} inputMode="tel" className={cls} />
+        </div>
       </div>
+      {!canName && (
+        <p className="text-[11px] text-slate-500 mt-3">
+          You can change your mobile number, your email and your password. Your name{user.role === 'teacher' ? ' and subject are' : ' is'} set by the principal. The principal gets an email when you change one of them.
+        </p>
+      )}
       <div className="pt-4 flex justify-end">
         <button
           type="submit"

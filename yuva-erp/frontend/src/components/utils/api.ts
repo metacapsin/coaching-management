@@ -374,7 +374,7 @@ export const restoreBackupFile = (backup: unknown) =>
   request<unknown>('POST', '/backup/restore', { confirm: 'RESTORE', backup });
 
 // Own phone number / name / subject
-export const updateOwnDetails = (details: { name?: string; phone?: string; subject?: string }) =>
+export const updateOwnDetails = (details: { name?: string; phone?: string }) =>
   request<{ user: AuthUser }>('PUT', '/auth/profile', details);
 
 // The Super Admin forgot the password: works only on the server computer itself
