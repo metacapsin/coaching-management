@@ -965,6 +965,45 @@ describe('Leave of a student: the student asks, the principal calls the parent a
     assert.ok(mail3.sent[0][1].includes('not given'));
   });
 
+  it('12 a medical certificate (a photo) can be attached to a SICK leave only; only the principal and the student get its address', async () => {
+    // a 1 x 1 PNG
+    const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+    const ask = (b: any, tok = student) => call('POST', '/api/leaves', { declaration: true, signature: 'Alice Verma', reason, ...b }, tok);
+    assert.equal((await ask({ fromDate: day(70), toDate: day(70), kind: 'Travel', proof: PNG }))[0], 400); // not a sick leave
+    assert.equal((await ask({ fromDate: day(70), toDate: day(70), kind: 'Sick', proof: 'data:text/html;base64,PGI+aGk8L2I+' }))[0], 400); // not an image
+    assert.equal((await ask({ fromDate: day(70), toDate: day(70), kind: 'Sick', proof: 'not a photo' }))[0], 400);
+    const big = 'data:image/png;base64,' + Buffer.alloc(1_600_000, 1).toString('base64');
+    assert.equal((await ask({ fromDate: day(70), toDate: day(70), kind: 'Sick', proof: big }))[0], 413); // too big
+    // nothing was written by the refused ones
+    assert.equal((await call('GET', '/api/sync', null, admin))[1].institute.leaveRequests.filter((l: any) => l.fromDate === day(70)).length, 0);
+    // the tick alone (a certificate exists, no photo) is kept for a sick leave only
+    const [, ticked] = await ask({ fromDate: day(75), toDate: day(75), kind: 'Sick', hasProof: true });
+    const [, casual] = await ask({ fromDate: day(76), toDate: day(76), kind: 'Casual', hasProof: true });
+    const list = (await call('GET', '/api/sync', null, student))[1].institute.leaveRequests;
+    assert.deepEqual([list.find((l: any) => l.id === ticked.id).hasProof, list.find((l: any) => l.id === ticked.id).proofUrl], [true, undefined]);
+    assert.equal(list.find((l: any) => l.id === casual.id).hasProof, false);
+    // a good one
+    const [status, data] = await ask({ fromDate: day(70), toDate: day(70), kind: 'Sick', proof: PNG });
+    assert.equal(status, 200);
+    const mineNow = (await call('GET', '/api/sync', null, student))[1].institute.leaveRequests.find((l: any) => l.id === data.id);
+    assert.equal(mineNow.hasProof, true);
+    assert.match(mineNow.proofUrl, /^\/api\/photos\/proof-leave-/);
+    assert.equal(mineNow.proof, undefined); // the image itself is not in the list
+    // the principal has the same address and can open the picture
+    const seen = (await call('GET', '/api/sync', null, admin))[1].institute.leaveRequests.find((l: any) => l.id === data.id);
+    assert.equal(seen.proofUrl, mineNow.proofUrl);
+    const picture = await s.api.raw(mineNow.proofUrl);
+    assert.equal(picture.status, 200);
+    assert.equal(picture.headers.get('content-type'), 'image/png');
+    assert.equal((await s.api.raw(mineNow.proofUrl.replace(/\/[^/]+$/, '/wrongtoken'))).status, 404); // the address cannot be guessed
+    // a teacher and the parent never get the address
+    for (const tok of [teacher, parent, other]) {
+      const inst = (await call('GET', '/api/sync', null, tok))[1].institute;
+      assert.ok(inst.leaveRequests.every((l: any) => l.id !== data.id));
+      assert.ok(inst.notificationLogs.every((l: any) => !String(l.content).includes('proof-leave')));
+    }
+  });
+
   it('11 a teacher asks for leave: the email goes to the principal only; the answer to the teacher only', async () => {
     const mail = captureMail();
     let id = '';
@@ -998,8 +1037,7 @@ describe('Leave of a student: the student asks, the principal calls the parent a
   });
 
   it('9 a teacher takes back a waiting request; nobody else can; a teacher cannot read the leave of a student', async () => {
-    const [, d] = await call('POST', '/api/leaves', { fromDate: day(30), toDate: day(30), reason, kind: 'Sick', hasProof: true, declaration: true, signature: 'Tina Teacher' }, teacher);
-    assert.equal((await call('GET', '/api/sync', null, teacher))[1].institute.leaveRequests.find((l: any) => l.id === d.id).hasProof, true); // sick: the proof is kept
+    const [, d] = await call('POST', '/api/leaves', { fromDate: day(30), toDate: day(30), reason, kind: 'Sick', declaration: true, signature: 'Tina Teacher' }, teacher);
     assert.equal((await call('PUT', `/api/leaves/${d.id}`, { decision: 'cancelled' }, student))[0], 404);
     assert.equal((await call('PUT', `/api/leaves/${d.id}`, { decision: 'cancelled' }, teacher))[0], 200);
     assert.ok((await call('GET', '/api/sync', null, teacher))[1].institute.leaveRequests.every((l: any) => l.role === 'teacher'));

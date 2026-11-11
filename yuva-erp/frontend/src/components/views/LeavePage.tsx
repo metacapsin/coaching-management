@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CalendarOff, GraduationCap, Send, ShieldCheck, UserRound } from 'lucide-react';
+import { CalendarOff, GraduationCap, Send, ShieldCheck, Upload, UserRound, X } from 'lucide-react';
 import { useInstitute } from '../../Context/InstituteContext';
 import { useAuth } from '../../Context/AuthContext';
 import { formatDateTime, toLocalISODate } from '../utils/helpers';
@@ -16,6 +16,36 @@ const KINDS = {
   student: ['Sick', 'Family function', 'Travel', 'Exam / other class', 'Other'],
   teacher: ['Sick', 'Casual', 'Family function', 'Travel', 'Other']
 };
+
+// A photo of the certificate: made smaller in the browser (a phone photo is some MB) and sent as a JPG
+const MAX_SIDE = 1600;
+const MAX_FILE = 15 * 1024 * 1024;
+const readImage = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return reject(new Error('Choose a JPG, PNG or WebP photo.'));
+    if (file.size > MAX_FILE) return reject(new Error('The photo is too big (15 MB at most).'));
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('The photo could not be read.'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('The photo could not be read.'));
+      img.onload = () => {
+        const scale = Math.min(1, MAX_SIDE / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return reject(new Error('The photo could not be read.'));
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.src = String(reader.result);
+    };
+    reader.readAsDataURL(file);
+  });
+const sizeText = (dataUrl: string) => `${Math.max(1, Math.round((dataUrl.length * 0.75) / 1024))} KB`;
 
 const inputClass = 'mt-1 w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500';
 const readOnlyClass = 'mt-1 w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-slate-100 text-slate-700 cursor-not-allowed';
@@ -37,6 +67,8 @@ export const LeavePage: React.FC = () => {
   const [toDate, setToDate] = useState('');
   const [reason, setReason] = useState('');
   const [hasProof, setHasProof] = useState(false);
+  const [proof, setProof] = useState<{ dataUrl: string; name: string } | null>(null); // the photo of the certificate
+  const [dragging, setDragging] = useState(false);
   const [declaration, setDeclaration] = useState(false);
   const [signature, setSignature] = useState('');
   const [busy, setBusy] = useState(false);
@@ -68,9 +100,19 @@ export const LeavePage: React.FC = () => {
     setToDate('');
     setReason('');
     setHasProof(false);
+    setProof(null);
     setDeclaration(false);
     setSignature('');
     setError('');
+  };
+
+  const pickPhoto = async (file: File) => {
+    setError('');
+    try {
+      setProof({ dataUrl: await readImage(file), name: file.name });
+    } catch (err) {
+      setError(errorText(err));
+    }
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -83,7 +125,7 @@ export const LeavePage: React.FC = () => {
     if (signature.trim().length < 3) return setError('Type your full name as the signature.');
     setBusy(true);
     try {
-      await askLeave({ fromDate, toDate: toDate || fromDate, reason: reason.trim(), kind, hasProof: kind === 'Sick' && hasProof, declaration, signature: signature.trim() });
+      await askLeave({ fromDate, toDate: toDate || fromDate, reason: reason.trim(), kind, hasProof: kind === 'Sick' && hasProof, proof: kind === 'Sick' && hasProof && proof ? proof.dataUrl : undefined, declaration, signature: signature.trim() });
       reset();
       setDone(
         isTeacher
@@ -141,7 +183,11 @@ export const LeavePage: React.FC = () => {
                   value={kind}
                   onChange={v => {
                     setKind(v);
-                    if (v !== 'Sick') setHasProof(false); // the certificate is only for a sick leave
+                    if (v !== 'Sick') {
+                      // the certificate is only for a sick leave
+                      setHasProof(false);
+                      setProof(null);
+                    }
                   }}
                   options={KINDS[role]}
                   placeholder="Choose..."
@@ -186,12 +232,69 @@ export const LeavePage: React.FC = () => {
             </span>
           </label>
 
-          {/* only for a sick leave */}
+          {/* only for a sick leave: the tick says that there is a certificate, the photo (optional) lets the principal be sure */}
           {kind === 'Sick' && (
-            <label className="flex items-center gap-2 text-xs font-medium text-slate-700">
-              <input type="checkbox" checked={hasProof} onChange={e => setHasProof(e.target.checked)} className="rounded border-slate-300" />
-              I have a medical certificate / proof and can show it to the principal
-            </label>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-xs font-medium text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={hasProof}
+                  onChange={e => {
+                    setHasProof(e.target.checked);
+                    if (!e.target.checked) setProof(null);
+                  }}
+                  className="rounded border-slate-300"
+                />
+                I have a medical certificate / proof and can show it to the principal
+              </label>
+              {hasProof && (
+                <div className="ml-6">
+                  {proof ? (
+                    <div className="flex items-center gap-3 border border-slate-200 rounded-xl p-2 bg-slate-50/60">
+                      <img src={proof.dataUrl} alt="Medical certificate" className="w-16 h-16 object-cover rounded-lg border border-slate-200" />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-semibold text-slate-900 truncate">{proof.name}</div>
+                        <div className="text-[11px] text-slate-500">{sizeText(proof.dataUrl)} · the principal sees it with your request</div>
+                      </div>
+                      <button type="button" onClick={() => setProof(null)} aria-label="Remove the photo" title="Remove the photo" className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label
+                      onDragOver={e => {
+                        e.preventDefault();
+                        setDragging(true);
+                      }}
+                      onDragLeave={() => setDragging(false)}
+                      onDrop={e => {
+                        e.preventDefault();
+                        setDragging(false);
+                        const f = e.dataTransfer.files?.[0];
+                        if (f) void pickPhoto(f);
+                      }}
+                      className={`flex flex-col items-center justify-center gap-1 text-center border-2 border-dashed rounded-xl px-4 py-5 cursor-pointer transition-colors ${
+                        dragging ? 'border-indigo-500 bg-indigo-50/50' : 'border-slate-300 hover:border-indigo-400 hover:bg-indigo-50/30'
+                      }`}
+                    >
+                      <Upload className="w-5 h-5 text-indigo-500" />
+                      <span className="text-sm font-semibold text-slate-800">Upload the certificate (optional)</span>
+                      <span className="text-[11px] text-slate-500">Click to choose a photo, or drop it here · JPG, PNG or WebP</span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="sr-only"
+                        onChange={e => {
+                          const f = e.target.files?.[0];
+                          e.target.value = ''; // the same photo can be chosen again
+                          if (f) void pickPhoto(f);
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
+              )}
+            </div>
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end border-t border-slate-100 pt-4">
@@ -258,6 +361,11 @@ export const LeavePage: React.FC = () => {
                     <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded ${tone}`}>{label}</span>
                   </div>
                   <p className="text-xs text-slate-600 mt-1 whitespace-pre-line">{l.reason}</p>
+                  {l.proofUrl && (
+                    <a href={l.proofUrl} target="_blank" rel="noreferrer" className="inline-block mt-1 text-[11px] font-semibold text-blue-700 hover:underline">
+                      Certificate attached - open
+                    </a>
+                  )}
                   {l.decisionNote && <p className="text-xs text-slate-700 mt-1">Principal: {l.decisionNote}</p>}
                   <div className="flex items-center gap-3 mt-1">
                     <span className="text-[11px] text-slate-400">Asked {formatDateTime(l.createdAt)}</span>

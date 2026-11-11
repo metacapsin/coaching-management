@@ -26,7 +26,7 @@ import {
   welcomeMail,
 } from './http.ts';
 import { nextRollNumber } from './rollno.ts';
-import { applyChanges, scopeInstitute } from './scope.ts';
+import { applyChanges, parsePhotoDataUrl, scopeInstitute } from './scope.ts';
 import { DEFAULT_ORG, PLATFORM_ORG } from './store.ts';
 import { GREEN, RED } from './emailTemplate.ts';
 import { last10, newId, normRoll, normalizePhone, portalLabel, roleLabel, text, todayLocal } from './validate.ts';
@@ -905,8 +905,8 @@ async function emailAboutLeave(c: any, leave: any, stage: 'asked' | 'approved' |
       mail(to as string, subject, heading, lines, look);
     };
     const detailRows: [string, any][] = isTeacherLeave
-      ? [['Teacher', who], ['Subject', leave.subject], ['Leave', `${days.replace(/^(on|from) /, '')}`], ['Type', leave.kind], ['Certificate / proof', leave.hasProof ? 'Can be shown' : ''], ['Coaching', coaching]]
-      : [['Student', who], ['Batch', leave.batchName], ['Roll No', leave.rollNo], ['Leave', `${days.replace(/^(on|from) /, '')}`], ['Type', leave.kind], ['Parent', [leave.parentName, leave.parentPhone].filter(Boolean).join(' · ')], ['Certificate / proof', leave.hasProof ? 'Can be shown' : ''], ['Coaching', coaching]];
+      ? [['Teacher', who], ['Subject', leave.subject], ['Leave', `${days.replace(/^(on|from) /, '')}`], ['Type', leave.kind], ['Medical certificate', leave.proofUrl ? 'Photo attached (open it in the app)' : leave.hasProof ? 'Has one and can show it' : ''], ['Coaching', coaching]]
+      : [['Student', who], ['Batch', leave.batchName], ['Roll No', leave.rollNo], ['Leave', `${days.replace(/^(on|from) /, '')}`], ['Type', leave.kind], ['Parent', [leave.parentName, leave.parentPhone].filter(Boolean).join(' · ')], ['Medical certificate', leave.proofUrl ? 'Photo attached (open it in the app)' : leave.hasProof ? 'Has one and can show it' : ''], ['Coaching', coaching]];
     const reasonLine = `Reason: ${leave.reason}`;
 
     const admins = users.filter((u: any) => u.role === 'admin');
@@ -963,7 +963,7 @@ route('/api/leaves', ['POST'], 'user', async (c) => {
   const s = c.store;
   const me = isStudent && c.user.studentId ? await s.getItem('students', c.user.studentId) : null;
   if (isStudent && !me) throw new HttpError(404, 'Student not found.');
-  const b = c.body();
+  const b = c.body(3 * 1024 * 1024); // (it can carry the photo of a medical certificate)
   const fromDate = text(b.fromDate, 10);
   const toDate = text(b.toDate, 10) || fromDate;
   const reason = text(b.reason, 600);
@@ -976,12 +976,22 @@ route('/api/leaves', ['POST'], 'user', async (c) => {
   if (dayNumber(toDate) - dayNumber(fromDate) + 1 > MAX_LEAVE_DAYS) throw new HttpError(400, `One request can be for ${MAX_LEAVE_DAYS} days at most.`);
   if (reason.length < MIN_REASON) throw new HttpError(400, `Write the full reason for the leave (at least ${MIN_REASON} letters): why do you need it?`);
   if (b.declaration !== true) throw new HttpError(400, 'Tick that the details are correct.');
+  // a medical certificate (a photo) can be attached to a SICK leave only
+  const proofUrl: string = typeof b.proof === 'string' ? b.proof : '';
+  if (proofUrl && kind !== 'Sick') throw new HttpError(400, 'A medical certificate can be attached to a sick leave only.');
+  const proof = proofUrl ? parsePhotoDataUrl(proofUrl) : null; // (a wrong or too big image is refused here, before anything is written)
   if (signature.length < 3) throw new HttpError(400, 'Type your full name as the signature.');
   const mine = await s.find('leaveRequests', { ...(isStudent ? { studentId: me.id } : { teacherId: c.user.id }), status: { $in: ['pending', 'approved'] } });
   if (mine.some((l) => l.fromDate <= toDate && fromDate <= l.toDate)) throw new HttpError(409, 'You already have a leave request for these days.');
   const id = newId('leave');
-  // (a certificate / proof is only for a sick leave)
-  const common = { id, fromDate, toDate, reason, kind, hasProof: b.hasProof === true && kind === 'Sick', signature, status: 'pending', createdAt: nowIso() };
+  // the certificate is kept apart (like a student photo); the request only has its address, which only the principal and the student get
+  // (the person says that a certificate exists: the tick; the photo of it is optional and helps the principal to be sure)
+  let certificate: { hasProof: boolean; proofUrl?: string } = { hasProof: b.hasProof === true && kind === 'Sick' };
+  if (proof) {
+    const token = await s.savePhoto(`proof-${id}`, proof.contentType, proof.data);
+    certificate = { hasProof: true, proofUrl: s.photoUrl(`proof-${id}`, token) };
+  }
+  const common = { id, fromDate, toDate, reason, kind, ...certificate, signature, status: 'pending', createdAt: nowIso() };
   let record: any;
   if (isStudent) {
     const batch = me.batchId ? await s.getItem('batches', me.batchId) : null;

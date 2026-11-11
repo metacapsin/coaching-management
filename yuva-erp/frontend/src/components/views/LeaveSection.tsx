@@ -63,9 +63,15 @@ const Decide: React.FC<{ leave: LeaveRequest; fresh: boolean; flash: boolean }> 
       </p>
       <p className="text-xs text-slate-700 mt-1 whitespace-pre-line leading-relaxed">Reason: {leave.reason}</p>
       <p className="text-[11px] text-slate-500 mt-1">
-        {leave.hasProof ? 'Has a certificate / proof to show. ' : ''}
+        {leave.hasProof && !leave.proofUrl ? 'Says that a medical certificate is there and can be shown. ' : ''}
         {leave.signature ? `Signed: ${leave.signature}. ` : ''}
       </p>
+      {leave.proofUrl && (
+        <a href={leave.proofUrl} target="_blank" rel="noreferrer" className="inline-block mt-2 group" title="Open the certificate">
+          <img src={leave.proofUrl} alt="Medical certificate" className="h-28 rounded-lg border border-slate-200 object-cover group-hover:border-indigo-400 transition-colors" />
+          <span className="block text-[11px] font-semibold text-blue-700 mt-1 group-hover:underline">Medical certificate - open full size</span>
+        </a>
+      )}
       <p className="text-[11px] text-slate-400 mt-1">Asked {formatDateTime(leave.createdAt)}</p>
 
       <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
@@ -145,6 +151,14 @@ export const PrincipalLeave: React.FC<{ freshIds: string[]; flashId: string | nu
               <p className="text-[11px] text-slate-500 mt-1">
                 {l.reason}
                 {l.decisionNote ? ` · Your note: ${l.decisionNote}` : ''}
+                {l.proofUrl && (
+                  <>
+                    {' · '}
+                    <a href={l.proofUrl} target="_blank" rel="noreferrer" className="font-semibold text-blue-700 hover:underline">
+                      certificate
+                    </a>
+                  </>
+                )}
               </p>
             </li>
           );

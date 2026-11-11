@@ -254,7 +254,8 @@ export interface LeaveRequest {
   batchName?: string;
   parentName?: string;
   parentPhone?: string;
-  hasProof?: boolean;
+  hasProof?: boolean; // the person has a medical certificate (a sick leave)
+  proofUrl?: string; // the photo of it, when it was uploaded (only the principal and the student get it)
   signature?: string;
   fromDate: string;
   toDate: string;
