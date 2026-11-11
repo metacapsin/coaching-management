@@ -83,7 +83,7 @@ export const LeavePage: React.FC = () => {
     if (signature.trim().length < 3) return setError('Type your full name as the signature.');
     setBusy(true);
     try {
-      await askLeave({ fromDate, toDate: toDate || fromDate, reason: reason.trim(), kind, hasProof, declaration, signature: signature.trim() });
+      await askLeave({ fromDate, toDate: toDate || fromDate, reason: reason.trim(), kind, hasProof: kind === 'Sick' && hasProof, declaration, signature: signature.trim() });
       reset();
       setDone(
         isTeacher
@@ -137,7 +137,16 @@ export const LeavePage: React.FC = () => {
             <div className="text-xs font-medium text-slate-700 sm:col-span-1">
               <span id="leave-kind">Type of Leave</span>
               <div className="mt-1">
-                <Dropdown value={kind} onChange={setKind} options={KINDS[role]} placeholder="Choose..." label="Type of Leave" />
+                <Dropdown
+                  value={kind}
+                  onChange={v => {
+                    setKind(v);
+                    if (v !== 'Sick') setHasProof(false); // the certificate is only for a sick leave
+                  }}
+                  options={KINDS[role]}
+                  placeholder="Choose..."
+                  label="Type of Leave"
+                />
               </div>
             </div>
             <div className="text-xs font-medium text-slate-700">
@@ -177,15 +186,20 @@ export const LeavePage: React.FC = () => {
             </span>
           </label>
 
-          <label className="flex items-center gap-2 text-xs font-medium text-slate-700">
-            <input type="checkbox" checked={hasProof} onChange={e => setHasProof(e.target.checked)} className="rounded border-slate-300" />
-            {isTeacher ? 'I have a certificate / proof and can show it to the principal' : 'I have a medical certificate / proof and can show it to the principal'}
-          </label>
+          {/* only for a sick leave */}
+          {kind === 'Sick' && (
+            <label className="flex items-center gap-2 text-xs font-medium text-slate-700">
+              <input type="checkbox" checked={hasProof} onChange={e => setHasProof(e.target.checked)} className="rounded border-slate-300" />
+              I have a medical certificate / proof and can show it to the principal
+            </label>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end border-t border-slate-100 pt-4">
             <label className="flex items-center gap-2 text-xs font-medium text-slate-800">
               <input type="checkbox" checked={declaration} onChange={e => setDeclaration(e.target.checked)} className="rounded border-slate-300" />
-              Declaration: I confirm the details are correct.
+              <span>
+                Declaration: I confirm the details are correct. <span className="text-rose-500">*</span>
+              </span>
             </label>
             <label className="block text-xs font-medium text-slate-700">
               {isTeacher ? 'Teacher' : 'Student'} Signature (type your full name)
@@ -205,7 +219,12 @@ export const LeavePage: React.FC = () => {
           )}
 
           <div className="flex items-center justify-center gap-3 pt-1">
-            <button type="submit" disabled={busy} className="px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-lg shadow-sm flex items-center gap-2">
+            <button
+              type="submit"
+              disabled={busy || !declaration}
+              title={declaration ? '' : 'Tick the declaration first'}
+              className="px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-sm flex items-center gap-2"
+            >
               <Send className="w-4 h-4" />
               {busy ? 'Sending...' : 'Submit Application'}
             </button>
@@ -213,6 +232,7 @@ export const LeavePage: React.FC = () => {
               Cancel
             </button>
           </div>
+          {!declaration && <p className="text-[11px] text-center text-slate-500">The application can be sent only after you tick the declaration.</p>}
         </div>
       </form>
 

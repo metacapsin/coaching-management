@@ -980,7 +980,8 @@ route('/api/leaves', ['POST'], 'user', async (c) => {
   const mine = await s.find('leaveRequests', { ...(isStudent ? { studentId: me.id } : { teacherId: c.user.id }), status: { $in: ['pending', 'approved'] } });
   if (mine.some((l) => l.fromDate <= toDate && fromDate <= l.toDate)) throw new HttpError(409, 'You already have a leave request for these days.');
   const id = newId('leave');
-  const common = { id, fromDate, toDate, reason, kind, hasProof: b.hasProof === true, signature, status: 'pending', createdAt: nowIso() };
+  // (a certificate / proof is only for a sick leave)
+  const common = { id, fromDate, toDate, reason, kind, hasProof: b.hasProof === true && kind === 'Sick', signature, status: 'pending', createdAt: nowIso() };
   let record: any;
   if (isStudent) {
     const batch = me.batchId ? await s.getItem('batches', me.batchId) : null;

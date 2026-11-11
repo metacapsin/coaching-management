@@ -899,7 +899,7 @@ describe('Leave of a student: the student asks, the principal calls the parent a
     assert.equal(status, 200);
     assert.equal((await ask({ fromDate: day(21), toDate: day(22), reason }))[0], 409); // the days overlap
     const mine = (await call('GET', '/api/sync', null, teacher))[1].institute.leaveRequests;
-    assert.deepEqual(mine.map((l: any) => [l.role, l.studentName, l.kind, l.hasProof, l.parentName]), [['teacher', 'T', 'Casual', true, undefined]]);
+    assert.deepEqual(mine.map((l: any) => [l.role, l.studentName, l.kind, l.hasProof, l.parentName]), [['teacher', 'T', 'Casual', false, undefined]]); // proof only for a sick leave
     // the principal sees it; no student and no parent sees it; the parent got no text about it
     const seen = (await call('GET', '/api/sync', null, admin))[1].institute.leaveRequests.filter((l: any) => l.role === 'teacher');
     assert.equal(seen.length, 1);
@@ -998,7 +998,8 @@ describe('Leave of a student: the student asks, the principal calls the parent a
   });
 
   it('9 a teacher takes back a waiting request; nobody else can; a teacher cannot read the leave of a student', async () => {
-    const [, d] = await call('POST', '/api/leaves', { fromDate: day(30), toDate: day(30), reason, declaration: true, signature: 'Tina Teacher' }, teacher);
+    const [, d] = await call('POST', '/api/leaves', { fromDate: day(30), toDate: day(30), reason, kind: 'Sick', hasProof: true, declaration: true, signature: 'Tina Teacher' }, teacher);
+    assert.equal((await call('GET', '/api/sync', null, teacher))[1].institute.leaveRequests.find((l: any) => l.id === d.id).hasProof, true); // sick: the proof is kept
     assert.equal((await call('PUT', `/api/leaves/${d.id}`, { decision: 'cancelled' }, student))[0], 404);
     assert.equal((await call('PUT', `/api/leaves/${d.id}`, { decision: 'cancelled' }, teacher))[0], 200);
     assert.ok((await call('GET', '/api/sync', null, teacher))[1].institute.leaveRequests.every((l: any) => l.role === 'teacher'));
