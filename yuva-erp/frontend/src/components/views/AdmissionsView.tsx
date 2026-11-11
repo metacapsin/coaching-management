@@ -1,3 +1,4 @@
+import { Select } from '../ui/Pickers';
 import React, { useState, useMemo } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import { useAuth } from '../../Context/AuthContext';
@@ -283,7 +284,7 @@ export const AdmissionsView: React.FC<AdmissionsViewProps> = ({
             />
           </div>
 
-          <select
+          <Select
             value={selectedBatch}
             onChange={e => setSelectedBatch(e.target.value)}
             className="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -294,9 +295,9 @@ export const AdmissionsView: React.FC<AdmissionsViewProps> = ({
                 {b.name}
               </option>
             ))}
-          </select>
+          </Select>
 
-          <select
+          <Select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value as StatusFilter)}
             className="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -305,7 +306,7 @@ export const AdmissionsView: React.FC<AdmissionsViewProps> = ({
             <option value="pending">Awaiting confirmation ({pendingCount})</option>
             <option value="archived">Archived ({archivedCount})</option>
             <option value="all">All students</option>
-          </select>
+          </Select>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3">

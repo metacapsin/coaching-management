@@ -1,3 +1,4 @@
+import { DateInput, Select } from '../ui/Pickers';
 import React, { useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { Enquiry, EnquirySource, EnquiryStatus } from '../../types';
@@ -145,7 +146,7 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ enquiry, onClose, on
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Class</label>
-            <select
+            <Select
               value={form.grade}
               onChange={e => setForm({ ...form, grade: e.target.value })}
               className={`${inputClass(false)} bg-white`}
@@ -155,11 +156,11 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ enquiry, onClose, on
                   {g}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Interested program</label>
-            <select
+            <Select
               value={form.interestedCourseId}
               onChange={e => setForm({ ...form, interestedCourseId: e.target.value })}
               className={`${inputClass(false)} bg-white`}
@@ -170,11 +171,11 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ enquiry, onClose, on
                   {c.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">How did they find us?</label>
-            <select
+            <Select
               value={form.source}
               onChange={e => setForm({ ...form, source: e.target.value as EnquirySource })}
               className={`${inputClass(false)} bg-white`}
@@ -184,14 +185,14 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ enquiry, onClose, on
                   {SOURCE_LABEL[s]}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Status</label>
-            <select
+            <Select
               value={form.status}
               onChange={e => setForm({ ...form, status: e.target.value as EnquiryStatus })}
               className={`${inputClass(false)} bg-white`}
@@ -201,12 +202,11 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ enquiry, onClose, on
                   {STATUS_LABEL[s]}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Next follow-up date</label>
-            <input
-              type="date"
+            <DateInput clearable
               value={form.followUpDate}
               onChange={e => setForm({ ...form, followUpDate: e.target.value })}
               className={inputClass(false)}

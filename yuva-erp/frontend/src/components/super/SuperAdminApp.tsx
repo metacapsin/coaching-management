@@ -1,3 +1,4 @@
+import { Select } from '../ui/Pickers';
 import React, { useEffect, useRef, useState } from 'react';
 import { PasswordInput } from '../ui/PasswordInput';
 import {
@@ -672,7 +673,7 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
             className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        <select
+        <Select
           value={filter}
           onChange={e => setFilter(e.target.value as 'all' | OrgStatus)}
           className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
@@ -681,7 +682,7 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
           <option value="active">Active</option>
           <option value="pending">Waiting for approval</option>
           <option value="suspended">Switched off</option>
-        </select>
+        </Select>
       </div>
 
       {!loaded ? (

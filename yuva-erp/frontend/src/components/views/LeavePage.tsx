@@ -3,6 +3,7 @@ import { CalendarOff, GraduationCap, Send, ShieldCheck, UserRound } from 'lucide
 import { useInstitute } from '../../Context/InstituteContext';
 import { useAuth } from '../../Context/AuthContext';
 import { formatDateTime, toLocalISODate } from '../utils/helpers';
+import { Dropdown, DatePicker } from '../ui/Pickers';
 import { MIN_REASON, STATUS, errorText, leaveDates } from './LeaveSection';
 
 // The page "Apply for Leave": a leave application form for a STUDENT and for a TEACHER (nobody else asks for leave).
@@ -139,25 +140,28 @@ export const LeavePage: React.FC = () => {
 
         <div className="p-5 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            <label className="block text-xs font-medium text-slate-700 sm:col-span-1">
-              Type of Leave
-              <select value={kind} onChange={e => setKind(e.target.value)} required className={inputClass}>
-                <option value="">Choose...</option>
-                {KINDS[role].map(k => (
-                  <option key={k} value={k}>
-                    {k}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block text-xs font-medium text-slate-700">
-              Start Date
-              <input type="date" min={today} value={fromDate} onChange={e => setFromDate(e.target.value)} required className={inputClass} />
-            </label>
-            <label className="block text-xs font-medium text-slate-700">
-              End Date (empty: one day)
-              <input type="date" min={fromDate || today} value={toDate} onChange={e => setToDate(e.target.value)} className={inputClass} />
-            </label>
+            <div className="text-xs font-medium text-slate-700 sm:col-span-1">
+              <span id="leave-kind">Type of Leave</span>
+              <div className="mt-1">
+                <Dropdown value={kind} onChange={setKind} options={KINDS[role]} placeholder="Choose..." label="Type of Leave" />
+              </div>
+            </div>
+            <div className="text-xs font-medium text-slate-700">
+              <span>Start Date</span>
+              <div className="mt-1">
+                <DatePicker value={fromDate} onChange={v => {
+                    if (!v) return;
+                    setFromDate(v);
+                    if (toDate && toDate < v) setToDate(''); // the last day cannot be before the first day
+                  }} min={today} label="Start Date" />
+              </div>
+            </div>
+            <div className="text-xs font-medium text-slate-700">
+              <span>End Date (empty: one day)</span>
+              <div className="mt-1">
+                <DatePicker value={toDate} onChange={setToDate} min={fromDate || today} clearable placeholder="One day" label="End Date" />
+              </div>
+            </div>
             <label className="block text-xs font-medium text-slate-700">
               Total Days
               <input type="text" readOnly tabIndex={-1} value={days > 0 ? `${days} day${days === 1 ? '' : 's'}` : 'Auto-calculated'} className={readOnlyClass} />

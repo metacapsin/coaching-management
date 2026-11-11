@@ -1,3 +1,4 @@
+import { Select } from '../ui/Pickers';
 import React, { useState, useMemo } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { Course, FeeTransaction, Student } from '../../types';
@@ -342,7 +343,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
 
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-500">Method:</span>
-              <select
+              <Select
                 value={methodFilter}
                 onChange={e => setMethodFilter(e.target.value)}
                 className="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -353,7 +354,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
                 <option value="Cash">Cash</option>
                 <option value="Cheque">Cheque</option>
                 <option value="Card">Card</option>
-              </select>
+              </Select>
               <button
                 onClick={exportTransactions}
                 className="px-3 py-2 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg transition-colors flex items-center gap-1.5"

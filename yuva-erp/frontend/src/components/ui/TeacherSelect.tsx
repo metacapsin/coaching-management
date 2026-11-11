@@ -1,3 +1,4 @@
+import { Select } from './Pickers';
 import React from 'react';
 import { useAuth } from '../../Context/AuthContext';
 import { sameSubject } from '../utils/parentNotices';
@@ -28,7 +29,7 @@ export const TeacherSelect: React.FC<{
   return (
     <div>
       <label className="block text-xs font-medium text-slate-700 mb-1">{label}</label>
-      <select value={value} onChange={e => onChange(e.target.value)} className={className || 'w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500'}>
+      <Select value={value} onChange={e => onChange(e.target.value)} className={className || 'w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500'}>
         <option value="">{suggested ? `The teacher of ${suggested.subject}: ${suggested.name}` : 'No teacher (nobody to confirm)'}</option>
         {teachers.map(t => (
           <option key={t.id} value={t.id}>
@@ -36,7 +37,7 @@ export const TeacherSelect: React.FC<{
             {t.subject ? ` (${t.subject})` : ''}
           </option>
         ))}
-      </select>
+      </Select>
       <p className="text-[11px] text-slate-400 mt-1">The teacher confirms the date first. Then you tell the parents and the students.</p>
     </div>
   );

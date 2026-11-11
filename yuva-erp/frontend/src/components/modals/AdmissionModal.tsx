@@ -1,3 +1,4 @@
+import { DateInput, Select } from '../ui/Pickers';
 import React, { useState, useRef } from 'react';
 import { useEscape } from '../ui/useEscape';
 import { useInstitute, DEFAULT_PHOTO } from '../../Context/InstituteContext';
@@ -420,7 +421,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
 
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Current Academic Class</label>
-                <select
+                <Select
                   value={formData.grade}
                   onChange={e => setFormData({ ...formData, grade: e.target.value })}
                   className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -430,7 +431,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
                   <option value="Class 11">Class 11 (Senior Secondary)</option>
                   <option value="Class 12">Class 12 (Board & Target Competitions)</option>
                   <option value="Dropper / Repeater">Dropper / Gap Year Special</option>
-                </select>
+                </Select>
               </div>
             </div>
           </div>
@@ -478,8 +479,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
 
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Student's date of birth (optional)</label>
-                <input
-                  type="date"
+                <DateInput clearable
                   value={formData.dateOfBirth}
                   onChange={e => setFormData({ ...formData, dateOfBirth: e.target.value })}
                   className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -507,7 +507,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Selected Program</label>
-                <select
+                <Select
                   value={newProgram ? '__new' : formData.courseId}
                   onChange={e => {
                     setQuickError('');
@@ -525,14 +525,14 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                   <option value="__new">＋ Add a new program...</option>
-                </select>
+                </Select>
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">
                   Batch Assignment <span className="text-rose-500">*</span>
                 </label>
-                <select
+                <Select
                   value={newBatch ? '__new' : formData.batchId}
                   onChange={e => {
                     setQuickError('');
@@ -556,7 +556,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
                     );
                   })}
                   <option value="__new">＋ Add a new batch...</option>
-                </select>
+                </Select>
               </div>
 
               <div>
@@ -681,8 +681,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
 
             <div className="mb-4 max-w-xs">
               <label className="block text-xs font-medium text-slate-700 mb-1">Next installment due date</label>
-              <input
-                type="date"
+              <DateInput clearable
                 value={formData.nextDueDate}
                 onChange={e => setFormData({ ...formData, nextDueDate: e.target.value })}
                 className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -718,7 +717,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
 
                   <div>
                     <label className="block text-xs font-medium text-slate-600 mb-1">Payment Mode</label>
-                    <select
+                    <Select
                       value={formData.initialMethod}
                       onChange={e => setFormData({ ...formData, initialMethod: e.target.value as PaymentMethod })}
                       className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -728,7 +727,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
                       <option value="Bank Transfer">Bank Transfer / NEFT</option>
                       <option value="Cheque">Cheque</option>
                       <option value="Card">Debit / Credit Card</option>
-                    </select>
+                    </Select>
                   </div>
 
                   <div>

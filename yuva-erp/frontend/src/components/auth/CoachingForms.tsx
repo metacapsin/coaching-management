@@ -1,3 +1,4 @@
+import { Select } from '../ui/Pickers';
 import React, { useEffect, useState } from 'react';
 import { Building2, CheckCircle2, Loader2 } from 'lucide-react';
 import { ApiError, listCoachings, registerCoaching, setPublicOrg } from '../utils/api';
@@ -58,7 +59,7 @@ export const CoachingPicker: React.FC<{ onChange: (orgId: string) => void }> = (
   return (
     <div className="mt-4">
       <label className="block text-xs font-medium text-slate-700 mb-1">Your coaching</label>
-      <select value={chosen} onChange={e => pick(e.target.value)} className={`${fieldCls} bg-white`}>
+      <Select value={chosen} onChange={e => pick(e.target.value)} className={`${fieldCls} bg-white`}>
         <option value="">Choose your coaching...</option>
         {list.map(c => (
           <option key={c.id} value={c.id}>
@@ -66,7 +67,7 @@ export const CoachingPicker: React.FC<{ onChange: (orgId: string) => void }> = (
             {c.city ? ` · ${c.city}` : ''}
           </option>
         ))}
-      </select>
+      </Select>
     </div>
   );
 };

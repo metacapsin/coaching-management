@@ -1,3 +1,4 @@
+import { Select } from '../ui/Pickers';
 import React, { useState } from 'react';
 import { useEscape } from '../ui/useEscape';
 import { useInstitute } from '../../Context/InstituteContext';
@@ -143,7 +144,7 @@ export const CreateBatchModal: React.FC<CreateBatchModalProps> = ({
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">Target Course</label>
-              <select
+              <Select
                 value={formData.courseId}
                 onChange={e => setFormData({ ...formData, courseId: e.target.value })}
                 className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -151,7 +152,7 @@ export const CreateBatchModal: React.FC<CreateBatchModalProps> = ({
                 {courses.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
 
@@ -179,7 +180,7 @@ export const CreateBatchModal: React.FC<CreateBatchModalProps> = ({
 
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Class teacher</label>
-            <select
+            <Select
               value={formData.classTeacherId}
               onChange={e => setFormData({ ...formData, classTeacherId: e.target.value })}
               className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -191,7 +192,7 @@ export const CreateBatchModal: React.FC<CreateBatchModalProps> = ({
                   {t.subject ? ` (${t.subject})` : ''}
                 </option>
               ))}
-            </select>
+            </Select>
             <p className="text-[11px] text-slate-400 mt-1">Only the class teacher (and the principal) tells the parents when a student is absent or late. With none chosen, the principal does it.</p>
           </div>
 

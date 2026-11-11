@@ -1,3 +1,4 @@
+import { Select } from '../ui/Pickers';
 import React, { useState } from 'react';
 import { useEscape } from '../ui/useEscape';
 import { useInstitute } from '../../Context/InstituteContext';
@@ -132,7 +133,7 @@ export const EditBatchModal: React.FC<EditBatchModalProps> = ({ batch, enrolled,
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">Status</label>
-              <select
+              <Select
                 value={form.status}
                 onChange={e => setForm({ ...form, status: e.target.value as Batch['status'] })}
                 className={`${inputClass(false)} bg-white`}
@@ -140,7 +141,7 @@ export const EditBatchModal: React.FC<EditBatchModalProps> = ({ batch, enrolled,
                 <option value="ongoing">Ongoing</option>
                 <option value="upcoming">Upcoming</option>
                 <option value="completed">Completed</option>
-              </select>
+              </Select>
             </div>
           </div>
 
@@ -167,7 +168,7 @@ export const EditBatchModal: React.FC<EditBatchModalProps> = ({ batch, enrolled,
 
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Target Course</label>
-            <select
+            <Select
               value={form.courseId}
               onChange={e => setForm({ ...form, courseId: e.target.value })}
               className={`${inputClass(false)} bg-white`}
@@ -177,7 +178,7 @@ export const EditBatchModal: React.FC<EditBatchModalProps> = ({ batch, enrolled,
                   {c.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           <div>
@@ -202,7 +203,7 @@ export const EditBatchModal: React.FC<EditBatchModalProps> = ({ batch, enrolled,
 
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Class teacher</label>
-            <select
+            <Select
               value={form.classTeacherId}
               onChange={e => setForm({ ...form, classTeacherId: e.target.value })}
               className={inputClass(false)}
@@ -214,7 +215,7 @@ export const EditBatchModal: React.FC<EditBatchModalProps> = ({ batch, enrolled,
                   {t.subject ? ` (${t.subject})` : ''}
                 </option>
               ))}
-            </select>
+            </Select>
             <p className="text-[11px] text-slate-400 mt-1">Only the class teacher (and the principal) tells the parents when a student is absent or late. With none chosen, the principal does it.</p>
           </div>
 

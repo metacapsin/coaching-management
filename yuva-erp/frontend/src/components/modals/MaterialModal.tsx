@@ -1,3 +1,4 @@
+import { DateInput, Select } from '../ui/Pickers';
 import React, { useState } from 'react';
 import { NeedFirst } from '../ui/NeedFirst';
 import { useInstitute } from '../../Context/InstituteContext';
@@ -102,7 +103,7 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({ material, onClose,
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Type</label>
-            <select
+            <Select
               value={form.type}
               onChange={e => setForm({ ...form, type: e.target.value as MaterialType })}
               className={`${inputClass()} bg-white`}
@@ -112,11 +113,11 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({ material, onClose,
                   {TYPE_LABEL[t]}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Batch</label>
-            <select
+            <Select
               value={form.batchId}
               onChange={e => setForm({ ...form, batchId: e.target.value })}
               className={`${inputClass(!!errors.batchId)} bg-white`}
@@ -127,7 +128,7 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({ material, onClose,
                   {b.name}
                 </option>
               ))}
-            </select>
+            </Select>
             {errors.batchId && <p className="text-xs text-rose-600 mt-1">{errors.batchId}</p>}
           </div>
         </div>
@@ -165,7 +166,7 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({ material, onClose,
           {form.type === 'homework' && (
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">Submit by</label>
-              <input type="date" value={form.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })} className={inputClass()} />
+              <DateInput clearable value={form.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })} className={inputClass()} />
             </div>
           )}
         </div>

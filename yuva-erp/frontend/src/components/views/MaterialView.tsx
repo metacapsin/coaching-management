@@ -1,3 +1,4 @@
+import { Select } from '../ui/Pickers';
 import React, { useMemo, useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import { useAuth } from '../../Context/AuthContext';
@@ -98,7 +99,7 @@ export const MaterialView: React.FC = () => {
           />
         </div>
         {batchOptions.length > 1 && (
-          <select
+          <Select
             value={batchFilter}
             onChange={e => setBatchFilter(e.target.value)}
             className="px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -109,9 +110,9 @@ export const MaterialView: React.FC = () => {
                 {b.name}
               </option>
             ))}
-          </select>
+          </Select>
         )}
-        <select
+        <Select
           value={typeFilter}
           onChange={e => setTypeFilter(e.target.value)}
           className="px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -122,7 +123,7 @@ export const MaterialView: React.FC = () => {
               {v}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       {notice && (

@@ -1,3 +1,4 @@
+import { Select } from '../ui/Pickers';
 import React, { useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { Course } from '../../types';
@@ -100,7 +101,7 @@ export const CourseModal: React.FC<CourseModalProps> = ({ course, onClose, onSav
         <div className="grid grid-cols-3 gap-3">
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Category</label>
-            <select
+            <Select
               value={form.category}
               onChange={e => setForm({ ...form, category: e.target.value as Course['category'] })}
               className={`${inputClass(false)} bg-white`}
@@ -110,7 +111,7 @@ export const CourseModal: React.FC<CourseModalProps> = ({ course, onClose, onSav
                   {c}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Duration</label>

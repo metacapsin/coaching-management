@@ -1,3 +1,4 @@
+import { DateInput } from '../ui/Pickers';
 import React, { useEffect, useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { StaffStatus } from '../../types';
@@ -64,7 +65,7 @@ export const StaffAttendancePanel: React.FC = () => {
         <div className="flex flex-wrap items-end gap-3">
           <div>
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Date</label>
-            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white" />
+            <DateInput value={date} onChange={e => setDate(e.target.value)} className="px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white" />
           </div>
           <button
             onClick={save}

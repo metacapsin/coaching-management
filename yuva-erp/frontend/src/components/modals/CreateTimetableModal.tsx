@@ -1,3 +1,4 @@
+import { Select } from '../ui/Pickers';
 import React, { useState } from 'react';
 import { useEscape } from '../ui/useEscape';
 import { NeedFirst } from '../ui/NeedFirst';
@@ -126,7 +127,7 @@ export const CreateTimetableModal: React.FC<CreateTimetableModalProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">Day of Week</label>
-              <select
+              <Select
                 value={formData.dayOfWeek}
                 onChange={e => setFormData({ ...formData, dayOfWeek: e.target.value as TimetableSlot['dayOfWeek'] })}
                 className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -137,12 +138,12 @@ export const CreateTimetableModal: React.FC<CreateTimetableModalProps> = ({
                 <option value="Thu">Thursday</option>
                 <option value="Fri">Friday</option>
                 <option value="Sat">Saturday</option>
-              </select>
+              </Select>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">Target Batch</label>
-              <select
+              <Select
                 value={formData.batchId}
                 onChange={e => {
                   const b = batches.find(item => item.id === e.target.value);
@@ -158,7 +159,7 @@ export const CreateTimetableModal: React.FC<CreateTimetableModalProps> = ({
                 {batches.map(b => (
                   <option key={b.id} value={b.id}>{b.name}</option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
 

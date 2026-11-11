@@ -1,3 +1,4 @@
+import { Select } from '../ui/Pickers';
 import React, { useCallback, useEffect, useState } from 'react';
 import { request, updateOwnDetails, refreshNow, ApiError } from '../utils/api';
 import { ChangeEmailForm } from '../auth/ChangeEmailForm';
@@ -897,7 +898,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
 
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">Role</label>
-              <select
+              <Select
                 value={aRole}
                 onChange={e => {
                   setARole(e.target.value as UserRole | 'parent');
@@ -908,7 +909,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
                 <option value="teacher">Teacher</option>
                 <option value="student">Student</option>
                 <option value="parent">Parent</option>
-              </select>
+              </Select>
               <p className="text-[11px] text-slate-400 mt-1">
                 {aRole === 'parent'
                   ? 'Parents sign in at "Parent login" (button below the main sign in form).'
@@ -919,14 +920,14 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
             {aRole === 'parent' && (
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Child (student record)</label>
-                <select value={aStudentId} onChange={e => handlePickStudent(e.target.value)} className={`${inputClass} bg-white`}>
+                <Select value={aStudentId} onChange={e => handlePickStudent(e.target.value)} className={`${inputClass} bg-white`}>
                   <option value="">Select the student whose parent this is...</option>
                   {studentsWithoutParent.map(s => (
                     <option key={s.id} value={s.id}>
                       {s.name} ({s.rollNo})
                     </option>
                   ))}
-                </select>
+                </Select>
                 <p className="text-[11px] text-slate-400 mt-1">The parent signs in and sees the attendance, fees and results of this child (read only).</p>
               </div>
             )}
@@ -934,7 +935,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
             {aRole === 'student' && (
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Student Record</label>
-                <select
+                <Select
                   value={aStudentId}
                   onChange={e => handlePickStudent(e.target.value)}
                   className={`${inputClass} bg-white`}
@@ -945,7 +946,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
                       {s.name} ({s.rollNo})
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             )}
 

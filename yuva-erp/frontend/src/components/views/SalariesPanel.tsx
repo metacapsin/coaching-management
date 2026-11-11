@@ -1,3 +1,4 @@
+import { Select } from '../ui/Pickers';
 import React, { useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { Salary } from '../../types';
@@ -45,13 +46,13 @@ const SalaryModal: React.FC<{ salary: Salary | null; onClose: () => void }> = ({
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Who</label>
-            <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value as Salary['role'] })} className={`${inputCls} bg-white`}>
+            <Select value={form.role} onChange={e => setForm({ ...form, role: e.target.value as Salary['role'] })} className={`${inputCls} bg-white`}>
               {(Object.keys(ROLE_LABEL) as Salary['role'][]).map(r => (
                 <option key={r} value={r}>
                   {ROLE_LABEL[r]}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Monthly salary ({profile.currencySymbol})</label>

@@ -1,3 +1,4 @@
+import { Select } from '../ui/Pickers';
 import React, { useState, useMemo } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import { useAuth } from '../../Context/AuthContext';
@@ -308,7 +309,7 @@ export const BatchesTimetableView: React.FC = () => {
           <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="text-xs text-slate-500 font-medium">Filter by Batch:</span>
-              <select
+              <Select
                 value={selectedBatchFilter}
                 onChange={e => setSelectedBatchFilter(e.target.value)}
                 className="px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -319,7 +320,7 @@ export const BatchesTimetableView: React.FC = () => {
                     {b.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             <span className="text-xs text-slate-500">Monday through Saturday Master Academic Grid</span>

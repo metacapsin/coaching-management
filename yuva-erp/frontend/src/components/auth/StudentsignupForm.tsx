@@ -1,3 +1,4 @@
+import { Select } from '../ui/Pickers';
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../Context/AuthContext';
 import type { RegistrationOptions } from '../../Context/AuthContext';
@@ -253,17 +254,17 @@ export const StudentSignupForm: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <label className="block text-xs font-medium text-slate-700 mb-1">Class</label>
-          <select value={grade} onChange={e => setGrade(e.target.value)} className={fieldClass(false, 'px-3')}>
+          <Select value={grade} onChange={e => setGrade(e.target.value)} className={fieldClass(false, 'px-3')}>
             {GRADES.map(g => (
               <option key={g} value={g}>
                 {g}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-700 mb-1">Program</label>
-          <select
+          <Select
             value={courseId}
             onChange={e => handleCourseChange(e.target.value)}
             className={fieldClass(!!errors.courseId, 'px-3')}
@@ -273,11 +274,11 @@ export const StudentSignupForm: React.FC = () => {
                 {c.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-700 mb-1">Batch</label>
-          <select
+          <Select
             value={batchId}
             onChange={e => setBatchId(e.target.value)}
             className={fieldClass(!!errors.batchId, 'px-3')}
@@ -291,7 +292,7 @@ export const StudentSignupForm: React.FC = () => {
                 </option>
               );
             })}
-          </select>
+          </Select>
           {errors.batchId && <p className="text-xs text-rose-600 mt-1">{errors.batchId}</p>}
         </div>
       </div>

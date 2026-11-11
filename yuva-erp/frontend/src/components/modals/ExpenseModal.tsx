@@ -1,3 +1,4 @@
+import { DateInput, Select } from '../ui/Pickers';
 import React, { useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { Expense, ExpenseCategory, PaymentMethod } from '../../types';
@@ -80,7 +81,7 @@ export const ExpenseModal: React.FC<{ expense?: Expense | null; onClose: () => v
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Type</label>
-            <select
+            <Select
               value={form.category}
               onChange={e => setForm({ ...form, category: e.target.value as ExpenseCategory })}
               className={`${inputClass()} bg-white`}
@@ -90,7 +91,7 @@ export const ExpenseModal: React.FC<{ expense?: Expense | null; onClose: () => v
                   {CATEGORY_LABEL[c]}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">
@@ -108,12 +109,12 @@ export const ExpenseModal: React.FC<{ expense?: Expense | null; onClose: () => v
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Date</label>
-            <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className={inputClass(!!errors.date)} />
+            <DateInput value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className={inputClass(!!errors.date)} />
             {errors.date && <p className="text-xs text-rose-600 mt-1">{errors.date}</p>}
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Paid by</label>
-            <select
+            <Select
               value={form.paymentMethod}
               onChange={e => setForm({ ...form, paymentMethod: e.target.value as PaymentMethod })}
               className={`${inputClass()} bg-white`}
@@ -123,7 +124,7 @@ export const ExpenseModal: React.FC<{ expense?: Expense | null; onClose: () => v
                   {m}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
 

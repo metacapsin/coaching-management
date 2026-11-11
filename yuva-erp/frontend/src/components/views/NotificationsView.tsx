@@ -1,3 +1,4 @@
+import { Select } from '../ui/Pickers';
 import React, { useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { Student } from '../../types';
@@ -224,7 +225,7 @@ export const NotificationsView: React.FC = () => {
               <label className="block text-xs font-medium text-slate-700 mb-1">
                 Select Notification Flow Template
               </label>
-              <select
+              <Select
                 value={selectedTemplateId}
                 onChange={e => handleTemplateSelect(e.target.value)}
                 className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -234,7 +235,7 @@ export const NotificationsView: React.FC = () => {
                     {t.title} ({t.channel.toUpperCase()})
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             {/* Target Audience */}
@@ -294,7 +295,7 @@ export const NotificationsView: React.FC = () => {
             {audienceType === 'single' && (
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Select Candidate</label>
-                <select
+                <Select
                   value={selectedStudentId}
                   onChange={e => setSelectedStudentId(e.target.value)}
                   className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -304,14 +305,14 @@ export const NotificationsView: React.FC = () => {
                       {s.name} ({s.rollNo}) — Parent: {s.parentName} ({s.parentPhone})
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             )}
 
             {audienceType === 'batch' && (
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Select Batch</label>
-                <select
+                <Select
                   value={selectedBatchId}
                   onChange={e => setSelectedBatchId(e.target.value)}
                   className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -319,7 +320,7 @@ export const NotificationsView: React.FC = () => {
                   {batches.map(b => (
                     <option key={b.id} value={b.id}>{b.name}</option>
                   ))}
-                </select>
+                </Select>
               </div>
             )}
 
@@ -500,14 +501,14 @@ export const NotificationsView: React.FC = () => {
               placeholder="Search messages..."
               className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white w-44 sm:w-56"
             />
-              <select
+              <Select
                 value={logFilter}
                 onChange={e => setLogFilter(e.target.value as 'all' | 'pending')}
                 className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
               >
                 <option value="all">All messages</option>
                 <option value="pending">Waiting to be sent ({pendingLogs.length})</option>
-              </select>
+              </Select>
             </div>
           </div>
 

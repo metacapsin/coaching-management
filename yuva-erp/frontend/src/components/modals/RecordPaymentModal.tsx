@@ -1,3 +1,4 @@
+import { DateInput, Select } from '../ui/Pickers';
 import React, { useState } from 'react';
 import { useEscape } from '../ui/useEscape';
 import { NeedFirst } from '../ui/NeedFirst';
@@ -118,7 +119,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
 
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Select Student</label>
-            <select
+            <Select
               value={studentId}
               onChange={e => {
                 setStudentId(e.target.value);
@@ -138,7 +139,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                   </option>
                 );
               })}
-            </select>
+            </Select>
           </div>
 
           {currentStudent && (
@@ -183,7 +184,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">Payment Mode</label>
-              <select
+              <Select
                 value={paymentMethod}
                 onChange={e => setPaymentMethod(e.target.value as PaymentMethod)}
                 className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -193,13 +194,12 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                 <option value="Bank Transfer">Bank Transfer / NEFT</option>
                 <option value="Cheque">Cheque</option>
                 <option value="Card">Debit / Credit Card</option>
-              </select>
+              </Select>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">Collection Date</label>
-              <input
-                type="date"
+              <DateInput
                 value={date}
                 onChange={e => setDate(e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"

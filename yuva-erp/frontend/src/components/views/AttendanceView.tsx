@@ -1,3 +1,4 @@
+import { DateInput, Select } from '../ui/Pickers';
 import React, { useState, useEffect } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import { useAuth } from '../../Context/AuthContext';
@@ -169,7 +170,7 @@ export const AttendanceView: React.FC = () => {
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
               Show
             </label>
-            <select
+            <Select
               value={selectedBatchId}
               onChange={e => setSelectedBatchId(e.target.value)}
               className="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium min-w-0 w-full sm:min-w-56 sm:w-auto"
@@ -181,7 +182,7 @@ export const AttendanceView: React.FC = () => {
                   {b.classroom ? ` (${b.classroom})` : ''}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           {/* Date Picker */}
@@ -189,8 +190,7 @@ export const AttendanceView: React.FC = () => {
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
               Lecture Date
             </label>
-            <input
-              type="date"
+            <DateInput
               value={selectedDate}
               onChange={e => setSelectedDate(e.target.value)}
               className="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"

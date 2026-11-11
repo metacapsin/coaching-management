@@ -1,3 +1,4 @@
+import { DateInput, Select } from '../ui/Pickers';
 import React, { useState } from 'react';
 import { useEscape } from '../ui/useEscape';
 import { NeedFirst } from '../ui/NeedFirst';
@@ -136,7 +137,7 @@ export const CreateExamModal: React.FC<CreateExamModalProps> = ({
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">Target Batch</label>
-              <select
+              <Select
                 value={formData.batchId}
                 onChange={e => setFormData({ ...formData, batchId: e.target.value })}
                 className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -144,7 +145,7 @@ export const CreateExamModal: React.FC<CreateExamModalProps> = ({
                 {batches.map(b => (
                   <option key={b.id} value={b.id}>{b.name}</option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
 
@@ -174,8 +175,7 @@ export const CreateExamModal: React.FC<CreateExamModalProps> = ({
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">Test Date</label>
-              <input
-                type="date"
+              <DateInput
                 value={formData.date}
                 onChange={e => setFormData({ ...formData, date: e.target.value })}
                 className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"

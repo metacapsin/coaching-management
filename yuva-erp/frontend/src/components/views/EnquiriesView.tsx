@@ -1,3 +1,4 @@
+import { Select } from '../ui/Pickers';
 import React, { useMemo, useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { Enquiry, EnquiryStatus } from '../../types';
@@ -204,7 +205,7 @@ export const EnquiriesView: React.FC = () => {
             className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        <select
+        <Select
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value as typeof statusFilter)}
           className="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -217,8 +218,8 @@ export const EnquiriesView: React.FC = () => {
               {STATUS_LABEL[s]}
             </option>
           ))}
-        </select>
-        <select
+        </Select>
+        <Select
           value={sourceFilter}
           onChange={e => setSourceFilter(e.target.value)}
           className="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -229,7 +230,7 @@ export const EnquiriesView: React.FC = () => {
               {label}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       {/* List */}
@@ -276,7 +277,7 @@ export const EnquiriesView: React.FC = () => {
                         <div className="text-[11px] text-slate-400">{formatDateTime(e.createdAt)}</div>
                       </td>
                       <td className="p-3.5">
-                        <select
+                        <Select
                           value={e.status}
                           onChange={ev => updateEnquiry(e.id, { status: ev.target.value as EnquiryStatus })}
                           className={`px-2 py-1 text-[11px] font-semibold rounded-md border-0 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer ${STATUS_STYLE[e.status]}`}
@@ -287,7 +288,7 @@ export const EnquiriesView: React.FC = () => {
                               {STATUS_LABEL[s]}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       </td>
                       <td className="p-3.5">
                         {e.followUpDate && isOpen(e) ? (

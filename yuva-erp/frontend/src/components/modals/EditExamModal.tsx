@@ -1,3 +1,4 @@
+import { DateInput, Select } from '../ui/Pickers';
 import React, { useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { Exam } from '../../types';
@@ -92,7 +93,7 @@ export const EditExamModal: React.FC<EditExamModalProps> = ({ exam, onClose, onS
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Batch</label>
-            <select
+            <Select
               value={form.batchId}
               disabled={hasMarks}
               onChange={e => setForm({ ...form, batchId: e.target.value })}
@@ -103,7 +104,7 @@ export const EditExamModal: React.FC<EditExamModalProps> = ({ exam, onClose, onS
                   {b.name}
                 </option>
               ))}
-            </select>
+            </Select>
             {hasMarks && <p className="text-[11px] text-slate-400 mt-1">The batch cannot change after marks were entered.</p>}
           </div>
         </div>
@@ -134,8 +135,7 @@ export const EditExamModal: React.FC<EditExamModalProps> = ({ exam, onClose, onS
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Test date</label>
-            <input
-              type="date"
+            <DateInput
               value={form.date}
               onChange={e => setForm({ ...form, date: e.target.value })}
               className={inputClass(false)}

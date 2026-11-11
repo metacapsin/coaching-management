@@ -1,3 +1,4 @@
+import { Select } from '../ui/Pickers';
 import React, { useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import { useAuth } from '../../Context/AuthContext';
@@ -98,7 +99,7 @@ export const NoticeModal: React.FC<NoticeModalProps> = ({ notice, onClose, onSav
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Who should see it?</label>
-            <select
+            <Select
               value={form.audience}
               disabled={!office}
               onChange={e => setForm({ ...form, audience: e.target.value as 'all' | 'batch' | 'teachers' })}
@@ -107,12 +108,12 @@ export const NoticeModal: React.FC<NoticeModalProps> = ({ notice, onClose, onSav
               {office && <option value="all">Everybody (all students)</option>}
               {office && <option value="teachers">Teachers only (for example a meeting)</option>}
               <option value="batch">One batch</option>
-            </select>
+            </Select>
           </div>
           {form.audience === 'batch' && (
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">Batch</label>
-              <select
+              <Select
                 value={form.batchId}
                 onChange={e => setForm({ ...form, batchId: e.target.value })}
                 className={`${inputClass(!!errors.batchId)} bg-white`}
@@ -123,7 +124,7 @@ export const NoticeModal: React.FC<NoticeModalProps> = ({ notice, onClose, onSav
                     {b.name}
                   </option>
                 ))}
-              </select>
+              </Select>
               {errors.batchId && <p className="text-xs text-rose-600 mt-1">{errors.batchId}</p>}
             </div>
           )}

@@ -1,3 +1,4 @@
+import { Select } from '../ui/Pickers';
 import React, { useMemo, useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { Expense, ExpenseCategory } from '../../types';
@@ -108,22 +109,22 @@ const ExpensesPanel: React.FC = () => {
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <select value={period} onChange={e => setPeriod(e.target.value)} className="px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <Select value={period} onChange={e => setPeriod(e.target.value)} className="px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
           <option value="all">All time</option>
           {months.map(m => (
             <option key={m} value={m}>
               {monthLabel(m)}
             </option>
           ))}
-        </select>
-        <select value={category} onChange={e => setCategory(e.target.value as 'all' | ExpenseCategory)} className="px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </Select>
+        <Select value={category} onChange={e => setCategory(e.target.value as 'all' | ExpenseCategory)} className="px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
           <option value="all">All types</option>
           {(Object.keys(CATEGORY_LABEL) as ExpenseCategory[]).map(c => (
             <option key={c} value={c}>
               {CATEGORY_LABEL[c]}
             </option>
           ))}
-        </select>
+        </Select>
         <span className="text-xs text-slate-500">Showing: {periodName}</span>
       </div>
 

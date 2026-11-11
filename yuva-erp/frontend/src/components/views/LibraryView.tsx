@@ -1,3 +1,4 @@
+import { Select } from '../ui/Pickers';
 import React, { useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import { useAuth } from '../../Context/AuthContext';
@@ -121,14 +122,14 @@ export const LibraryView: React.FC = () => {
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search title, author, subject..." className={`${inputCls} pl-9`} />
           </div>
-          <select value={category} onChange={e => setCategory(e.target.value)} className={`${inputCls} bg-white sm:w-56`}>
+          <Select value={category} onChange={e => setCategory(e.target.value)} className={`${inputCls} bg-white sm:w-56`}>
             <option value="">All subjects</option>
             {categories.map(c => (
               <option key={c} value={c}>
                 {c}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       )}
 

@@ -1,3 +1,4 @@
+import { DateInput, Select } from '../ui/Pickers';
 import React, { useState, useRef } from 'react';
 import { useEscape } from '../ui/useEscape';
 import { useInstitute, DEFAULT_PHOTO } from '../../Context/InstituteContext';
@@ -245,7 +246,7 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({ student, onC
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Class</label>
-                  <select
+                  <Select
                     value={form.grade}
                     onChange={e => setForm({ ...form, grade: e.target.value })}
                     className={`${inputClass(false)} bg-white`}
@@ -255,11 +256,11 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({ student, onC
                     <option value="Class 11">Class 11</option>
                     <option value="Class 12">Class 12</option>
                     <option value="Dropper / Repeater">Dropper / Repeater</option>
-                  </select>
+                  </Select>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Status</label>
-                  <select
+                  <Select
                     value={form.status}
                     onChange={e => setForm({ ...form, status: e.target.value as Student['status'] })}
                     className={`${inputClass(false)} bg-white`}
@@ -267,7 +268,7 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({ student, onC
                     <option value="active">Active</option>
                     <option value="trial">Trial</option>
                     <option value="inactive">Archived</option>
-                  </select>
+                  </Select>
                 </div>
               </div>
             </div>
@@ -321,8 +322,7 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({ student, onC
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Date of birth (optional)</label>
-                <input
-                  type="date"
+                <DateInput clearable
                   value={form.dateOfBirth}
                   onChange={e => setForm({ ...form, dateOfBirth: e.target.value })}
                   className={inputClass(false)}
@@ -339,7 +339,7 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({ student, onC
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Program</label>
-                <select
+                <Select
                   value={form.courseId}
                   onChange={e => handleCourseChange(e.target.value)}
                   className={`${inputClass(false)} bg-white`}
@@ -349,13 +349,13 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({ student, onC
                       {c.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">
                   Batch <span className="text-rose-500">*</span>
                 </label>
-                <select
+                <Select
                   value={form.batchId}
                   onChange={e => setForm({ ...form, batchId: e.target.value })}
                   className={`${inputClass(!!errors.batchId)} bg-white`}
@@ -367,7 +367,7 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({ student, onC
                         {b.name}
                       </option>
                     ))}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Target Exam</label>
@@ -429,8 +429,7 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({ student, onC
             {errors.discount && <p className="text-xs text-rose-600 mt-2">{errors.discount}</p>}
             <div className="mt-4 max-w-xs">
               <label className="block text-xs font-medium text-slate-700 mb-1">Next installment due date</label>
-              <input
-                type="date"
+              <DateInput clearable
                 value={form.nextDueDate}
                 onChange={e => setForm({ ...form, nextDueDate: e.target.value })}
                 className={inputClass(false)}

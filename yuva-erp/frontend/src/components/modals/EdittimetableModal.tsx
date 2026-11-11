@@ -1,3 +1,4 @@
+import { Select } from '../ui/Pickers';
 import React, { useState } from 'react';
 import { useEscape } from '../ui/useEscape';
 import { useInstitute } from '../../Context/InstituteContext';
@@ -110,7 +111,7 @@ export const EditTimetableModal: React.FC<EditTimetableModalProps> = ({ slot, on
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">Day of Week</label>
-              <select
+              <Select
                 value={form.dayOfWeek}
                 onChange={e => setForm({ ...form, dayOfWeek: e.target.value as TimetableSlot['dayOfWeek'] })}
                 className={`${inputClass(false)} bg-white`}
@@ -121,11 +122,11 @@ export const EditTimetableModal: React.FC<EditTimetableModalProps> = ({ slot, on
                 <option value="Thu">Thursday</option>
                 <option value="Fri">Friday</option>
                 <option value="Sat">Saturday</option>
-              </select>
+              </Select>
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">Batch</label>
-              <select
+              <Select
                 value={form.batchId}
                 onChange={e => setForm({ ...form, batchId: e.target.value })}
                 className={`${inputClass(false)} bg-white`}
@@ -135,7 +136,7 @@ export const EditTimetableModal: React.FC<EditTimetableModalProps> = ({ slot, on
                     {b.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
 
