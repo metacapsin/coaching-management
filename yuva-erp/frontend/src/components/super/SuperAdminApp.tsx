@@ -70,7 +70,7 @@ const Shell: React.FC<{ children: React.ReactNode; right?: React.ReactNode }> = 
 // ---------- pop-ups ----------
 
 const AddCoachingModal: React.FC<{ onClose: () => void; onDone: (name: string) => void }> = ({ onClose, onDone }) => {
-  const [f, setF] = useState<NewCoaching>({ coachingName: '', city: '', adminName: '', phone: '', email: '', password: '' });
+  const [f, setF] = useState<NewCoaching>({ coachingName: '', city: '', adminName: '', phone: '', email: '', password: '', appPassword: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   type TextField = keyof NewCoaching;
@@ -81,7 +81,7 @@ const AddCoachingModal: React.FC<{ onClose: () => void; onDone: (name: string) =
     setError('');
     setBusy(true);
     try {
-      await superApi.add({ ...f, coachingName: f.coachingName.trim(), adminName: f.adminName.trim(), email: f.email.trim() });
+      await superApi.add({ ...f, coachingName: f.coachingName.trim(), adminName: f.adminName.trim(), email: f.email.trim(), appPassword: (f.appPassword ?? '').trim() || undefined });
       onDone(f.coachingName.trim());
       onClose();
     } catch (err) {
@@ -108,7 +108,9 @@ const AddCoachingModal: React.FC<{ onClose: () => void; onDone: (name: string) =
           {field('Principal mobile *', 'phone', { placeholder: '10-digit mobile number' })}
           {field('Principal email *', 'email', { type: 'email', autoComplete: 'off' })}
           {field('Password for the principal *', 'password', { type: 'text', autoComplete: 'off', placeholder: 'At least 8 characters, letters and numbers' })}
+          {field('Gmail app password of the principal (optional)', 'appPassword', { type: 'password', autoComplete: 'off', placeholder: '16 letters, only if the email is a Gmail' })}
         </div>
+        <p className="text-[11px] text-slate-500">With the app password of the principal's Gmail, every email of this coaching goes out from the principal's own email address. The principal can also connect it later in Institute Profile.</p>
         <div className="flex items-start gap-2 text-xs text-amber-900 p-3 rounded-lg border-2 border-amber-300 bg-amber-50">
           <Clock className="w-4 h-4 shrink-0 mt-0.5" />
           <span>
@@ -616,8 +618,7 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
             <Clock className="w-4 h-4 text-slate-400" />
             No coaching is waiting for approval
           </div>
-          A coaching owner sends a request from the login page (Coaching Admin tab, "Register your coaching"). It appears here with Approve and
-          Reject. A coaching you add with <strong>+ Add coaching</strong> waits here too, until you press Approve.
+          Only you add a coaching. A coaching you add with <strong>+ Add coaching</strong> waits here with Approve and Reject, until you press Approve.
         </section>
       )}
       {pending.length > 0 && (
@@ -691,7 +692,7 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
         <div className="bg-white border border-slate-200 rounded-xl py-14 text-center shadow-xs">
           <Building2 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
           <p className="text-sm font-medium text-slate-700">No coaching yet</p>
-          <p className="text-xs text-slate-400 mt-1">Press + Add coaching, or wait for requests from the login page.</p>
+          <p className="text-xs text-slate-400 mt-1">Press + Add coaching to add the first coaching.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">

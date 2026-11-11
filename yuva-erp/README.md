@@ -129,6 +129,21 @@ A new coaching opens with sample data so every screen can be seen at once (`AUTO
 - **Emails too** (when SMTP is set): when a student asks, the principal, the parent and the teachers of the student's batch get an email with the reason, so a teacher
   knows why the student is absent; the answer goes to the student, the parent and (when approved) the teachers. A teacher's own leave goes to the principal only.
 
+## Who an email comes from
+
+An email that comes from a person shows the NAME of that person as sender (for example "Danish Imam (Student, Sunrise Classes)") and the email of that
+person as Reply-To (and in the text), so the receiver sees who wrote and Reply writes to that person. The address in "From" stays the account of
+`SMTP_USER` / `SMTP_FROM`: Gmail and other services do not allow another address (it would be rewritten or end in spam). Emails without a person (a reset
+code...) show the name AcademiaOS.
+When a student, a parent or a teacher forgets the password, the principal gets an email (from that person) when the code is asked for and when the new
+password was set; the code and the password are never in that email.
+
+## The own Gmail of a coaching
+
+By default every email goes out from the account of the platform (`SMTP_USER`). A principal can connect the own Gmail in **Institute Profile → Emails**
+(an app password: Google account → 2-Step Verification → App passwords). Then every email of that coaching comes from that Gmail address. The app password
+is stored sealed on the server (key from `APP_SECRET`, or else from `MONGODB_URI`) and is never shown again. The emails of the Super Admin always use `SMTP_USER`.
+
 ## Backups
 
 Institute Profile → Data Backup: download everything (data, accounts, photos) as one file, restore it

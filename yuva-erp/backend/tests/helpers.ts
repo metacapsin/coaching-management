@@ -140,9 +140,10 @@ export const SEED: Record<string, any> = {
 
 /** Collects the emails the routes write (instead of sending them). */
 export function captureMail() {
-  const sent: [string, string, string, string | null][] = [];
-  mailer.overrideSend((to, subject, body, html) => {
-    sent.push([to, subject, body, html]);
+  // [to, subject, text, html, sender]: the sender is the person it comes from ({ name, replyTo }), or undefined for AcademiaOS itself
+  const sent: [string, string, string, string | null, { name: string; replyTo?: string } | undefined][] = [];
+  mailer.overrideSend((to, subject, body, html, sender) => {
+    sent.push([to, subject, body, html, sender]);
     return true;
   });
   return { sent, stop: () => mailer.overrideSend(null) };

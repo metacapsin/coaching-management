@@ -3,6 +3,8 @@
 
 import crypto from 'node:crypto';
 import * as auth from './auth.ts';
+import * as mailer from './mailer.ts';
+import { seal } from './secretBox.ts';
 import { HttpError } from './errors.ts';
 import {
   INSTITUTE_BODY,
@@ -12,6 +14,7 @@ import {
   chooseOrg,
   coachingName,
   emailTaken,
+  fromPerson,
   isDuplicateKey,
   limitRegistrations,
   mail,
@@ -42,6 +45,30 @@ export function intParam(value: string | undefined): number | null {
 
 route('/api/health', ['GET'], 'public', async (c) => ({ ok: true, version: await c.store.version() }));
 
+/** A student, a parent or a teacher asked for a password reset code, or set a new password with it: the PRINCIPAL is told by email
+ * (from that person), so he knows and can see if it was not the person. A courtesy: a failed email never breaks the reset. */
+async function tellPrincipalAboutReset(c: any, s: any, target: any, stage: 'asked' | 'done'): Promise<void> {
+  try {
+    if (target.role !== 'student' && target.role !== 'teacher') return; // the principal and the Super Admin have their own way
+    const kind = target.role === 'teacher' ? 'Teacher' : target.isParent ? 'Parent' : 'Student';
+    const coaching = await coachingName(c, s);
+    const asked = stage === 'asked';
+    await tellPrincipals(
+      c,
+      s,
+      asked ? `${target.name} (${kind}) forgot the password` : `${target.name} (${kind}) set a new password`,
+      asked ? `${target.name} asked for a password reset code` : `${target.name} set a new password with the reset code`,
+      asked
+        ? [`${kind} ${target.name} forgot the password. A 6-digit code was sent to ${target.email}; with it the person can choose a new password. You can also set a new password in Team & Access.`, 'If this was not the person, nothing else is needed: the old password still works until the code is used.']
+        : [`${kind} ${target.name} chose a new password with the code that was sent to ${target.email}. The password itself is never sent by email.`, 'If this was not the person, set a new password in Team & Access.'],
+      [['Person', target.name], ['Role', kind], ['Email', target.email], ['Coaching', coaching]],
+      fromPerson(target, coaching),
+    );
+  } catch {
+    /* a courtesy */
+  }
+}
+
 /** Marks that somebody forgot the password, so the principal sees it in Team & Access and sets a new one.
  * The answer is always the same, so nobody can find out which emails have an account. */
 route('/api/auth/forgot-password', ['POST'], 'public', async (c) => {
@@ -50,6 +77,9 @@ route('/api/auth/forgot-password', ['POST'], 'public', async (c) => {
   const target = email ? await c.root.userByEmail(email) : null;
   if (target && (target.status || 'active') === 'active') {
     const s = c.root.forOrg(target.orgId || DEFAULT_ORG);
+    await mailer.loadOrgMail(s);
+    mailer.enterOrg(s.org); // the code goes out from the Gmail of the coaching of the person
+    const askedBefore: string = target.resetRequestedAt ?? '';
     target.resetRequestedAt = nowIso();
     let code: string | null = null;
     if (target.role !== 'super') {
@@ -66,10 +96,13 @@ route('/api/auth/forgot-password', ['POST'], 'public', async (c) => {
       // also by email: the person can set a new password at once with this code
       mail(target.email, 'Your AcademiaOS password reset code', 'Your password reset code', ['Use this code to set a new password. It works for 15 minutes.'], {
         code,
+        details: [['Account', target.email]], // the account the code was asked for
         button: ['Open the sign in page', c.loginLink(portalOf(target.role, Boolean(target.isParent)))],
         note: 'If you did not ask for it, you can ignore this email.',
         name: target.name,
       });
+      // the principal is told too (not again within 10 minutes for the same person: nobody can fill his inbox)
+      if (!askedBefore || Date.now() - Date.parse(askedBefore) > 10 * 60 * 1000) await tellPrincipalAboutReset(c, s, target, 'asked');
     }
   }
   return ok();
@@ -87,6 +120,8 @@ route('/api/auth/reset-with-code', ['POST'], 'public', async (c) => {
   const expires = new Date(target.resetCodeExpires || '1970-01-01T00:00:00+00:00').getTime();
   const expired = !(expires >= Date.now());
   const s = c.root.forOrg(target.orgId || DEFAULT_ORG);
+  await mailer.loadOrgMail(s);
+  mailer.enterOrg(s.org);
   const tries = parseInt(target.resetCodeTries || 0, 10);
   const good = auth.safeEqual(auth.sha256Hex(`${code}:${target.id}`), target.resetCodeHash);
   if (expired || tries >= 5 || !good) {
@@ -106,6 +141,7 @@ route('/api/auth/reset-with-code', ['POST'], 'public', async (c) => {
   c.limiters.login.reset(`${c.ip()}|${email}`);
   await s.bump();
   await s.audit(target, 'password-reset-by-email', email);
+  await tellPrincipalAboutReset(c, s, target, 'done');
   return ok();
 });
 
@@ -229,6 +265,7 @@ route('/api/auth/login', ['POST'], 'public', async (c) => {
 
 route('/api/auth/register-teacher', ['POST'], 'public', async (c) => {
   const s = await chooseOrg(c);
+  mailer.enterOrg(s.org); // the emails of this request go out from the own Gmail of this coaching
   await requireSetup(c);
   limitRegistrations(c);
   const b = c.body();
@@ -273,6 +310,7 @@ route('/api/auth/register-teacher', ['POST'], 'public', async (c) => {
       ['Mobile', user.phone],
       ['Subject', user.subject],
     ],
+    fromPerson(user, coaching),
   );
   return ok();
 });
@@ -282,6 +320,7 @@ route('/api/auth/register-teacher', ['POST'], 'public', async (c) => {
  * number of the parent that was given at admission. One parent account for each child. */
 route('/api/auth/register-parent', ['POST'], 'public', async (c) => {
   const s = await chooseOrg(c);
+  mailer.enterOrg(s.org); // the emails of this request go out from the own Gmail of this coaching
   await requireSetup(c);
   limitRegistrations(c);
   const b = c.body();
@@ -339,6 +378,7 @@ route('/api/auth/register-parent', ['POST'], 'public', async (c) => {
 
 route('/api/auth/register-student', ['POST'], 'public', async (c) => {
   const s = await chooseOrg(c);
+  mailer.enterOrg(s.org); // the emails of this request go out from the own Gmail of this coaching
   await requireSetup(c);
   limitRegistrations(c);
   const b = c.body();
@@ -397,6 +437,7 @@ route('/api/auth/register-student', ['POST'], 'public', async (c) => {
 
 route('/api/public/registration-options', ['GET'], 'public', async (c) => {
   const s = await chooseOrg(c);
+  mailer.enterOrg(s.org); // the emails of this request go out from the own Gmail of this coaching
   const students = await s.find('students');
   const batches = (await s.find('batches'))
     .filter((b) => b.status !== 'completed')
@@ -419,6 +460,7 @@ route('/api/public/registration-options', ['GET'], 'public', async (c) => {
 /** A new student registers on the portal: the student record gets an automatic roll number. */
 route('/api/auth/register-new-student', ['POST'], 'public', async (c) => {
   const s = await chooseOrg(c);
+  mailer.enterOrg(s.org); // the emails of this request go out from the own Gmail of this coaching
   await requireSetup(c);
   limitRegistrations(c);
   const b = c.body();
@@ -507,6 +549,7 @@ async function tellPrincipalAboutAccount(c: any, what: string, rows: [string, an
       `${u.name} changed ${what}`,
       [`${kind} ${u.name} changed ${what} of the own login.`, ...lines],
       [['Person', u.name], ['Role', kind], ['Email', u.email], ...rows, ['Coaching', coaching]],
+      fromPerson(u, coaching),
     );
   } catch {
     /* a courtesy */
@@ -567,6 +610,7 @@ route('/api/fees/notice-email', ['POST'], 'user', async (c) => {
         ['Pending amount', amount],
         ['Coaching', coaching],
       ],
+      from: fromPerson(c.user, coaching),
       button: payLink ? [`Pay ${amount} now`, payLink] : ['Visit AcademiaOS', c.siteUrl()],
       note: payLink
         ? 'The button opens your UPI app (GPay, PhonePe, Paytm...) with the amount already filled. After you pay, the office gives you a receipt.'
@@ -610,6 +654,7 @@ route('/api/exams/notice-email', ['POST'], 'user', async (c) => {
           ['Maximum marks', String(exam.maxMarks ?? '')],
           ['It covers', topics],
         ],
+        from: fromPerson(c.user, coaching),
         button: ['Sign in as Parent', c.loginLink('parent')],
         note: 'In the parent login you see the tests, the results, the attendance and the fees of your child.',
         name: st.parentName,
@@ -662,6 +707,7 @@ async function mailAbsences(c: any, s: any, saved: any[], before: Map<string, an
         button: ['Sign in as Parent', c.loginLink('parent')],
         note: 'In the parent login you see the attendance of your child day by day.',
         name: st.parentName,
+        from: fromPerson(c.user, coaching),
       });
     }
   }
@@ -761,6 +807,7 @@ route('/api/users/<user_id>/approve', ['POST'], 'admin', async (c) => {
     button: ['Sign in', c.loginLink(portalOf(target.role, Boolean(target.isParent)))],
     accent: GREEN,
     name: target.name,
+    from: fromPerson(c.user, coaching),
   });
   return ok();
 });
@@ -780,7 +827,7 @@ route('/api/users/<user_id>/reject', ['POST'], 'admin', async (c) => {
     `Your request for ${coaching} was not approved`,
     'Your request was not approved',
     ['Sorry, the principal could not approve your request. You can ask the principal of the coaching for help.'],
-    { details: [['Coaching', coaching]], button: ['Visit AcademiaOS', c.siteUrl()], accent: RED, name: target.name },
+    { details: [['Coaching', coaching]], button: ['Visit AcademiaOS', c.siteUrl()], accent: RED, name: target.name, from: fromPerson(c.user, coaching) },
   );
   return ok();
 });
@@ -924,7 +971,7 @@ async function emailAboutLeave(c: any, leave: any, stage: 'asked' | 'approved' |
       const address = String(to ?? '').trim().toLowerCase();
       if (!address.includes('@') || sent.has(address)) return;
       sent.add(address);
-      mail(to as string, subject, heading, lines, look);
+      mail(to as string, subject, heading, lines, { ...look, from: stage === 'asked' ? (asker ? fromPerson(asker, coaching) : undefined) : fromPerson(c.user, coaching) });
     };
     const detailRows: [string, any][] = isTeacherLeave
       ? [['Teacher', who], ['Subject', leave.subject], ['Leave', `${days.replace(/^(on|from) /, '')}`], ['Type', leave.kind], ['Medical certificate', leave.proofUrl ? 'Photo attached (open it in the app)' : leave.hasProof ? 'Has one and can show it' : ''], ['Coaching', coaching]]
@@ -1076,6 +1123,57 @@ route('/api/leaves/<leave_id>', ['PUT'], 'user', async (c) => {
   if (!isTeacherLeave) await tellParentAboutLeave(c, { ...leave, decisionNote: note }, decision);
   await emailAboutLeave(c, { ...leave, decisionNote: note }, decision);
   return ok();
+});
+
+// ---------- the own Gmail of the coaching (principal only) ----------
+// The emails of a coaching go out FROM an email account. Without an own one that is the account of the platform (SMTP_USER). The principal can
+// connect the own Gmail (an "app password", not the normal password): then every email of this coaching comes from that address.
+
+const GMAIL = { host: 'smtp.gmail.com', port: 587 };
+
+route('/api/mail-settings', ['GET'], 'admin', async (c) => {
+  const v = await c.store.getMailSettings();
+  return { email: v?.email ?? '', connected: Boolean(v), fromName: v?.fromName ?? '' };
+});
+
+route('/api/mail-settings', ['PUT'], 'admin', async (c) => {
+  const b = c.body();
+  const email = text(b.email, 150).toLowerCase();
+  const password = String(typeof b.appPassword === 'string' ? b.appPassword : '').replace(/\s+/g, ''); // Gmail shows it in groups of four
+  checkEmail(email);
+  if (password.length < 8) throw new HttpError(400, 'Write the app password of this Gmail (16 letters; it is not the normal password).');
+  const host = text(b.host, 100) || GMAIL.host;
+  const port = Number(b.port) || GMAIL.port;
+  try {
+    await mailer.verifyAccount({ email, password, host, port });
+  } catch (err) {
+    throw new HttpError(400, `This email account did not accept the sign in (${String((err as Error).message || err).slice(0, 120)}). Check the email and the app password.`);
+  }
+  const fromName = await coachingName(c, c.store);
+  await c.store.setMailSettings({ email, host, port, fromName, passwordSealed: seal(password) });
+  mailer.forgetOrgMail(c.store.org);
+  await mailer.loadOrgMail(c.store);
+  mailer.enterOrg(c.store.org);
+  await c.store.audit(c.user, 'mail-settings', `own email connected: ${email}`);
+  return { email, connected: true, fromName };
+});
+
+route('/api/mail-settings', ['DELETE'], 'admin', async (c) => {
+  await c.store.clearMailSettings();
+  mailer.forgetOrgMail(c.store.org);
+  await c.store.audit(c.user, 'mail-settings', 'own email removed');
+  return ok();
+});
+
+/** Sends a test email to the principal himself, from the account that is set now. */
+route('/api/mail-settings/test', ['POST'], 'admin', async (c) => {
+  const coaching = await coachingName(c, c.store);
+  const v = await c.store.getMailSettings();
+  const [sent] = mail(c.user.email, `Test email from ${coaching}`, 'Your emails are working', [`This is a test email. The emails of ${coaching} go out from ${v ? v.email : 'the AcademiaOS account'}.`], {
+    details: [['Sent from', v ? v.email : 'the AcademiaOS account'], ['Coaching', coaching]],
+    button: ['Open AcademiaOS', c.siteUrl()],
+  });
+  return { sent, to: c.user.email };
 });
 
 /** Everybody can change the email they sign in with. The current password has to be typed (somebody who finds a

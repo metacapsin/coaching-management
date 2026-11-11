@@ -53,6 +53,7 @@ export interface NewCoaching {
   phone: string;
   email: string;
   password: string;
+  appPassword?: string; // optional: the app password of the principal's Gmail (the emails of the coaching go out from it)
 }
 
 export interface Decision {

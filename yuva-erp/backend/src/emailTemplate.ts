@@ -19,11 +19,12 @@ export interface RenderOptions {
   note?: string; // a small grey sentence at the end
   name?: string; // "Hello <name>," at the start
   preview?: string; // the grey line that the inbox shows next to the subject (default: the first paragraph)
+  from?: { name: string; email?: string }; // the person who sends it: shown in the email, and Reply writes to the email
 }
 
 /** Returns [plain text, html]. */
 export function render(heading: string, lines: string[], opts: RenderOptions = {}): [string, string] {
-  const { button, code, note, name, preview } = opts;
+  const { button, code, note, name, preview, from } = opts;
   const accent = opts.accent ?? BLUE;
   const details = (opts.details ?? []).filter(([, v]) => v);
 
@@ -31,6 +32,7 @@ export function render(heading: string, lines: string[], opts: RenderOptions = {
   const parts: string[] = [];
   if (name) parts.push(`Hello ${name},`);
   parts.push(heading);
+  if (from) parts.push(`From: ${from.name}${from.email ? ` <${from.email}>` : ''}${from.email ? ' (press Reply to write to this person)' : ''}`);
   parts.push(...lines);
   if (code) parts.push(`Your code: ${code}`);
   if (details.length) parts.push(details.map(([k, v]) => `${k}: ${v}`).join('\n'));
@@ -42,6 +44,12 @@ export function render(heading: string, lines: string[], opts: RenderOptions = {
   // ---- HTML
   const p = 'margin:0 0 14px;font-size:15px;line-height:1.6;color:#334155;';
   const body: string[] = [];
+  if (from) {
+    body.push(
+      '<p style="margin:0 0 16px;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;line-height:1.5;color:#475569;">' +
+        `From <b style="color:#0f172a;">${esc(from.name)}</b>${from.email ? ` &lt;${esc(from.email)}&gt;<br>Press Reply to write to this person.` : ''}</p>`,
+    );
+  }
   if (name) body.push(`<p style="${p}">Hello ${esc(name)},</p>`);
   for (const line of lines) body.push(`<p style="${p}">${esc(line)}</p>`);
   if (code) {

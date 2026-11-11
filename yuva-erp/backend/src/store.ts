@@ -416,6 +416,22 @@ export class Store {
     await this.lists[name].updateOne({ _id: itemId }, { $inc: { [field]: amount } });
   }
 
+  // ---------- the own Gmail of a coaching (the emails of the coaching go out from it) ----------
+
+  /** { email, host, port, fromName, passwordSealed } or null. The password is sealed (see secretBox.ts). */
+  async getMailSettings(): Promise<any> {
+    const doc = await this.meta.findOne({ _id: 'mail' });
+    return doc ? doc.value : null;
+  }
+
+  async setMailSettings(value: any): Promise<void> {
+    await this.meta.replaceOne({ _id: 'mail' }, { _id: 'mail', value }, { upsert: true });
+  }
+
+  async clearMailSettings(): Promise<void> {
+    await this.meta.deleteOne({ _id: 'mail' });
+  }
+
   // ---------- photos ----------
 
   /** Stores a student photo. Returns the token that makes the photo address (a new photo = a new address). */

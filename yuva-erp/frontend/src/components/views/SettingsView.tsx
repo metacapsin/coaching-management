@@ -1,3 +1,4 @@
+import { MailSettings } from './MailSettings';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import {
@@ -256,6 +257,8 @@ export const SettingsView: React.FC = () => {
 
         {/* Backup & data */}
         <div className="space-y-6">
+          <MailSettings />
+
           <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs space-y-4">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-2 flex items-center gap-2">
               <Database className="w-4 h-4 text-emerald-600" />

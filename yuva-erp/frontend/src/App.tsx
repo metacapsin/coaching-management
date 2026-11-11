@@ -25,6 +25,7 @@ import { EnquiriesView } from './components/views/EnquiriesView';
 import { NoticesView } from './components/views/NoticesView';
 import { MaterialView } from './components/views/MaterialView';
 import { LeavePage } from './components/views/LeavePage';
+import { MailBanner } from './components/layout/MailBanner';
 import { ReportsView } from './components/views/ReportsView';
 import { ExpensesView } from './components/views/ExpensesView';
 import { LibraryView } from './components/views/LibraryView';
@@ -420,6 +421,8 @@ function MainApp() {
               </button>
             </div>
           )}
+
+          {role === 'admin' && activeTab !== 'settings' && <MailBanner onConnect={() => setActiveTab('settings')} />}
 
           {renderTab()}
         </main>

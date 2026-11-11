@@ -3,6 +3,8 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 import { Api, BATCHES, EXAM, PASSWORD, STUDENTS, captureMail, dropDb, makeApi, newDb, startMongo, stopMongo } from './helpers.ts';
+import * as mailer from '../src/mailer.ts';
+import { open } from '../src/secretBox.ts';
 
 before(startMongo);
 after(stopMongo);
@@ -1122,5 +1124,241 @@ describe('My Account: a student, a parent and a teacher change the password, the
       mail.stop();
     }
     assert.equal(mail.sent.length, 0);
+  });
+});
+
+describe('Emails show WHO they come from: the name of the person as sender, Reply goes to the person', () => {
+  let admin = '';
+  let teacher = '';
+  let student = '';
+  const s = withServer(async (api) => {
+    admin = (await api.call('POST', '/api/auth/setup', { name: 'Rakesh', email: 'p@x.com', password: PASSWORD }))[1].token;
+    await api.call('PUT', '/api/institute', { changes: { profile: undefined, batches: { upsert: BATCHES }, students: { upsert: STUDENTS } } }, admin);
+    await api.call('POST', '/api/users', { name: 'Tina', email: 't@x.com', password: PASSWORD, role: 'teacher', subject: 'Maths', batchIds: ['b1'] }, admin);
+    await api.call('POST', '/api/users', { name: 'Alice', email: 'alice@x.com', password: PASSWORD, role: 'student', studentId: 's1' }, admin);
+    teacher = await tokenOf(api, 't@x.com', 'member');
+    student = await tokenOf(api, 'alice@x.com', 'member');
+  });
+  const call = (...a: Parameters<Api['call']>) => s.api.call(...a);
+  const day = (add: number) => {
+    const d = new Date(Date.now() + add * 86400000);
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  };
+
+  it('1 a student asks for leave: the principal and the teacher get it FROM the student (name + Reply-To + the email in the text)', async () => {
+    const mail = captureMail();
+    try {
+      assert.equal((await call('POST', '/api/leaves', { fromDate: day(3), toDate: day(3), reason: 'A family function in another city, we leave a day before.', kind: 'Family function', declaration: true, signature: 'Alice' }, student))[0], 200);
+    } finally {
+      mail.stop();
+    }
+    assert.ok(mail.sent.length >= 2);
+    for (const m of mail.sent) {
+      assert.ok(m[4], `${m[0]} has a sender`);
+      assert.ok(m[4]!.name.startsWith('Alice (Student'), m[4]!.name);
+      assert.equal(m[4]!.replyTo, 'alice@x.com'); // Reply writes to the student
+      assert.ok(m[2].includes('alice@x.com') && m[2].includes('press Reply'), m[0]); // the email of the student is in the text
+      assert.ok(m[3]!.includes('alice@x.com')); // and in the HTML
+    }
+  });
+
+  it('2 the principal answers: the answer comes FROM the principal; a teacher changing the phone: the principal gets it FROM the teacher', async () => {
+    const list = (await call('GET', '/api/sync', null, admin))[1].institute.leaveRequests;
+    const mail = captureMail();
+    try {
+      assert.equal((await call('PUT', `/api/leaves/${list[0].id}`, { decision: 'approved', parentConfirmed: true }, admin))[0], 200);
+      assert.equal((await call('PUT', '/api/auth/profile', { phone: '9811122233' }, teacher))[0], 200);
+    } finally {
+      mail.stop();
+    }
+    const answers = mail.sent.filter((m) => m[1].includes('leave'));
+    assert.ok(answers.length >= 1);
+    for (const m of answers) assert.deepEqual([m[4]!.name.startsWith('Rakesh (Principal'), m[4]!.replyTo], [true, 'p@x.com']);
+    const phone = mail.sent.find((m) => m[1].includes('mobile number'))!;
+    assert.deepEqual([phone[0], phone[4]!.name.startsWith('Tina (Teacher'), phone[4]!.replyTo], ['p@x.com', true, 't@x.com']);
+  });
+
+  it('3 the account the principal makes: the welcome email comes FROM the principal; a reset code has no person (AcademiaOS)', async () => {
+    const mail = captureMail();
+    try {
+      assert.equal((await call('POST', '/api/users', { name: 'Neha', email: 'neha@x.com', password: PASSWORD, role: 'teacher', batchIds: [] }, admin))[0], 200);
+      assert.equal((await call('POST', '/api/auth/forgot-password', { email: 'neha@x.com' }))[0], 200);
+    } finally {
+      mail.stop();
+    }
+    const welcome = mail.sent.find((m) => m[1].includes('Your AcademiaOS account'))!;
+    assert.deepEqual([welcome[4]!.name.startsWith('Rakesh (Principal'), welcome[4]!.replyTo], [true, 'p@x.com']);
+    const code = mail.sent.find((m) => m[1].includes('password reset code'))!;
+    assert.equal(code[4], undefined); // the system: AcademiaOS
+    assert.ok(!code[2].includes('press Reply'));
+  });
+
+  it('4 a student forgot the password: the code goes to the student, AND the principal is told FROM the student (once in 10 minutes); the new password is told too, never shown', async () => {
+    const mail = captureMail();
+    let code = '';
+    try {
+      assert.equal((await call('POST', '/api/auth/forgot-password', { email: 'alice@x.com' }))[0], 200);
+      assert.equal((await call('POST', '/api/auth/forgot-password', { email: 'alice@x.com' }))[0], 200); // asked again at once
+    } finally {
+      mail.stop();
+    }
+    const toStudent = mail.sent.filter((m) => m[0] === 'alice@x.com');
+    assert.equal(toStudent.length, 2); // a code each time
+    assert.ok(toStudent[0][2].includes('Account: alice@x.com')); // the account the code was asked for is written in the email
+    code = /Your code: (\d{6})/.exec(toStudent[1][2])![1];
+    const toPrincipal = mail.sent.filter((m) => m[0] === 'p@x.com');
+    assert.equal(toPrincipal.length, 1); // the principal is told once, not twice
+    assert.ok(toPrincipal[0][1].includes('Alice') && toPrincipal[0][1].includes('forgot the password'));
+    assert.deepEqual([toPrincipal[0][4]!.name.startsWith('Alice (Student'), toPrincipal[0][4]!.replyTo], [true, 'alice@x.com']);
+    assert.ok(toPrincipal[0][2].includes('alice@x.com') && !toPrincipal[0][2].includes(code)); // the code itself never goes to the principal
+    // the student sets a new password with the code: the principal is told, the password is not in the email
+    const mail2 = captureMail();
+    try {
+      assert.equal((await call('POST', '/api/auth/reset-with-code', { email: 'alice@x.com', code, password: 'Brand-New-pw-98765' }))[0], 200);
+    } finally {
+      mail2.stop();
+    }
+    assert.deepEqual(mail2.sent.map((m) => m[0]), ['p@x.com']);
+    assert.ok(mail2.sent[0][1].includes('set a new password') && !mail2.sent[0][2].includes('Brand-New-pw-98765'));
+    // the principal himself asks: nobody else is emailed about it
+    const mail3 = captureMail();
+    try {
+      assert.equal((await call('POST', '/api/auth/forgot-password', { email: 'p@x.com' }))[0], 200);
+    } finally {
+      mail3.stop();
+    }
+    assert.deepEqual(mail3.sent.map((m) => m[0]), ['p@x.com']); // only his own code
+  });
+});
+
+describe('The own Gmail of a coaching: its emails go out from that address', () => {
+  let admin = '';
+  let student = '';
+  const GOOD = 'abcd efgh ijkl mnop'; // an app password, as Gmail shows it
+  const s = withServer(async (api) => {
+    admin = (await api.call('POST', '/api/auth/setup', { name: 'Rakesh', email: 'rakesh@gmail.com', password: PASSWORD }))[1].token;
+    await api.call('PUT', '/api/institute', { changes: { batches: { upsert: BATCHES }, students: { upsert: STUDENTS } } }, admin);
+    await api.call('POST', '/api/users', { name: 'Alice', email: 'alice@x.com', password: PASSWORD, role: 'student', studentId: 's1' }, admin);
+    student = await tokenOf(api, 'alice@x.com', 'member');
+  });
+  const call = (...a: Parameters<Api['call']>) => s.api.call(...a);
+  /** Collects what the mailer would send (with the account it would use). */
+  const watch = () => {
+    const sent: any[] = [];
+    mailer.setDelivery((m) => {
+      sent.push(m);
+      return true;
+    }, 1);
+    mailer.overrideVerify(async ({ password }) => {
+      if (password !== 'abcdefghijklmnop') throw new Error('Username and Password not accepted');
+    });
+    return {
+      sent,
+      stop: async () => {
+        await mailer.idle();
+        mailer.setDelivery(null);
+        mailer.overrideVerify(null);
+      },
+    };
+  };
+
+  it('1 only the principal sets it; a wrong app password is refused; the right one is saved SEALED and never shown again', async () => {
+    const w = watch();
+    try {
+      assert.equal((await call('PUT', '/api/mail-settings', { email: 'rakesh@gmail.com', appPassword: GOOD }, student))[0], 403);
+      assert.equal((await call('GET', '/api/mail-settings', null, student))[0], 403);
+      assert.equal((await call('PUT', '/api/mail-settings', { email: 'rakesh@gmail.com', appPassword: 'wrongwrongwrong' }, admin))[0], 400);
+      assert.equal((await call('PUT', '/api/mail-settings', { email: 'not-an-email', appPassword: GOOD }, admin))[0], 400);
+      assert.equal((await call('PUT', '/api/mail-settings', { email: 'rakesh@gmail.com', appPassword: 'short' }, admin))[0], 400);
+      const [status, data] = await call('PUT', '/api/mail-settings', { email: 'Rakesh@Gmail.com', appPassword: GOOD }, admin);
+      assert.equal(status, 200);
+      assert.deepEqual([data.email, data.connected], ['rakesh@gmail.com', true]);
+      const got = await call('GET', '/api/mail-settings', null, admin);
+      assert.ok(!JSON.stringify(got[1]).includes('abcd') && !JSON.stringify(data).includes('abcd')); // the password is never sent back
+      // in the database the password is sealed (not readable without the server secret), and it opens to the right one
+      const stored = await s.api.root.forOrg('default').getMailSettings();
+      assert.ok(!JSON.stringify(stored).includes('abcdefgh'));
+      assert.equal(open(stored.passwordSealed), 'abcdefghijklmnop');
+      const [ivPart, tagPart, dataPart] = stored.passwordSealed.split('.');
+      const flipped = (x: string) => (x[0] === 'A' ? 'B' : 'A') + x.slice(1); // a really different first character
+      assert.equal(open([ivPart, tagPart, flipped(dataPart)].join('.')), null); // a changed value is refused
+      assert.equal(open([ivPart, flipped(tagPart), dataPart].join('.')), null);
+      // and it is not in the backup / the sync that other people get
+      assert.ok(!JSON.stringify((await call('GET', '/api/sync', null, student))[1]).includes('abcdefgh'));
+    } finally {
+      await w.stop();
+    }
+  });
+
+  it('2 the emails of this coaching go out FROM the Gmail of the principal (welcome, leave, forgot password)', async () => {
+    const w = watch();
+    try {
+      assert.equal((await call('POST', '/api/users', { name: 'Tina', email: 'tina@x.com', password: PASSWORD, role: 'teacher', batchIds: ['b1'] }, admin))[0], 200);
+      assert.equal((await call('POST', '/api/leaves', { fromDate: '2099-01-10', toDate: '2099-01-10', reason: 'A family function in another city, we leave a day before.', kind: 'Travel', declaration: true, signature: 'Alice' }, student))[0], 200);
+      assert.equal((await call('POST', '/api/auth/forgot-password', { email: 'alice@x.com' }))[0], 200);
+    } finally {
+      await w.stop();
+    }
+    assert.ok(w.sent.length >= 4);
+    for (const m of w.sent) assert.equal(m.org?.email, 'rakesh@gmail.com', `${m.to}: ${m.subject}`); // the account that sends it
+    const welcome = w.sent.find((m) => m.to === 'tina@x.com')!;
+    assert.ok(welcome.sender.name.startsWith('Rakesh (Principal'));
+    const code = w.sent.find((m) => m.subject.includes('password reset code'))!;
+    assert.equal(code.sender, undefined); // no person: the name of the coaching is shown
+    assert.equal(typeof code.org.fromName, 'string'); assert.ok(code.org.fromName.length > 0); // the name of the coaching
+  });
+
+  it('3 a test email goes to the principal from the connected Gmail; after Remove the emails go from the platform account again', async () => {
+    const w = watch();
+    try {
+      const [st, data] = await call('POST', '/api/mail-settings/test', {}, admin);
+      assert.deepEqual([st, data.to], [200, 'rakesh@gmail.com']);
+      assert.equal((await call('DELETE', '/api/mail-settings', null, admin))[0], 200);
+      assert.equal((await call('GET', '/api/mail-settings', null, admin))[1].connected, false);
+      assert.equal((await call('POST', '/api/mail-settings/test', {}, admin))[0], 200);
+    } finally {
+      await w.stop();
+    }
+    assert.equal(w.sent[0].org?.email, 'rakesh@gmail.com');
+    assert.equal(w.sent[1].org, null); // no own Gmail now
+  });
+});
+
+describe('The own Gmail is given right when the coaching is made', () => {
+  let sup = '';
+  const s = withServer(async (api) => {
+    sup = (await api.call('POST', '/api/super/setup', { name: 'Super', email: 'super@x.com', password: PASSWORD }))[1].token;
+  });
+  const call = (...a: Parameters<Api['call']>) => s.api.call(...a);
+  const form = (extra: any = {}) => ({ coachingName: 'Sunrise', city: 'Patna', adminName: 'Rakesh', phone: '9811100001', email: 'principal@gmail.com', password: 'Rakesh12345pw', ...extra });
+  const verify = () => mailer.overrideVerify(async ({ password }) => {
+    if (password !== 'abcdefghijklmnop') throw new Error('Username and Password not accepted');
+  });
+
+  it('1 a wrong app password makes nothing; the right one connects the Gmail of the new coaching (sealed)', async () => {
+    verify();
+    try {
+      // wrong: refused, and NOTHING was made (the same email can register again)
+      assert.equal((await call('POST', '/api/super/orgs', form({ appPassword: 'wrongwrongwrong' }), sup))[0], 400);
+      // not a Gmail address: refused
+      assert.equal((await call('POST', '/api/super/orgs', form({ email: 'principal@yopmail.com', appPassword: 'abcdefghijklmnop' }), sup))[0], 400);
+      // right: made, with the own Gmail
+      assert.equal((await call('POST', '/api/super/orgs', form({ appPassword: 'abcd efgh ijkl mnop' }), sup))[0], 200);
+    } finally {
+      mailer.overrideVerify(null);
+    }
+    const user = await s.api.root.userByEmail('principal@gmail.com');
+    assert.ok(user);
+    const stored = await s.api.root.forOrg(user.orgId).getMailSettings();
+    assert.equal(stored.email, 'principal@gmail.com');
+    assert.equal(stored.fromName, 'Sunrise');
+    assert.ok(!JSON.stringify(stored).includes('abcdefgh') && open(stored.passwordSealed) === 'abcdefghijklmnop');
+  });
+
+  it('2 without the app password the coaching is made as before (no own Gmail yet)', async () => {
+    assert.equal((await call('POST', '/api/super/orgs', form({ coachingName: 'Plain', email: 'plain@x.com' }), sup))[0], 200);
+    const user = await s.api.root.userByEmail('plain@x.com');
+    assert.equal(await s.api.root.forOrg(user.orgId).getMailSettings(), null);
   });
 });

@@ -194,6 +194,8 @@ async function dispatch(def: RouteDef, c: Ctx): Promise<any> {
       if (!org || org.status !== 'active') throw new HttpError(403, 'This coaching is not active. Please contact the super admin.');
     }
     c.store = r.forOrg(orgId);
+    await mailer.loadOrgMail(c.store);
+    mailer.enterOrg(c.store.org); // the emails of this request go out from the own Gmail of this coaching (when it has one)
     if (def.access === 'admin' && c.user.role !== 'admin') throw new HttpError(403, 'Only the principal (administrator) can do this.');
   }
   return def.handler(c);
@@ -279,6 +281,7 @@ export async function chooseOrg(c: Ctx): Promise<Store> {
   const org = typeof orgId === 'string' ? await r.orgGet(orgId) : null;
   if (!org || org.status !== 'active') throw new HttpError(404, 'This coaching was not found or is not active.');
   c.store = r.forOrg(orgId);
+  await mailer.loadOrgMail(c.store); // (the route calls mailer.enterOrg after it)
   return c.store;
 }
 
@@ -295,7 +298,17 @@ export const nowIso = (): string => new Date().toISOString().slice(0, 19) + 'Z';
 /** Sends a good looking email (HTML card with the plain text next to it). Returns [handed over, plain text]. */
 export function mail(to: string, subject: string, heading: string, lines: string[], look: emailTemplate.RenderOptions = {}): [boolean, string] {
   const [plain, html] = emailTemplate.render(heading, lines, look);
-  return [Boolean(mailer.send(to, subject, plain, html)), plain];
+  // an email that comes from a person shows that person's name as the sender, and Reply writes to the person
+  const sender = look.from ? { name: look.from.name, replyTo: look.from.email } : undefined;
+  return [Boolean(mailer.send(to, subject, plain, html, sender)), plain];
+}
+
+/** The sender of an email that comes from a person. The address in "From" can only be the account that sends (Gmail does not allow another
+ * one), so the NAME carries the person: "Danish Imam (Student) - danish12@gmail.com", and Reply writes to that email. */
+export function fromPerson(u: any, _coaching?: string): { name: string; email?: string } {
+  const role = u.role === 'super' ? 'Super Admin' : u.role === 'admin' ? 'Principal' : u.role === 'teacher' ? 'Teacher' : u.isParent ? 'Parent' : 'Student';
+  const email: string | undefined = u.email || undefined;
+  return { name: `${u.name} (${role})${email ? ` - ${email}` : ''}`, email };
 }
 
 export async function coachingName(c: Ctx, s: Store): Promise<string> {
@@ -356,13 +369,14 @@ export async function welcomeMail(c: Ctx, s: Store, user: any, password: string)
     button: ['Sign in', c.loginLink(portalOf(role, Boolean(user.isParent)))],
     note: 'The principal chose this first password. You will be asked to choose your own at the first sign in. If you did not expect this email, you can ignore it.',
     name: user.name,
+    from: c.user ? fromPerson(c.user, coaching) : undefined, // the principal who made the account
   });
 }
 
-export async function tellPrincipals(c: Ctx, s: Store, subject: string, heading: string, lines: string[], details?: [string, any][]): Promise<void> {
+export async function tellPrincipals(c: Ctx, s: Store, subject: string, heading: string, lines: string[], details?: [string, any][], from?: { name: string; email?: string }): Promise<void> {
   for (const p of await s.usersAll()) {
     if (p.role === 'admin' && (p.status || 'active') === 'active') {
-      mail(p.email, subject, heading, lines, { details, button: ['Sign in as Coaching Admin', c.loginLink('admin')], name: p.name });
+      mail(p.email, subject, heading, lines, { details, button: ['Sign in as Coaching Admin', c.loginLink('admin')], name: p.name, from });
     }
   }
 }

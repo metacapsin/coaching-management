@@ -1,6 +1,8 @@
 // The API routes, part 2: the Super Admin (coachings, payments; there is only ONE Super Admin), student photos and backups.
 
 import * as auth from './auth.ts';
+import * as mailer from './mailer.ts';
+import { seal } from './secretBox.ts';
 import { GREEN, RED } from './emailTemplate.ts';
 import { HttpError } from './errors.ts';
 import {
@@ -10,6 +12,7 @@ import {
   checkEmail,
   checkPassword,
   emailTaken,
+  fromPerson,
   limitRegistrations,
   mail,
   nowIso,
@@ -40,6 +43,21 @@ async function newCoaching(c: Ctx, b: any, status: string): Promise<[any, any]> 
   checkPassword(b.password);
   if (await emailTaken(c, email)) throw new HttpError(409, 'An account with this email already exists.');
 
+  // The own Gmail of the coaching, right when it is made (optional): the principal gives the app password of the email he gives here.
+  // It is checked first, so nothing is made when it is wrong. Then every email of this coaching goes out from this address.
+  const appPassword = String(typeof b.appPassword === 'string' ? b.appPassword : '').replace(/\s+/g, '');
+  let mailAccount: any = null;
+  if (appPassword) {
+    if (!/@(gmail|googlemail)\.com$/i.test(email)) throw new HttpError(400, 'Only a Gmail address can be connected for now. Leave the app password empty, or use a Gmail address.');
+    if (appPassword.length < 8) throw new HttpError(400, 'Write the app password of this Gmail (16 letters; it is not the normal password).');
+    try {
+      await mailer.verifyAccount({ email, password: appPassword, host: 'smtp.gmail.com', port: 587 });
+    } catch (err) {
+      throw new HttpError(400, `Gmail did not accept this email and app password (${String((err as Error).message || err).slice(0, 100)}). Check them, or leave the app password empty and connect it later.`);
+    }
+    mailAccount = { email, host: 'smtp.gmail.com', port: 587, fromName: name, passwordSealed: seal(appPassword) };
+  }
+
   const org = { id: newId('org'), name, city: text(b.city, 80), status, createdAt: nowIso() };
   const user = auth.buildUser(
     { name: adminName, email, password: b.password, role: 'admin', phone: text(b.phone, 30) },
@@ -56,6 +74,10 @@ async function newCoaching(c: Ctx, b: any, status: string): Promise<[any, any]> 
     }
     throw err;
   }
+  if (mailAccount) {
+    await tenant.setMailSettings(mailAccount);
+    mailer.forgetOrgMail(org.id);
+  }
   await tenant.bump();
   return [org, user];
 }
@@ -65,44 +87,10 @@ route('/api/public/coachings', ['GET'], 'public', async (c) => ({
   coachings: (await c.root.orgActiveList()).map((o) => ({ id: o.id, name: o.name, city: o.city ?? '' })),
 }));
 
-/** A coaching asks to join. The super admin has to approve it before its principal can sign in. */
-route('/api/public/register-coaching', ['POST'], 'public', async (c) => {
-  limitRegistrations(c);
-  const [org, user] = await newCoaching(c, c.body(), 'pending');
-  await c.root.forOrg(PLATFORM_ORG).audit(null, 'coaching-requested', `${org.name} (${user.email})`);
-  // the principal knows the request arrived, and the Super Admin knows there is something to approve
-  mail(user.email, `We received your request for ${org.name}`, 'We received your request', ['Thank you! The Super Admin will check your request now.'], {
-    details: [
-      ['Coaching', org.name],
-      ['City', org.city],
-    ],
-    button: ['Visit AcademiaOS', c.siteUrl()],
-    note: 'You will get an email as soon as your request is approved or rejected.',
-    name: user.name,
-  });
-  for (const admin of await c.root.forOrg(PLATFORM_ORG).usersAll()) {
-    if (admin.role === 'super') {
-      mail(
-        admin.email,
-        `New coaching request: ${org.name}`,
-        'New coaching request',
-        ['A new coaching asked to join AcademiaOS and waits for your decision. Sign in as Super Admin and press Approve or Reject on the Coachings page.'],
-        {
-          details: [
-            ['Coaching', org.name],
-            ['City', org.city],
-            ['Principal', user.name],
-            ['Email', user.email],
-            ['Mobile', user.phone],
-          ],
-          button: ['Sign in as Super Admin', c.loginLink('super')],
-          note: 'The principal is told by email about your decision.',
-          name: admin.name,
-        },
-      );
-    }
-  }
-  return ok();
+/** The website no longer takes a coaching: ONLY the Super Admin adds a coaching (POST /api/super/orgs, with an own login). Nobody else,
+ * not a student, not a teacher, not a visitor. The old address answers with a clear refusal. */
+route('/api/public/register-coaching', ['POST'], 'public', async () => {
+  throw new HttpError(403, 'Only the Super Admin adds a coaching.');
 });
 
 /** A visitor of the website asks for a demo. The Super Admin sees the request on the platform page. */
@@ -259,6 +247,7 @@ route('/api/super/orgs', ['POST'], 'super', async (c) => {
         ['Sign in with', user.email],
       ],
       button: ['Visit AcademiaOS', c.siteUrl()],
+      from: fromPerson(c.user), // the Super Admin who added it
       note: 'You will get another email when it is approved. The password was chosen by the Super Admin; you will be asked to choose your own at the first sign in.',
       name: user.name,
     },
@@ -347,7 +336,7 @@ route('/api/super/orgs/<org_id>/approve', ['POST'], 'super', async (c) => {
     await principalOf(c, org),
     `Your coaching ${org.name} is approved`,
     'Your coaching is approved',
-    ['Good news! You can sign in now with your email and password as Coaching Admin. Start with a program and a batch, then admit your first student.'],
+    ['Good news! You can sign in now with your email and password as Coaching Admin. Start with a program and a batch, then admit your first student.', 'Also open Institute Profile and connect your own Gmail (Emails). Then every email of your coaching goes out from your address.'],
     {
       details: [
         ['Coaching', org.name],
@@ -355,6 +344,7 @@ route('/api/super/orgs/<org_id>/approve', ['POST'], 'super', async (c) => {
       ],
       button: ['Sign in as Coaching Admin', c.loginLink('admin')],
       accent: GREEN,
+      from: fromPerson(c.user),
     },
   );
   return { org: await orgSummary(c, org), ...notified };
@@ -393,6 +383,7 @@ route('/api/super/orgs/<org_id>/reject', ['POST'], 'super', async (c) => {
       ],
       button: ['Register again', c.loginLink('admin')],
       accent: RED,
+      from: fromPerson(c.user),
     },
   );
   return { ok: true, ...notified };
@@ -434,6 +425,7 @@ route('/api/super/orgs/<org_id>', ['DELETE'], 'super', async (c) => {
           button: ['Sign in as Super Admin', c.loginLink('super')],
           accent: RED,
           name: admin.name,
+          from: fromPerson(c.user),
         },
       );
     }
