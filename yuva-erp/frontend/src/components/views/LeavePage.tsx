@@ -112,14 +112,8 @@ export const LeavePage: React.FC = () => {
       <form onSubmit={submit} className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         {/* who asks: filled in, nothing to type */}
         <div className="p-5 space-y-3 bg-slate-50/60 border-b border-slate-100">
-          <div className="flex items-center gap-4 flex-wrap text-xs font-medium text-slate-700">
-            <span>Apply for:</span>
-            {(['student', 'teacher'] as const).map(r => (
-              <label key={r} className={`inline-flex items-center gap-1.5 ${r === role ? 'text-slate-900' : 'text-slate-400'}`} title={r === role ? '' : `You apply as a ${role}`}>
-                <input type="radio" name="applyFor" checked={r === role} disabled={r !== role} readOnly />
-                {r === 'student' ? 'Student' : 'Teacher'}
-              </label>
-            ))}
+          <div className="text-xs font-medium text-slate-700">
+            Apply for: <span className="font-bold text-slate-900">{isTeacher ? 'Teacher' : 'Student'}</span>
           </div>
           {isTeacher ? (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
