@@ -306,7 +306,6 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
       (filter === 'all' || o.status === filter) &&
       (!q || [o.name, o.city, o.admin?.name, o.admin?.email].some(v => (v || '').toLowerCase().includes(q)))
   );
-  const totalStudents = orgs.reduce((n, o) => n + o.students, 0);
 
   const pendingRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -411,7 +410,7 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
       )}
       {error && !loaded && <p className="mb-4 text-xs text-rose-600">{error}</p>}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         {stat('Coachings', orgs.filter(o => o.status !== 'pending').length, 'text-slate-900', () => {
           setFilter('all');
           listRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -430,7 +429,6 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
           setFilter('active');
           listRef.current?.scrollIntoView({ behavior: 'smooth' });
         })}
-        {stat('Students in all', totalStudents)}
       </div>
 
       <div ref={pendingRef}>

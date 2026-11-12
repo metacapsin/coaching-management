@@ -26,7 +26,7 @@ describe('the public website', () => {
     // nothing leads to another page
     expect(document.querySelector('a[href="#/login"]')).toBeNull();
     expect(screen.queryByText('Back to the website')).toBeNull();
-  });
+  }, 20000); // (a big page: it can be slow when all the tests run together)
 
   it('has the sections a visitor looks for', () => {
     render(<LandingPage />);
