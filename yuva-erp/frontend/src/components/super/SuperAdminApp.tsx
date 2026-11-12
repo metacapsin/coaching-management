@@ -43,6 +43,9 @@ const STATUS_STYLE: Record<OrgStatus, string> = {
   suspended: 'bg-slate-200 text-slate-600'
 };
 const STATUS_LABEL: Record<OrgStatus, string> = { pending: 'Waiting for approval', active: 'Active', suspended: 'Switched off' };
+// A coaching is really active only when its principal has signed in at least once; before that it is approved but not started (red)
+const isLive = (o: OrgSummary) => o.status === 'active' && o.principalSeen !== false;
+const isIdle = (o: OrgSummary) => o.status === 'active' && o.principalSeen === false;
 
 const Shell: React.FC<{ children: React.ReactNode; right?: React.ReactNode }> = ({ children, right }) => (
   <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased">
@@ -253,7 +256,7 @@ const Dashboard: React.FC<{ user: AuthUser; onSignOut: () => void }> = ({ user, 
     | { kind: 'mine' }
     | null
   >(null);
-  const [filter, setFilter] = useState<'all' | OrgStatus>('all');
+  const [filter, setFilter] = useState<'all' | 'inactive' | OrgStatus>('all');
   const [query, setQuery] = useState('');
 
   const flash = (type: 'ok' | 'error', text: string, wa?: string) => {
@@ -303,7 +306,7 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
   const q = query.trim().toLowerCase();
   const shown = orgs.filter(
     o =>
-      (filter === 'all' || o.status === filter) &&
+      (filter === 'all' || (filter === 'active' ? isLive(o) : filter === 'inactive' ? isIdle(o) : o.status === filter)) &&
       (!q || [o.name, o.city, o.admin?.name, o.admin?.email].some(v => (v || '').toLowerCase().includes(q)))
   );
 
@@ -425,7 +428,7 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
           },
           pending.length > 0
         )}
-        {stat('Active', orgs.filter(o => o.status === 'active').length, 'text-emerald-700', () => {
+        {stat('Active', orgs.filter(isLive).length, 'text-emerald-700', () => {
           setFilter('active');
           listRef.current?.scrollIntoView({ behavior: 'smooth' });
         })}
@@ -497,11 +500,12 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
         </div>
         <Select
           value={filter}
-          onChange={e => setFilter(e.target.value as 'all' | OrgStatus)}
+          onChange={e => setFilter(e.target.value as 'all' | 'inactive' | OrgStatus)}
           className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
         >
           <option value="all">All</option>
           <option value="active">Active</option>
+          <option value="inactive">Inactive (principal not signed in yet)</option>
           <option value="pending">Waiting for approval</option>
           <option value="suspended">Switched off</option>
         </Select>
@@ -541,7 +545,11 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       {o.id === 'default' && <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-200 text-slate-600">Demo</span>}
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${STATUS_STYLE[o.status]}`}>{STATUS_LABEL[o.status]}</span>
+                      {isIdle(o) ? (
+                        <span title="The principal has not signed in yet" className="text-[10px] font-semibold px-2 py-0.5 rounded bg-rose-100 text-rose-700">Inactive</span>
+                      ) : (
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${STATUS_STYLE[o.status]}`}>{STATUS_LABEL[o.status]}</span>
+                      )}
                       {o.id !== 'default' && (
                         <button title="Delete this coaching" onClick={() => setModal({ kind: 'delete', org: o })} className="ml-0.5 p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
                           <Trash2 className="w-4 h-4" />
