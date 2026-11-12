@@ -242,21 +242,12 @@ async function orgSummary(c: Ctx, org: any): Promise<any> {
   // the logo of the coaching is its public face, so it is shown on the card (nothing else of the profile). The list only has the ADDRESS of
   // the picture (it changes when the logo changes, so the browser can keep it)
   const logoToken = await tenant.logoToken(); // (only the small token: the picture itself is not loaded here)
-  // Has the principal ever signed in? A coaching that is approved but whose principal never came in is not active yet. (An older coaching
-  // that has no mark yet: the sign in of its principal is searched in its log, and the mark is kept from now on.)
-  let seen: boolean = Boolean(org.principalSeenAt);
-  if (!seen && admins.length) {
-    const first = await tenant.auditCol.findOne({ action: 'login', userId: { $in: admins.map((u) => u.id) } }, { sort: { at: 1 } });
-    if (first) {
-      seen = true;
-      org.principalSeenAt = first.at;
-      await c.root.orgSave(org);
-    }
-  }
+  // Is the principal signed in right now? A coaching whose principal is signed out (or never came in) is not active on this page.
+  const online = await tenant.anySignedIn(admins.map((u) => u.id));
   return {
     ...rest,
     ...plan(org),
-    principalSeen: seen,
+    principalOnline: online,
     logoUrl: logoToken ? `/api/logo/${encodeURIComponent(org.id)}/${logoToken}` : '',
     admin: admin ? { id: admin.id, name: admin.name, email: admin.email, phone: admin.phone ?? '', resetRequestedAt: admin.resetRequestedAt ?? null } : null,
     students: await tenant.lists.students.countDocuments({}),

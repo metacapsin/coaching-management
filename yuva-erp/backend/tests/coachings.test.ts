@@ -500,17 +500,19 @@ describe('Coachings', () => {
     assert.ok(o.accounts > o.principals, 'accounts = all the logins');
   });
 
-  it('05e a coaching is active on the card only after its principal signed in once', async () => {
+  it('05e a coaching is active on the card only while its principal is signed in', async () => {
     await call('POST', '/api/public/register-coaching', coaching('Quiet', 'quiet@x.com'));
     const id = await orgId('Quiet');
     assert.equal((await call('POST', `/api/super/orgs/${id}/approve`, null, sup))[0], 200);
     let o = (await orgs()).find((x) => x.id === id);
-    assert.deepEqual([o.status, o.principalSeen], ['active', false]); // approved, but the principal never came in
-    assert.equal((await call('POST', '/api/auth/login', { email: 'quiet@x.com', password: PASSWORD, portal: 'admin' }))[0], 200);
-    o = (await orgs()).find((x) => x.id === id);
-    assert.equal(o.principalSeen, true);
-    // an older coaching without the mark: its principal has signed in before (it is in the log): active
-    assert.equal((await orgs()).find((x) => x.id === orgA).principalSeen, true);
+    assert.deepEqual([o.status, o.principalOnline], ['active', false]); // approved, but the principal never came in
+    const [, signedIn] = await call('POST', '/api/auth/login', { email: 'quiet@x.com', password: PASSWORD, portal: 'admin' });
+    assert.equal((await orgs()).find((x) => x.id === id).principalOnline, true);
+    // the principal signs out: the coaching is inactive again
+    assert.equal((await call('POST', '/api/auth/logout', {}, signedIn.token))[0], 200);
+    assert.equal((await orgs()).find((x) => x.id === id).principalOnline, false);
+    // the principal of the first coaching is signed in (the tests use its token)
+    assert.equal((await orgs()).find((x) => x.id === orgA).principalOnline, true);
     await call('DELETE', `/api/super/orgs/${id}`, { confirmName: 'Quiet', password: PASSWORD }, sup); // (the next tests count the coachings)
   });
 

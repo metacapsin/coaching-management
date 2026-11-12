@@ -261,18 +261,6 @@ route('/api/auth/login', ['POST'], 'public', async (c) => {
   }
   loginLimiter.reset(keyEmail);
   await s.audit(found, 'login');
-  if (found.role === 'admin') {
-    // the first sign in of the principal: from now on the coaching counts as active on the Super Admin page
-    try {
-      const org = await c.root.orgGet(found.orgId);
-      if (org && !org.principalSeenAt) {
-        org.principalSeenAt = nowIso();
-        await c.root.orgSave(org);
-      }
-    } catch {
-      /* the sign in goes on */
-    }
-  }
   return startSession(c, found, remember);
 });
 

@@ -43,9 +43,9 @@ const STATUS_STYLE: Record<OrgStatus, string> = {
   suspended: 'bg-slate-200 text-slate-600'
 };
 const STATUS_LABEL: Record<OrgStatus, string> = { pending: 'Waiting for approval', active: 'Active', suspended: 'Switched off' };
-// A coaching is really active only when its principal has signed in at least once; before that it is approved but not started (red)
-const isLive = (o: OrgSummary) => o.status === 'active' && o.principalSeen !== false;
-const isIdle = (o: OrgSummary) => o.status === 'active' && o.principalSeen === false;
+// A coaching is active only while its principal is signed in; with the principal signed out (or never come in) it shows a red Inactive
+const isLive = (o: OrgSummary) => o.status === 'active' && o.principalOnline !== false;
+const isIdle = (o: OrgSummary) => o.status === 'active' && o.principalOnline === false;
 
 const Shell: React.FC<{ children: React.ReactNode; right?: React.ReactNode }> = ({ children, right }) => (
   <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased">
@@ -505,7 +505,7 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
         >
           <option value="all">All</option>
           <option value="active">Active</option>
-          <option value="inactive">Inactive (principal not signed in yet)</option>
+          <option value="inactive">Inactive (principal signed out)</option>
           <option value="pending">Waiting for approval</option>
           <option value="suspended">Switched off</option>
         </Select>
@@ -546,7 +546,7 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
                     <div className="flex items-center gap-1 shrink-0">
                       {o.id === 'default' && <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-200 text-slate-600">Demo</span>}
                       {isIdle(o) ? (
-                        <span title="The principal has not signed in yet" className="text-[10px] font-semibold px-2 py-0.5 rounded bg-rose-100 text-rose-700">Inactive</span>
+                        <span title="The principal is signed out" className="text-[10px] font-semibold px-2 py-0.5 rounded bg-rose-100 text-rose-700">Inactive</span>
                       ) : (
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${STATUS_STYLE[o.status]}`}>{STATUS_LABEL[o.status]}</span>
                       )}

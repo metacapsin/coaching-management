@@ -23,7 +23,7 @@ export interface OrgSummary {
   createdAt: string;
   admin: { id: string; name: string; email: string; phone: string; resetRequestedAt?: string | null } | null;
   logoUrl?: string; // the address of the logo the principal put in the Institute Profile ('' when there is none)
-  principalSeen: boolean; // the principal has signed in at least once (before that the coaching is not active yet)
+  principalOnline: boolean; // the principal is signed in right now (a coaching with a signed out principal is shown as inactive)
   students: number;
   teachers: number;
   principals: number; // the logins of the principal (1)

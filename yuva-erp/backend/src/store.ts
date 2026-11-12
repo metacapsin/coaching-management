@@ -271,6 +271,12 @@ export class Store {
     return new Date(session.expiresAt).getTime() <= Date.now();
   }
 
+  /** Is somebody of these accounts signed in right now (a session that is not over)? */
+  async anySignedIn(userIds: string[]): Promise<boolean> {
+    if (!userIds.length) return false;
+    return (await this.sessions.countDocuments({ userId: { $in: userIds }, expiresAt: { $gt: new Date() } }, { limit: 1 })) > 0;
+  }
+
   async deleteSession(tokenHash: string): Promise<void> {
     await this.sessions.deleteOne({ _id: tokenHash });
   }
