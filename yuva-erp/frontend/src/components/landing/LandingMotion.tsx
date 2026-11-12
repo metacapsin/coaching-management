@@ -81,7 +81,8 @@ export const useTicker = (onTick: () => void, ms: number, paused: boolean) => {
   }, [ms, paused]);
 };
 
-// The round "up" button (after some scrolling) and the "Add coaching" pill, both floating at the corners
+// The round "up" button (after some scrolling) and the "Add coaching" pill, both floating at the corners (not on a phone: there the bottom bar
+// and the Add coaching of the top bar are used)
 export const FloatingButtons: React.FC<{ onAddCoaching?: () => void }> = ({ onAddCoaching }) => {
   const { t } = useLang();
   const [far, setFar] = useState(false);
@@ -97,12 +98,12 @@ export const FloatingButtons: React.FC<{ onAddCoaching?: () => void }> = ({ onAd
         <a
           href="#top"
           aria-label={t('Back to the top')}
-          className="lp-pop fixed bottom-5 left-4 z-30 w-12 h-12 rounded-full bg-sky-500 hover:bg-sky-400 text-white flex items-center justify-center shadow-lg shadow-black/40 transition-colors"
+          className="lp-pop fixed bottom-5 left-4 z-30 w-12 h-12 rounded-full bg-sky-500 hover:bg-sky-400 text-white hidden lg:flex items-center justify-center shadow-lg shadow-black/40 transition-colors"
         >
           <ArrowUp className="w-5 h-5" />
         </a>
       )}
-      <div className="fixed bottom-5 right-4 z-30 flex flex-col items-end gap-2">
+      <div className="fixed bottom-5 right-4 z-30 hidden lg:flex flex-col items-end gap-2">
         {onAddCoaching && (
           <button
             type="button"

@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
   GraduationCap,
-  Menu,
-  X,
+  Home,
+  ListOrdered,
+  HelpCircle,
   Users,
   Wallet,
   CalendarCheck,
@@ -41,6 +42,15 @@ const NAV = [
   { href: '#roles', label: 'Who uses it' },
   { href: '#security', label: 'Security' },
   { href: '#faq', label: 'FAQ' }
+];
+
+// On a phone the menu is a bar at the bottom of the screen (like the apps of the phone), not a drop down at the top
+const PHONE_BAR = [
+  { href: '#top', label: 'Home', icon: Home },
+  { href: '#features', label: 'Features', icon: Layers },
+  { href: '#how', label: 'How it works', icon: ListOrdered },
+  { href: '#roles', label: 'Who uses it', icon: Users },
+  { href: '#faq', label: 'FAQ', icon: HelpCircle }
 ];
 
 const WHY_TABS: { id: string; label: string; title: string; text: string; points: string[] }[] = [
@@ -189,17 +199,16 @@ const SectionHead: React.FC<{ kicker: string; title: React.ReactNode; text?: str
 // `signedIn`: somebody is already signed in on this browser and came here by a link of an email
 export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () => void; onSignOut: () => void } }> = ({ signedIn }) => {
   const { t: tr } = useLang();
-  const [menu, setMenu] = useState(false);
   // the "Add coaching" buttons open the registration of a coaching in the form at the top
   const [registerSignal, setRegisterSignal] = useState(0);
   const openRegister = () => {
     setRegisterSignal(n => n + 1);
-    setMenu(false);
     document.getElementById('signin')?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
   };
   const [tab, setTab] = useState(WHY_TABS[0].id);
   const [open, setOpen] = useState<number | null>(0);
   const [scrolled, setScrolled] = useState(false);
+  const [here, setHere] = useState('#top'); // the part of the page that is on the screen (it is lit in the bar of the phone)
   const active = WHY_TABS.find(t => t.id === tab) || WHY_TABS[0];
 
   // the message at the top changes every few seconds (it waits while the mouse is over it)
@@ -230,7 +239,15 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
   }, []);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
+    const onScroll = () => {
+      setScrolled(window.scrollY > 8);
+      let now = '#top';
+      for (const n of PHONE_BAR.slice(1)) {
+        const el = document.querySelector(n.href);
+        if (el && el.getBoundingClientRect().top <= window.innerHeight * 0.4) now = n.href;
+      }
+      setHere(now);
+    };
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
@@ -238,7 +255,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
 
 
   return (
-    <div id="top" className="theme-keep min-h-screen bg-[#0f1b26] text-slate-200 antialiased font-sans scroll-smooth">
+    <div id="top" className="theme-keep min-h-screen bg-[#0f1b26] text-slate-200 antialiased font-sans scroll-smooth pb-16 lg:pb-0">
       {/* Top bar */}
       <header className={`sticky top-0 z-40 border-b ${scrolled ? 'bg-[#0f1b26]/95 backdrop-blur border-white/10' : 'bg-[#0f1b26] border-transparent'}`}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4">
@@ -254,20 +271,8 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
             <button type="button" onClick={openRegister} className="px-2.5 sm:px-3.5 py-2 text-xs sm:text-sm font-semibold text-white bg-[#1565c0] hover:bg-[#0d47a1] rounded-lg transition-colors">
               {tr('Add coaching')}
             </button>
-            <button onClick={() => setMenu(m => !m)} aria-label={menu ? 'Close menu' : 'Open menu'} className="lg:hidden p-2 rounded-lg text-slate-300 hover:bg-white/10">
-              {menu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
           </div>
         </div>
-        {menu && (
-          <div className="lg:hidden border-t border-white/10 px-4 py-3 space-y-1 bg-[#0f1b26]">
-            {NAV.map(n => (
-              <a key={n.href} href={n.href} onClick={() => setMenu(false)} className="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-white/10">
-                {tr(n.label)}
-              </a>
-            ))}
-          </div>
-        )}
       </header>
 
       {/* Hero */}
@@ -574,6 +579,19 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
       </section>
 
       <FloatingButtons onAddCoaching={openRegister} />
+
+      {/* The menu of a phone: a bar at the bottom */}
+      <nav aria-label="Phone menu" className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-white/10 bg-[#0f1b26]/95 backdrop-blur grid grid-cols-5 pb-[env(safe-area-inset-bottom)]">
+        {PHONE_BAR.map(n => {
+          const on = here === n.href;
+          return (
+            <a key={n.href} href={n.href} aria-current={on ? 'true' : undefined} className={`flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium ${on ? 'text-sky-400' : 'text-slate-400'}`}>
+              <n.icon className="w-5 h-5" />
+              <span className="truncate max-w-full px-0.5">{tr(n.label)}</span>
+            </a>
+          );
+        })}
+      </nav>
 
       {/* Footer */}
       <footer className="bg-[#16222d] border-t border-white/10">
