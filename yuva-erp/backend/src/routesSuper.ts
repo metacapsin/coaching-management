@@ -1,5 +1,6 @@
 // The API routes, part 2: the Super Admin (coachings, payments; there is only ONE Super Admin), student photos and backups.
 
+import crypto from 'node:crypto';
 import * as auth from './auth.ts';
 import * as mailer from './mailer.ts';
 import { seal } from './secretBox.ts';
@@ -217,18 +218,42 @@ route('/api/super/forgot-password', ['POST'], 'public', async (c) => {
   return ok();
 });
 
+const LOGO_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']); // (no SVG: it could carry a script)
+const MAX_LOGO_BYTES = 2_000_000;
+
+/** The picture of a logo (a data URL in the profile of the coaching) with the token of its address, or null when it is not a real picture. */
+function logoOf(value: unknown): { contentType: string; data: Buffer; token: string } | null {
+  if (typeof value !== 'string') return null;
+  const m = /^data:(image\/[a-z+.-]+);base64,([A-Za-z0-9+/]+={0,2})$/.exec(value);
+  if (!m || !LOGO_TYPES.has(m[1]) || m[2].length % 4 !== 0) return null;
+  const data = Buffer.from(m[2], 'base64');
+  if (!data.length || data.length > MAX_LOGO_BYTES) return null;
+  return { contentType: m[1], data, token: crypto.createHash('sha256').update(data).digest('hex').slice(0, 16) };
+}
+
+/** The logo of a coaching. It is the public face of the coaching; the address has a token of the picture, so an old address stops working
+ * when the logo changes. Nothing else of the profile is reachable here. */
+route('/api/logo/<org_id>/<token>', ['GET'], 'public', async (c) => {
+  const orgId = c.req.params.org_id as string;
+  if ((await c.root.orgGet(orgId)) === null) throw new HttpError(404, 'Not found');
+  const logo = logoOf((await c.root.forOrg(orgId).profile())?.logo);
+  if (!logo || !auth.safeEqual(logo.token, c.req.params.token)) throw new HttpError(404, 'Not found');
+  return new RawResponse(logo.data, logo.contentType, { 'Cache-Control': 'public, max-age=31536000, immutable', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'none'; sandbox" });
+});
+
 /** What the super admin may see of a coaching: who runs it and how big it is. Never its data. */
 async function orgSummary(c: Ctx, org: any): Promise<any> {
   const tenant = c.root.forOrg(org.id);
   const admins = (await tenant.usersAll()).filter((u) => u.role === 'admin');
   const admin = admins.length ? admins[0] : null;
   const { payments: _payments, ...rest } = org;
-  // the logo of the coaching is its public face, so it is shown on the card (nothing else of the profile): only a real, small picture
-  const logo = (await tenant.profile())?.logo;
+  // the logo of the coaching is its public face, so it is shown on the card (nothing else of the profile). The list only has the ADDRESS of
+  // the picture (it changes when the logo changes, so the browser can keep it)
+  const logo = logoOf((await tenant.profile())?.logo);
   return {
     ...rest,
     ...plan(org),
-    logo: typeof logo === 'string' && /^data:image\/(png|jpeg|webp|gif|svg\+xml);base64,/.test(logo) && logo.length < 400_000 ? logo : '',
+    logoUrl: logo ? `/api/logo/${encodeURIComponent(org.id)}/${logo.token}` : '',
     admin: admin ? { id: admin.id, name: admin.name, email: admin.email, phone: admin.phone ?? '', resetRequestedAt: admin.resetRequestedAt ?? null } : null,
     students: await tenant.lists.students.countDocuments({}),
     accounts: await tenant.userCount(),

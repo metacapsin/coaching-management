@@ -384,23 +384,37 @@ describe('Coachings', () => {
     assert.equal((await loginTo('a@x.com', 'no-such-coaching'))[0], 401);
   });
 
-  it('05c the logo of a coaching shows on its card for the super admin, and nothing else of the profile', async () => {
+  it('05c the logo of a coaching shows on its card for the super admin (also a big one), and nothing else of the profile', async () => {
     const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+    const BIG = 'data:image/png;base64,' + Buffer.alloc(900_000, 7).toString('base64'); // a 900 KB logo is no problem
     const alpha = async () => (await orgs()).find((o) => o.name === 'Alpha');
-    assert.equal((await alpha()).logo, ''); // no logo yet: the card shows the first letter
-    assert.equal((await call('PUT', '/api/institute', { changes: { profile: { name: 'Alpha', logo: PNG, upiId: 'secret@upi', address: 'private road' } } }, adminA))[0], 200);
+    const setLogo = (logo?: string) => call('PUT', '/api/institute', { changes: { profile: { name: 'Alpha', ...(logo ? { logo } : {}), upiId: 'secret@upi', address: 'private road' } } }, adminA);
+    assert.equal((await alpha()).logoUrl, ''); // no logo yet: the card shows the first letter
+    assert.equal((await setLogo(PNG))[0], 200);
     const seen = await alpha();
-    assert.equal(seen.logo, PNG); // the logo of the principal comes to the card
-    assert.ok(!JSON.stringify(seen).includes('secret@upi') && !JSON.stringify(seen).includes('private road')); // nothing else of the profile
-    // not a picture / too big: not shown
-    await call('PUT', '/api/institute', { changes: { profile: { name: 'Alpha', logo: 'javascript:alert(1)' } } }, adminA);
-    assert.equal((await alpha()).logo, '');
-    await call('PUT', '/api/institute', { changes: { profile: { name: 'Alpha', logo: 'data:image/png;base64,' + 'A'.repeat(450_000) } } }, adminA);
-    assert.equal((await alpha()).logo, '');
+    assert.match(seen.logoUrl, /^\/api\/logo\/.+\/[0-9a-f]{16}$/);
+    assert.ok(!JSON.stringify(seen).includes('secret@upi') && !JSON.stringify(seen).includes('private road') && !JSON.stringify(seen).includes('base64')); // not the profile, not the picture itself
+    // the address gives the picture (without signing in: it is the public face of the coaching)
+    const picture = await api.raw(seen.logoUrl);
+    assert.equal(picture.status, 200);
+    assert.equal(picture.headers.get('content-type'), 'image/png');
+    assert.match(picture.headers.get('cache-control') ?? '', /immutable/);
+    assert.equal((await api.raw(seen.logoUrl.replace(/[0-9a-f]{16}$/, '0000000000000000'))).status, 404); // a wrong token
+    // a big logo works too
+    assert.equal((await setLogo(BIG))[0], 200);
+    const big = await alpha();
+    assert.notEqual(big.logoUrl, seen.logoUrl); // a new picture, a new address
+    assert.equal((await api.raw(big.logoUrl)).status, 200);
+    assert.equal((await api.raw(seen.logoUrl)).status, 404); // the old address does not work any more
+    // not a picture (a script, an SVG, too big): nothing is shown
+    for (const bad of ['javascript:alert(1)', 'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=', 'data:text/html;base64,PGI+aGk8L2I+', 'data:image/png;base64,' + Buffer.alloc(2_100_000, 1).toString('base64')]) {
+      await setLogo(bad);
+      assert.equal((await alpha()).logoUrl, '', bad.slice(0, 30));
+    }
     // the principal takes the logo away: the card goes back to the letter
-    await call('PUT', '/api/institute', { changes: { profile: { name: 'Alpha', logo: PNG } } }, adminA);
-    await call('PUT', '/api/institute', { changes: { profile: { name: 'Alpha' } } }, adminA);
-    assert.equal((await alpha()).logo, '');
+    await setLogo(PNG);
+    await setLogo();
+    assert.equal((await alpha()).logoUrl, '');
   });
 
   it('06 switching a coaching off and on', async () => {

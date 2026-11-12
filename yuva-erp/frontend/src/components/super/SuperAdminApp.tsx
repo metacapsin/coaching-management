@@ -152,6 +152,19 @@ const MyPasswordModal: React.FC<{ onClose: () => void; onDone: (msg: string) => 
   );
 };
 
+/** The logo of a coaching; its first letter when there is no logo, or when the picture cannot be loaded. */
+const CoachingLogo: React.FC<{ org: OrgSummary }> = ({ org }) => {
+  const [failed, setFailed] = useState(false);
+  if (org.logoUrl && !failed) {
+    return <img src={org.logoUrl} alt={`Logo of ${org.name}`} onError={() => setFailed(true)} className="w-11 h-11 rounded-xl object-contain bg-white border border-slate-200 shrink-0" />;
+  }
+  return (
+    <span className="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-lg font-bold shrink-0">
+      {org.name.trim().charAt(0).toUpperCase() || <Building2 className="w-5 h-5" />}
+    </span>
+  );
+};
+
 const ACTION_TEXT: Record<string, string> = {
   'demo-requested': 'Demo requested on the website',
   'super-admin-add': 'Super Admin added',
@@ -516,13 +529,7 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
                       {/* the logo of the coaching (what the principal put in the Institute Profile); the first letter when there is none */}
-                      {o.logo ? (
-                        <img src={o.logo} alt={`Logo of ${o.name}`} className="w-11 h-11 rounded-xl object-contain bg-white border border-slate-200 shrink-0" />
-                      ) : (
-                        <span className="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-lg font-bold shrink-0">
-                          {o.name.trim().charAt(0).toUpperCase() || <Building2 className="w-5 h-5" />}
-                        </span>
-                      )}
+                      <CoachingLogo org={o} />
                       <div className="min-w-0">
                         <h3 className="text-sm font-bold text-slate-900 truncate">{o.name}</h3>
                         <div className="mt-0.5 text-[11px] text-slate-500 flex items-center gap-1 min-w-0">
