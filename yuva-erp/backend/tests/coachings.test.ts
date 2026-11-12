@@ -406,8 +406,29 @@ describe('Coachings', () => {
     assert.notEqual(big.logoUrl, seen.logoUrl); // a new picture, a new address
     assert.equal((await api.raw(big.logoUrl)).status, 200);
     assert.equal((await api.raw(seen.logoUrl)).status, 404); // the old address does not work any more
-    // not a picture (a script, an SVG, too big): nothing is shown
-    for (const bad of ['javascript:alert(1)', 'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=', 'data:text/html;base64,PGI+aGk8L2I+', 'data:image/png;base64,' + Buffer.alloc(2_100_000, 1).toString('base64')]) {
+    // a profile that was saved BEFORE the token existed (no token next to it): the list makes it once, and keeps it
+    assert.equal((await setLogo(PNG))[0], 200);
+    const alphaId = (await alpha()).id;
+    const store = api.root.forOrg(alphaId);
+    const before = await store.meta.findOne({ _id: 'profile' });
+    assert.equal(String(before.logoToken).length, 16);
+    await store.meta.replaceOne({ _id: 'profile' }, { _id: 'profile', value: before.value }); // as an old profile: no token
+    assert.match((await alpha()).logoUrl, /^\/api\/logo\//);
+    assert.equal((await store.meta.findOne({ _id: 'profile' })).logoToken, before.logoToken);
+    // any size: a 5 MB logo (an old one, never made smaller) is shown too; the card scales it down
+    assert.equal((await setLogo('data:image/jpeg;base64,' + Buffer.alloc(5_000_000, 3).toString('base64')))[0], 200);
+    const huge = await alpha();
+    assert.ok(huge.logoUrl);
+    const hugeFile = await api.raw(huge.logoUrl);
+    assert.equal(hugeFile.status, 200);
+    assert.equal(hugeFile.headers.get('content-type'), 'image/jpeg');
+    // an SVG logo is shown, with a header that forbids scripts
+    assert.equal((await setLogo('data:image/svg+xml;base64,' + Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"/>').toString('base64')))[0], 200);
+    const svg = await api.raw((await alpha()).logoUrl);
+    assert.equal(svg.headers.get('content-type'), 'image/svg+xml');
+    assert.match(svg.headers.get('content-security-policy') ?? '', /sandbox/);
+    // not a picture (a script, a page): nothing is shown
+    for (const bad of ['javascript:alert(1)', 'data:text/html;base64,PGI+aGk8L2I+', 'data:application/pdf;base64,AAAA', 'not a picture at all']) {
       await setLogo(bad);
       assert.equal((await alpha()).logoUrl, '', bad.slice(0, 30));
     }

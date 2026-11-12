@@ -13,6 +13,7 @@ import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 import type { Collection, Db } from 'mongodb';
 import { parsePhotoDataUrl } from './scope.ts';
+import { logoTokenOf } from './logo.ts';
 
 export const LISTS = [
   'courses',
@@ -324,7 +325,20 @@ export class Store {
   }
 
   async setProfile(value: any): Promise<void> {
-    await this.meta.replaceOne({ _id: 'profile' }, { _id: 'profile', value }, { upsert: true });
+    await this.meta.replaceOne({ _id: 'profile' }, { _id: 'profile', value, logoToken: logoTokenOf(value?.logo) }, { upsert: true });
+  }
+
+  /** The small token of the logo ('' when there is none); the address of the picture changes with it. Reading it does NOT load the logo
+   * (a logo can be some MB), so the list of the Super Admin stays fast. */
+  async logoToken(): Promise<string> {
+    const doc = await this.meta.findOne({ _id: 'profile' }, { projection: { logoToken: 1 } });
+    if (!doc) return '';
+    if (typeof doc.logoToken === 'string') return doc.logoToken;
+    // a profile that was saved before the token existed: it is made once, now
+    const full = await this.meta.findOne({ _id: 'profile' });
+    const token = logoTokenOf(full?.value?.logo);
+    await this.meta.updateOne({ _id: 'profile' }, { $set: { logoToken: token } });
+    return token;
   }
 
   async find(name: string, query: any = {}): Promise<any[]> {
