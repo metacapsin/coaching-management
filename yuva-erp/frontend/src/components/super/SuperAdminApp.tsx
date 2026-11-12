@@ -9,7 +9,6 @@ import {
   Crown,
   KeyRound,
   LogOut,
-  PauseCircle,
   PlayCircle,
   Trash2,
   Search,
@@ -514,14 +513,17 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
                     <Building2 className="w-4 h-4 text-indigo-600 shrink-0" />
                     <span className="truncate">{o.name}</span>
                   </h3>
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded shrink-0 ${STATUS_STYLE[o.status]}`}>{STATUS_LABEL[o.status]}</span>
+                  <span className="flex items-center gap-1.5 shrink-0">
+                    {o.id === 'default' && <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-200 text-slate-600">Demo</span>}
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${STATUS_STYLE[o.status]}`}>{STATUS_LABEL[o.status]}</span>
+                  </span>
                 </div>
                 <div className="px-5 py-4 flex-1 space-y-3">
                   <div>
                     <div className="text-[11px] text-slate-500">Principal</div>
                     <div className="text-sm font-medium text-slate-900">{o.admin?.name || '-'}</div>
-                    <div className="text-[11px] text-slate-500 truncate">{o.admin?.email}</div>
-                    <div className="text-[11px] text-slate-400 font-mono">{o.admin?.phone}</div>
+                    <div className="text-[11px] text-slate-500 truncate h-4">{o.admin?.email || ' '}</div>
+                    <div className="text-[11px] text-slate-400 font-mono h-4">{o.admin?.phone || ' '}</div>
                     {o.admin?.resetRequestedAt && (
                       <div className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
                         <KeyRound className="w-3 h-3" />
@@ -546,7 +548,7 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
                     {o.city || 'City not given'} · since {formatDate(o.createdAt)}
                   </div>
                 </div>
-                <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between gap-2" onClick={e => e.stopPropagation()}>
+                <div className="px-5 py-3 min-h-[3.5rem] border-t border-slate-100 flex items-center justify-between gap-2">
                   {o.status === 'pending' ? (
                       <div className="flex gap-1.5">
                         <button
@@ -563,18 +565,9 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
                         </button>
                       </div>
                     ) : (
-                      <span className="text-[11px] text-slate-400">{o.status === 'suspended' ? 'Switched off' : ''}</span>
+                      <span className="text-[11px] text-slate-400">{o.id === 'default' ? 'Demo coaching (kept for trying the app)' : o.status === 'suspended' ? 'Switched off' : ''}</span>
                     )}
                   <div className="flex gap-1">
-                    {o.status === 'active' && o.id !== 'default' && (
-                      <button
-                        title="Switch off (nobody of this coaching can sign in)"
-                        onClick={() => window.confirm(`Switch off ${o.name}? Everybody of this coaching is signed out.`) && act(() => superApi.suspend(o.id), `${o.name} was switched off.`)}
-                        className="p-1.5 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg"
-                      >
-                        <PauseCircle className="w-4 h-4" />
-                      </button>
-                    )}
                     {o.status === 'suspended' && (
                       <button title="Switch on again" onClick={() => act(() => superApi.activate(o.id), `${o.name} is active again.`)} className="p-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg">
                         <PlayCircle className="w-4 h-4" />
