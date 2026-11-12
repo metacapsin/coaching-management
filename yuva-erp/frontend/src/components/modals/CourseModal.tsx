@@ -1,3 +1,4 @@
+import { cleanName } from '../utils/names';
 import { Select } from '../ui/Pickers';
 import React, { useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
@@ -91,7 +92,7 @@ export const CourseModal: React.FC<CourseModalProps> = ({ course, onClose, onSav
               type="text"
               value={form.name}
               placeholder="e.g. IIT-JEE 2-Year Comprehensive"
-              onChange={e => setForm({ ...form, name: e.target.value })}
+              onChange={e => setForm({ ...form, name: cleanName(e.target.value) })}
               className={inputClass(!!errors.name)}
             />
             {errors.name && <p className="text-xs text-rose-600 mt-1">{errors.name}</p>}

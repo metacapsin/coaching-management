@@ -1,3 +1,4 @@
+import { cleanName } from '../utils/names';
 import { Select } from '../ui/Pickers';
 import React, { useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
@@ -42,7 +43,7 @@ const SalaryModal: React.FC<{ salary: Salary | null; onClose: () => void }> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Name</label>
-            <input autoFocus value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className={inputCls} />
+            <input autoFocus value={form.name} onChange={e => setForm({ ...form, name: cleanName(e.target.value) })} className={inputCls} />
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Who</label>

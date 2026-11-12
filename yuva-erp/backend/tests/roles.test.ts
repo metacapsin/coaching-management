@@ -1158,6 +1158,7 @@ describe('Emails show WHO they come from: the name of the person as sender, Repl
     for (const m of mail.sent) {
       assert.ok(m[4], `${m[0]} has a sender`);
       assert.ok(m[4]!.name.startsWith('Alice (Student'), m[4]!.name);
+      assert.ok(!m[4]!.name.includes('@'), m[4]!.name); // Gmail hides a name that has an address inside: the email is in the subject and the box instead
       assert.equal(m[4]!.replyTo, 'alice@x.com'); // Reply writes to the student
       assert.ok(m[2].includes('alice@x.com') && m[2].includes('press Reply'), m[0]); // the email of the student is in the text
       assert.ok(m[3]!.includes('alice@x.com')); // and in the HTML
@@ -1361,5 +1362,73 @@ describe('The own Gmail is given right when the coaching is made', () => {
     assert.equal((await call('POST', '/api/super/orgs', form({ coachingName: 'Plain', email: 'plain@x.com' }), sup))[0], 200);
     const user = await s.api.root.userByEmail('plain@x.com');
     assert.equal(await s.api.root.forOrg(user.orgId).getMailSettings(), null);
+  });
+});
+
+describe('Names of people have no symbols (any role)', () => {
+  let admin = '';
+  const s = withServer(async (api) => {
+    admin = (await api.call('POST', '/api/auth/setup', { name: 'Rakesh', email: 'p@x.com', password: PASSWORD }))[1].token;
+    await api.call('PUT', '/api/institute', { changes: { batches: { upsert: BATCHES }, students: { upsert: STUDENTS } } }, admin);
+  });
+  const call = (...a: Parameters<Api['call']>) => s.api.call(...a);
+  const account = (name: string, n: number, role = 'teacher') => call('POST', '/api/users', { name, email: `n${n}@x.com`, password: PASSWORD, role, batchIds: [] }, admin);
+
+  it('1 an account (teacher, student, parent) needs a name without symbols; letters of any language and . \' - are fine', async () => {
+    for (const bad of ['Ravi@Kumar', 'Ravi#1!', 'R$avi', 'Ravi %', 'Ravi^&*', 'Ravi (Kumar)', '<b>Ravi</b>', '@Ravi', 'Ravi_Kumar']) {
+      const [status, data] = await account(bad, 1);
+      assert.equal(status, 400, bad);
+      assert.ok(String(data.error).includes('Symbols'), bad);
+    }
+    let n = 10;
+    for (const good of ['Ravi Kumar', 'Md. Sahil', "Anna D'Souza", 'Mary-Ann', 'राहुल शर्मा', 'José Müller', 'Ravi 2']) {
+      assert.equal((await account(good, n++))[0], 200, good);
+    }
+  });
+
+  it('2 the principal changes the own name only without symbols', async () => {
+    assert.equal((await call('PUT', '/api/auth/profile', { name: 'Rakesh $' }, admin))[0], 400);
+    assert.equal((await call('PUT', '/api/auth/profile', { name: 'Rakesh P.' }, admin))[0], 200);
+  });
+
+  it('3 a student, a parent and an enquiry: a new or changed name has no symbol; a name that was not changed can stay', async () => {
+    const put = (name: string, upsert: any[]) => call('PUT', '/api/institute', { changes: { [name]: { upsert } } }, admin);
+    const s1 = { ...STUDENTS[0], id: 'sx1' };
+    assert.equal((await put('students', [{ ...s1, name: 'Bob!' }]))[0], 400);
+    assert.equal((await put('students', [{ ...s1, name: 'Bob', parentName: 'P&Q' }]))[0], 400);
+    assert.equal((await put('students', [{ ...s1, name: 'Bob Khan', parentName: "Mr. D'Souza" }]))[0], 200);
+    // a record that already has an old name with a symbol can still be edited (a fee), but not renamed to another symbol name
+    await s.api.root.forOrg('default').applyList('students', [{ ...STUDENTS[1], id: 'sx2', name: 'Old#Name' }], []);
+    assert.equal((await put('students', [{ ...STUDENTS[1], id: 'sx2', name: 'Old#Name', feePaid: 900 }]))[0], 200);
+    assert.equal((await put('students', [{ ...STUDENTS[1], id: 'sx2', name: 'New#Name' }]))[0], 400);
+    assert.equal((await put('students', [{ ...STUDENTS[1], id: 'sx2', name: 'Clean Name' }]))[0], 200);
+    // enquiries
+    assert.equal((await put('enquiries', [{ id: 'en1', name: 'Lead*', phone: '9811100000' }]))[0], 400);
+    assert.equal((await put('enquiries', [{ id: 'en1', name: 'Lead Kumar', phone: '9811100000' }]))[0], 200);
+  });
+
+  it('4 a coaching asks to join: the name of the principal has no symbol', async () => {
+    const form = (adminName: string, email: string) => ({ coachingName: 'Sunrise', city: 'Patna', adminName, phone: '9811100001', email, password: 'Rakesh12345pw' });
+    assert.equal((await call('POST', '/api/public/register-coaching', form('Anita @ Verma', 'a1@x.com')))[0], 400);
+    assert.equal((await call('POST', '/api/public/register-coaching', form('Anita Verma', 'a1@x.com')))[0], 200);
+    // the name of the coaching itself
+    const named = (coachingName: string, email: string) => ({ coachingName, city: 'Patna', adminName: 'Anita Verma', phone: '9811100001', email, password: 'Rakesh12345pw' });
+    assert.equal((await call('POST', '/api/public/register-coaching', named('Sun@rise #1 Classes', 'a2@x.com')))[0], 400);
+    assert.equal((await call('POST', '/api/public/register-coaching', named('Sunrise Classes 2', 'a2@x.com')))[0], 200);
+  });
+
+  it('5 the name of the institute, a program, a batch and the teacher of a batch: no symbol when new or changed', async () => {
+    const put = (list: string, upsert: any[]) => call('PUT', '/api/institute', { changes: { [list]: { upsert } } }, admin);
+    assert.equal((await call('PUT', '/api/institute', { changes: { profile: { name: 'Apex & Co.' } } }, admin))[0], 400);
+    assert.equal((await call('PUT', '/api/institute', { changes: { profile: { name: 'Apex Pinnacle Academy' } } }, admin))[0], 200);
+    assert.equal((await put('courses', [{ id: 'cx1', name: 'JEE (Main + Adv)', fee: 1 }]))[0], 400);
+    assert.equal((await put('courses', [{ id: 'cx1', name: 'JEE Foundation', fee: 1 }]))[0], 200);
+    assert.equal((await put('batches', [{ ...BATCHES[0], id: 'bx1', name: 'Batch #9' }]))[0], 400);
+    assert.equal((await put('batches', [{ ...BATCHES[0], id: 'bx1', name: 'Batch 9', facultyName: 'Dr. R@jesh' }]))[0], 400); // the teacher of the batch
+    assert.equal((await put('batches', [{ ...BATCHES[0], id: 'bx1', name: 'Batch 9', facultyName: 'Dr. Rajesh Sharma' }]))[0], 200);
+    // the same name as the saved one is left alone (an old name with a symbol can stay while something else is edited)
+    await s.api.root.forOrg('default').applyList('courses', [{ id: 'cx2', name: 'Class 12 (Board & Target)', fee: 1 }], []);
+    assert.equal((await put('courses', [{ id: 'cx2', name: 'Class 12 (Board & Target)', fee: 5 }]))[0], 200);
+    assert.equal((await put('courses', [{ id: 'cx2', name: 'Class 12 (Board & Target) 2', fee: 5 }]))[0], 400);
   });
 });

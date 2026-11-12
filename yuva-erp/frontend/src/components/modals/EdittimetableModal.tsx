@@ -1,3 +1,4 @@
+import { cleanName } from '../utils/names';
 import { Select } from '../ui/Pickers';
 import React, { useState } from 'react';
 import { useEscape } from '../ui/useEscape';
@@ -157,7 +158,7 @@ export const EditTimetableModal: React.FC<EditTimetableModalProps> = ({ slot, on
               <input
                 type="text"
                 value={form.facultyName}
-                onChange={e => setForm({ ...form, facultyName: e.target.value })}
+                onChange={e => setForm({ ...form, facultyName: cleanName(e.target.value) })}
                 className={inputClass(false)}
               />
             </div>

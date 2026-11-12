@@ -1,3 +1,4 @@
+import { cleanName } from '../utils/names';
 import { DateInput, Select } from '../ui/Pickers';
 import React, { useState, useRef } from 'react';
 import { useEscape } from '../ui/useEscape';
@@ -214,7 +215,7 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({ student, onC
                 <input
                   type="text"
                   value={form.name}
-                  onChange={e => setForm({ ...form, name: e.target.value })}
+                  onChange={e => setForm({ ...form, name: cleanName(e.target.value) })}
                   className={inputClass(!!errors.name)}
                 />
                 {errors.name && <p className="text-xs text-rose-600 mt-1">{errors.name}</p>}
@@ -285,7 +286,7 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({ student, onC
                 <input
                   type="text"
                   value={form.parentName}
-                  onChange={e => setForm({ ...form, parentName: e.target.value })}
+                  onChange={e => setForm({ ...form, parentName: cleanName(e.target.value) })}
                   className={inputClass(!!errors.parentName)}
                 />
                 {errors.parentName && <p className="text-xs text-rose-600 mt-1">{errors.parentName}</p>}

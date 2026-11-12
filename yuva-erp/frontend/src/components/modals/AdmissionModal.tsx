@@ -1,3 +1,4 @@
+import { cleanName } from '../utils/names';
 import { DateInput, Select } from '../ui/Pickers';
 import React, { useState, useRef } from 'react';
 import { useEscape } from '../ui/useEscape';
@@ -366,7 +367,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
                   type="text"
                   placeholder="e.g. Aryan Gupta"
                   value={formData.name}
-                  onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  onChange={e => setFormData({ ...formData, name: cleanName(e.target.value) })}
                   className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                     errors.name ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300'
                   }`}
@@ -453,7 +454,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
                   type="text"
                   placeholder="e.g. Ramesh Gupta"
                   value={formData.parentName}
-                  onChange={e => setFormData({ ...formData, parentName: e.target.value })}
+                  onChange={e => setFormData({ ...formData, parentName: cleanName(e.target.value) })}
                   className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                     errors.parentName ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300'
                   }`}
@@ -577,7 +578,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
                     <input
                       autoFocus
                       value={newProgram.name}
-                      onChange={e => setNewProgram({ ...newProgram, name: e.target.value })}
+                      onChange={e => setNewProgram({ ...newProgram, name: cleanName(e.target.value) })}
                       placeholder="e.g. JEE 2 Year"
                       className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                     />
@@ -610,7 +611,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
                     <input
                       autoFocus
                       value={newBatch.name}
-                      onChange={e => setNewBatch({ ...newBatch, name: e.target.value })}
+                      onChange={e => setNewBatch({ ...newBatch, name: cleanName(e.target.value) })}
                       placeholder="e.g. Morning Batch A"
                       className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                     />

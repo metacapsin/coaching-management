@@ -24,7 +24,7 @@ import {
 import type { Ctx } from './http.ts';
 import { intParam } from './routes.ts';
 import { BackupError, DEFAULT_ORG, PLATFORM_ORG } from './store.ts';
-import { last10, newId, text, todayLocal } from './validate.ts';
+import { checkName, last10, newId, text, todayLocal } from './validate.ts';
 
 const isNumber = (v: any): v is number => typeof v === 'number' && Number.isFinite(v);
 const round2 = (x: number): number => Math.round(x * 100) / 100;
@@ -38,7 +38,9 @@ async function newCoaching(c: Ctx, b: any, status: string): Promise<[any, any]> 
   const adminName = text(b.adminName);
   const email = text(b.email).toLowerCase();
   if (!name) throw new HttpError(400, 'Please enter the name of the coaching.');
+  checkName(name, 'name of the coaching');
   if (!adminName) throw new HttpError(400, 'Please enter the name of the administrator.');
+  checkName(adminName, 'name of the principal');
   if (last10(b.phone).length < 10) throw new HttpError(400, 'Please enter a valid 10-digit mobile number.');
   checkEmail(email);
   checkPassword(b.password);
@@ -136,6 +138,7 @@ route('/api/public/demo-request', ['POST'], 'public', async (c) => {
   const name = text(b.name, 100);
   const email = text(b.email, 150).toLowerCase();
   if (!name) throw new HttpError(400, 'Please write your name.');
+  checkName(name, 'name');
   checkEmail(email);
   if (last10(b.phone).length < 10) throw new HttpError(400, 'Please write a 10-digit mobile number.');
   const lead = {
@@ -165,6 +168,7 @@ route('/api/super/setup', ['POST'], 'public', async (c) => {
   const name = text(b.name);
   const email = text(b.email).toLowerCase();
   if (!name) throw new HttpError(400, 'Please enter your full name.');
+  checkName(name, 'name');
   checkEmail(email);
   checkPassword(b.password);
   if (await emailTaken(c, email)) throw new HttpError(409, 'An account with this email already exists.');
@@ -310,6 +314,7 @@ route('/api/super/orgs/<org_id>', ['PUT'], 'super', async (c) => {
   const b = c.body();
   const name = text(b.name, 120);
   if (!name) throw new HttpError(400, 'Please enter the name of the coaching.');
+  if (name !== org.name) checkName(name, 'name of the coaching'); // (a name that is not changed can stay)
   org.name = name;
   org.city = text(b.city, 80);
   if ('monthlyFee' in b) {

@@ -1,3 +1,4 @@
+import { cleanName } from '../utils/names';
 import { DateInput, Select } from '../ui/Pickers';
 import React, { useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
@@ -103,7 +104,7 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ enquiry, onClose, on
             <input
               type="text"
               value={form.name}
-              onChange={e => setForm({ ...form, name: e.target.value })}
+              onChange={e => setForm({ ...form, name: cleanName(e.target.value) })}
               placeholder="e.g. Riya Malhotra"
               className={inputClass(!!errors.name)}
             />
@@ -127,7 +128,7 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ enquiry, onClose, on
             <input
               type="text"
               value={form.parentName}
-              onChange={e => setForm({ ...form, parentName: e.target.value })}
+              onChange={e => setForm({ ...form, parentName: cleanName(e.target.value) })}
               className={inputClass(false)}
             />
           </div>

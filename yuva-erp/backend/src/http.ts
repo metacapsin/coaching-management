@@ -304,11 +304,13 @@ export function mail(to: string, subject: string, heading: string, lines: string
 }
 
 /** The sender of an email that comes from a person. The address in "From" can only be the account that sends (Gmail does not allow another
- * one), so the NAME carries the person: "Danish Imam (Student) - danish12@gmail.com", and Reply writes to that email. */
-export function fromPerson(u: any, _coaching?: string): { name: string; email?: string } {
+ * one), so the NAME carries the person: "Danish Imam (Student, Improve Knowledge Center)". The NAME has NO email address inside: Gmail hides a
+ * name that contains an address and shows only the plain address of the account. The email of the person is in the subject, in the
+ * box at the top of the email, and in Reply-To (Reply writes to that email). */
+export function fromPerson(u: any, coaching?: string): { name: string; email?: string } {
   const role = u.role === 'super' ? 'Super Admin' : u.role === 'admin' ? 'Principal' : u.role === 'teacher' ? 'Teacher' : u.isParent ? 'Parent' : 'Student';
-  const email: string | undefined = u.email || undefined;
-  return { name: `${u.name} (${role})${email ? ` - ${email}` : ''}`, email };
+  const where = u.role === 'super' ? 'AcademiaOS' : coaching;
+  return { name: `${u.name} (${[role, where].filter(Boolean).join(', ')})`, email: u.email || undefined };
 }
 
 export async function coachingName(c: Ctx, s: Store): Promise<string> {

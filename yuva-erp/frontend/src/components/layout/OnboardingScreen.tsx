@@ -1,3 +1,4 @@
+import { cleanName } from '../utils/names';
 import React, { useState } from 'react';
 import { GraduationCap, Database, Sparkles, ArrowRight } from 'lucide-react';
 
@@ -56,7 +57,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onDone, init
                 type="text"
                 value={name}
                 onChange={e => {
-                  setName(e.target.value);
+                  setName(cleanName(e.target.value));
                   setError('');
                 }}
                 placeholder="e.g. Yuva Coaching Classes"

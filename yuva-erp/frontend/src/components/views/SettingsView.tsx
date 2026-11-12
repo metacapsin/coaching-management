@@ -1,3 +1,4 @@
+import { cleanName } from '../utils/names';
 import { MailSettings } from './MailSettings';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
@@ -237,7 +238,7 @@ export const SettingsView: React.FC = () => {
                 <input
                   type={f.type || 'text'}
                   value={(formData as unknown as Record<string, string>)[f.key] ?? ''}
-                  onChange={e => setFormData({ ...formData, [f.key]: e.target.value })}
+                  onChange={e => setFormData({ ...formData, [f.key]: f.key === 'name' ? cleanName(e.target.value) : e.target.value })}
                   className={`${inputCls} ${f.mono ? 'font-mono' : ''}`}
                 />
               </div>

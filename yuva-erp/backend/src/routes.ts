@@ -32,7 +32,7 @@ import { nextRollNumber } from './rollno.ts';
 import { applyChanges, parsePhotoDataUrl, scopeInstitute } from './scope.ts';
 import { DEFAULT_ORG, PLATFORM_ORG } from './store.ts';
 import { GREEN, RED } from './emailTemplate.ts';
-import { last10, newId, normRoll, normalizePhone, portalLabel, roleLabel, text, todayLocal } from './validate.ts';
+import { checkName, last10, newId, normRoll, normalizePhone, portalLabel, roleLabel, text, todayLocal } from './validate.ts';
 
 const DEFAULT_PHOTO = '/avatar.svg'; // a local picture (the app has it in public/)
 
@@ -162,6 +162,7 @@ route('/api/auth/setup', ['POST'], 'public', async (c) => {
   const email = text(b.email).toLowerCase();
   const password = b.password;
   if (!name) throw new HttpError(400, 'Please enter your full name.');
+  checkName(name, 'name');
   checkEmail(email);
   checkPassword(password);
 
@@ -273,6 +274,7 @@ route('/api/auth/register-teacher', ['POST'], 'public', async (c) => {
   const email = text(b.email).toLowerCase();
   const subject = text(b.subject);
   if (!name) throw new HttpError(400, 'Please enter your full name.');
+  checkName(name, 'name');
   if (last10(b.phone).length < 10) throw new HttpError(400, 'Please enter a valid 10-digit mobile number.');
   checkEmail(email);
   checkPassword(b.password);
@@ -469,8 +471,10 @@ route('/api/auth/register-new-student', ['POST'], 'public', async (c) => {
   const phone10 = last10(b.phone);
 
   if (!name) throw new HttpError(400, 'Please enter your full name.');
+  checkName(name, 'name');
   if (phone10.length < 10) throw new HttpError(400, 'Please enter a valid 10-digit student mobile number.');
   if (!text(b.parentName)) throw new HttpError(400, 'Please enter the parent or guardian name.');
+  checkName(text(b.parentName), 'parent name');
   if (last10(b.parentPhone).length < 10) throw new HttpError(400, 'Please enter a valid 10-digit parent mobile number.');
   checkEmail(email);
   checkPassword(b.password);
@@ -747,6 +751,7 @@ route('/api/users', ['POST'], 'admin', async (c) => {
   // one coaching has one principal: nobody can add another one
   if (!['teacher', 'student'].includes(role)) throw new HttpError(400, 'Choose a valid role. A coaching has only one principal.');
   if (!text(b.name)) throw new HttpError(400, 'Please enter the full name.');
+  checkName(text(b.name), 'name');
   checkEmail(email);
   checkPassword(b.password);
   if (await emailTaken(c, email)) throw new HttpError(409, 'An account with this email already exists.');
@@ -1211,6 +1216,7 @@ route('/api/auth/profile', ['PUT'], 'user', async (c) => {
   if (office && 'name' in b) {
     const name = text(b.name);
     if (!name) throw new HttpError(400, 'Please enter your name.');
+    checkName(name, 'name');
     user.name = name;
   }
   const oldPhone: string = user.phone ?? '';

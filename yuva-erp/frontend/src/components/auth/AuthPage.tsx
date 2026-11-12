@@ -1,3 +1,4 @@
+import { cleanName } from '../utils/names';
 import React, { useEffect, useState } from 'react';
 import { PasswordInput } from '../ui/PasswordInput';
 import { useAuth } from '../../Context/AuthContext';
@@ -484,7 +485,7 @@ export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }>
                   label="Full Name"
                   icon={User}
                   value={name}
-                  onChange={setName}
+                  onChange={v => setName(cleanName(v))}
                   error={errors.name}
                   autoComplete="name"
                   placeholder="e.g. Rahul Sharma"

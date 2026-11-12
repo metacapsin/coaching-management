@@ -1,3 +1,4 @@
+import { cleanName } from '../utils/names';
 import { Select } from '../ui/Pickers';
 import React, { useState } from 'react';
 import { useEscape } from '../ui/useEscape';
@@ -152,7 +153,7 @@ export const EditBatchModal: React.FC<EditBatchModalProps> = ({ batch, enrolled,
             <input
               type="text"
               value={form.name}
-              onChange={e => setForm({ ...form, name: e.target.value })}
+              onChange={e => setForm({ ...form, name: cleanName(e.target.value) })}
               className={inputClass(!!errors.name)}
             />
             {errors.name && (
@@ -196,7 +197,7 @@ export const EditBatchModal: React.FC<EditBatchModalProps> = ({ batch, enrolled,
             <input
               type="text"
               value={form.facultyName}
-              onChange={e => setForm({ ...form, facultyName: e.target.value })}
+              onChange={e => setForm({ ...form, facultyName: cleanName(e.target.value) })}
               className={inputClass(false)}
             />
           </div>

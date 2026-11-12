@@ -1,6 +1,7 @@
 // Input rules shared by the routes. They are the same rules the sign-up screens show.
 
 import crypto from 'node:crypto';
+import { HttpError } from './errors.ts';
 
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_PASSWORD_LENGTH = 200; // very long passwords would only slow the server down
@@ -55,4 +56,19 @@ export function portalLabel(role: string, isParent = false): string {
   if (role === 'super') return 'Super Admin';
   if (role === 'student' && isParent) return 'Parent';
   return role === 'student' || role === 'teacher' ? 'Teacher / Student' : 'Coaching Admin';
+}
+
+// The name of a PERSON (a student, a parent, a teacher, a principal, the Super Admin): letters of any language (with their marks, like the
+// signs of Hindi), digits, spaces, and only a dot, an apostrophe and a hyphen (Md. Sahil, D'Souza, Mary-Ann). No other symbol: @ # $ % ^ & * ! ...
+const NAME_OK = /^[\p{L}\p{M}0-9][\p{L}\p{M}0-9 .'\u2019-]*$/u;
+
+export function isPersonName(value: unknown): boolean {
+  return typeof value === 'string' && value.length <= 120 && NAME_OK.test(value);
+}
+
+/** Refuses a name with a symbol. `label` says which name it is. */
+export function checkName(value: unknown, label = 'name'): void {
+  if (!isPersonName(value)) {
+    throw new HttpError(400, `The ${label} can have only letters, numbers and spaces (and . ' -). Symbols like @ # $ % ^ & * ! are not allowed.`);
+  }
 }

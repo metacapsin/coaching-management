@@ -1,3 +1,4 @@
+import { cleanName } from '../utils/names';
 import React, { useState } from 'react';
 import { PasswordInput } from '../ui/PasswordInput';
 import { AlertCircle, CheckCircle2, GraduationCap, BookOpen, UserCheck, Loader2 } from 'lucide-react';
@@ -26,7 +27,7 @@ export const MemberSignup: React.FC<{ onClose: () => void }> = ({ onClose }) => 
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
-  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: ['coachingName', 'adminName', 'name'].includes(k as string) ? cleanName(e.target.value) : e.target.value });
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();

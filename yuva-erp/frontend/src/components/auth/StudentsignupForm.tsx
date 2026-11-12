@@ -1,3 +1,4 @@
+import { cleanName } from '../utils/names';
 import { Select } from '../ui/Pickers';
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../Context/AuthContext';
@@ -214,7 +215,7 @@ export const StudentSignupForm: React.FC = () => {
         label="Student Full Name"
         icon={User}
         value={name}
-        onChange={setName}
+        onChange={v => setName(cleanName(v))}
         error={errors.name}
         autoComplete="name"
         placeholder="e.g. Aryan Gupta"
@@ -236,7 +237,7 @@ export const StudentSignupForm: React.FC = () => {
           label="Parent / Guardian Name"
           icon={Users}
           value={parentName}
-          onChange={setParentName}
+          onChange={v => setParentName(cleanName(v))}
           error={errors.parentName}
           placeholder="e.g. Ramesh Gupta"
         />

@@ -9,6 +9,7 @@
 import { HttpError } from './errors.ts';
 import type { Store } from './store.ts';
 import { LISTS } from './store.ts';
+import { checkName } from './validate.ts';
 
 const MAX_ITEMS_PER_REQUEST = 200000;
 
@@ -229,6 +230,30 @@ function checkItems(name: string, items: any[]): void {
     if (!isDict(item)) throw new HttpError(400, `${name}: every item must be an object.`);
     const id = item.id;
     if (typeof id !== 'string' || !id || id.length > 200) throw new HttpError(400, `${name}: every item needs an id.`);
+  }
+}
+
+// which fields of which list are names (of a person, a program, a batch...): they must have no symbol
+const NAME_FIELDS: Record<string, [string, string][]> = {
+  students: [['name', 'student name'], ['parentName', 'parent name']],
+  enquiries: [['name', 'name'], ['parentName', 'parent name']],
+  courses: [['name', 'name of the program']],
+  batches: [['name', 'name of the batch'], ['facultyName', 'name of the teacher']],
+  timetable: [['facultyName', 'name of the teacher']],
+  salaries: [['name', 'name']],
+};
+
+/** A new or a changed name of a student / parent / enquiry / program / batch must have no symbol. A name that is the same as the saved one is left alone, so a
+ * record with an old name can still be edited (a fee, a batch...). */
+async function checkNamesOf(list: string, plan: { upsert: any[] }, store: Store): Promise<void> {
+  const before = await store.getMany(list, plan.upsert.map((i) => i.id));
+  for (const item of plan.upsert) {
+    for (const [field, label] of NAME_FIELDS[list] ?? []) {
+      const value = item[field];
+      if (typeof value !== 'string' || !value.trim()) continue;
+      if (before[item.id] && before[item.id][field] === value) continue;
+      checkName(value.trim(), label);
+    }
   }
 }
 
@@ -464,9 +489,12 @@ export async function applyChanges(user: any, store: Store, changes: any): Promi
       if (!isDict(change)) throw new HttpError(400, 'profile: invalid.');
       hasProfile = true;
       profile = change;
+      // the name of the institute (a name that is not changed can stay)
+      if (typeof change.name === 'string' && change.name.trim() && change.name !== (await store.profile())?.name) checkName(change.name.trim(), 'name of the institute');
       continue;
     }
     let parsed = parseChange(name, change);
+    if (NAME_FIELDS[name]) await checkNamesOf(name, parsed, store);
     if (name === 'submissions') throw new HttpError(403, 'Homework is marked as done by the students themselves.');
     if (name === 'leaveRequests') throw new HttpError(403, 'Leave is asked by the student and decided by the principal on the leave page.');
     if (PRINCIPAL_ONLY.has(name) && user.role !== 'admin') throw new HttpError(403, 'Only the principal can change the expenses.');

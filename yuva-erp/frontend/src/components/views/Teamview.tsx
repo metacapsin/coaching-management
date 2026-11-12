@@ -1,3 +1,4 @@
+import { cleanName } from '../utils/names';
 import { Select } from '../ui/Pickers';
 import React, { useCallback, useEffect, useState } from 'react';
 import { request, updateOwnDetails, refreshNow, ApiError } from '../utils/api';
@@ -168,7 +169,7 @@ const MyDetails: React.FC<{ onDone: (type: 'success' | 'error', text: string) =>
         {canName && (
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Name</label>
-            <input value={name} onChange={e => setName(e.target.value)} className={cls} />
+            <input value={name} onChange={e => setName(cleanName(e.target.value))} className={cls} />
           </div>
         )}
         <div>
@@ -955,7 +956,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
               <input
                 type="text"
                 value={aName}
-                onChange={e => setAName(e.target.value)}
+                onChange={e => setAName(cleanName(e.target.value))}
                 disabled={aRole === 'student' && !!aStudentId}
                 className={`${inputClass} disabled:bg-slate-50`}
               />

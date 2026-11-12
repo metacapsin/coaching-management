@@ -1,3 +1,4 @@
+import { cleanName } from '../utils/names';
 import { Select } from '../ui/Pickers';
 import React, { useEffect, useState } from 'react';
 import { Building2, CheckCircle2, Loader2 } from 'lucide-react';
@@ -79,7 +80,7 @@ export const RegisterCoachingForm: React.FC<{ onClose: () => void }> = ({ onClos
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
-  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: ['coachingName', 'adminName', 'name'].includes(k as string) ? cleanName(e.target.value) : e.target.value });
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
