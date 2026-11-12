@@ -618,7 +618,8 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
             <Clock className="w-4 h-4 text-slate-400" />
             No coaching is waiting for approval
           </div>
-          Only you add a coaching. A coaching you add with <strong>+ Add coaching</strong> waits here with Approve and Reject, until you press Approve.
+          A coaching owner sends a request from the login page (Coaching Admin tab, "Register your coaching"). It appears here with Approve and
+          Reject. A coaching you add with <strong>+ Add coaching</strong> waits here too, until you press Approve.
         </section>
       )}
       {pending.length > 0 && (
@@ -692,7 +693,7 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
         <div className="bg-white border border-slate-200 rounded-xl py-14 text-center shadow-xs">
           <Building2 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
           <p className="text-sm font-medium text-slate-700">No coaching yet</p>
-          <p className="text-xs text-slate-400 mt-1">Press + Add coaching to add the first coaching.</p>
+          <p className="text-xs text-slate-400 mt-1">Press + Add coaching, or wait for requests from the login page.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">

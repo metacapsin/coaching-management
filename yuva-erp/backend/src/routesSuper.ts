@@ -87,10 +87,45 @@ route('/api/public/coachings', ['GET'], 'public', async (c) => ({
   coachings: (await c.root.orgActiveList()).map((o) => ({ id: o.id, name: o.name, city: o.city ?? '' })),
 }));
 
-/** The website no longer takes a coaching: ONLY the Super Admin adds a coaching (POST /api/super/orgs, with an own login). Nobody else,
- * not a student, not a teacher, not a visitor. The old address answers with a clear refusal. */
-route('/api/public/register-coaching', ['POST'], 'public', async () => {
-  throw new HttpError(403, 'Only the Super Admin adds a coaching.');
+/** A coaching asks to join. The super admin has to approve it before its principal can sign in. */
+route('/api/public/register-coaching', ['POST'], 'public', async (c) => {
+  limitRegistrations(c);
+  const [org, user] = await newCoaching(c, c.body(), 'pending');
+  await c.root.forOrg(PLATFORM_ORG).audit(null, 'coaching-requested', `${org.name} (${user.email})`);
+  // the principal knows the request arrived, and the Super Admin knows there is something to approve
+  mail(user.email, `We received your request for ${org.name}`, 'We received your request', ['Thank you! The Super Admin will check your request now.'], {
+    details: [
+      ['Coaching', org.name],
+      ['City', org.city],
+    ],
+    button: ['Visit AcademiaOS', c.siteUrl()],
+    note: 'You will get an email as soon as your request is approved or rejected.',
+    name: user.name,
+  });
+  for (const admin of await c.root.forOrg(PLATFORM_ORG).usersAll()) {
+    if (admin.role === 'super') {
+      mail(
+        admin.email,
+        `New coaching request: ${org.name}`,
+        'New coaching request',
+        ['A new coaching asked to join AcademiaOS and waits for your decision. Sign in as Super Admin and press Approve or Reject on the Coachings page.'],
+        {
+          details: [
+            ['Coaching', org.name],
+            ['City', org.city],
+            ['Principal', user.name],
+            ['Email', user.email],
+            ['Mobile', user.phone],
+          ],
+          button: ['Sign in as Super Admin', c.loginLink('super')],
+          note: 'The principal is told by email about your decision.',
+          name: admin.name,
+          from: fromPerson(user, org.name), // the person who asked for the coaching
+        },
+      );
+    }
+  }
+  return ok();
 });
 
 /** A visitor of the website asks for a demo. The Super Admin sees the request on the platform page. */

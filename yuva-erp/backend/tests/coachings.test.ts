@@ -60,8 +60,8 @@ describe('Coachings', () => {
   });
 
   it('02 a new coaching waits for approval', async () => {
-    assert.equal((await call('POST', '/api/super/orgs', coaching('Alpha', 'a@x.com'), sup))[0], 200);
-    assert.equal((await call('POST', '/api/super/orgs', coaching('Dup', 'a@x.com'), sup))[0], 409);
+    assert.equal((await call('POST', '/api/public/register-coaching', coaching('Alpha', 'a@x.com')))[0], 200);
+    assert.equal((await call('POST', '/api/public/register-coaching', coaching('Dup', 'a@x.com')))[0], 409);
     const [status, data] = await login('a@x.com');
     assert.equal(status, 403);
     assert.ok(data.error.includes('super admin'));
@@ -82,7 +82,7 @@ describe('Coachings', () => {
 
   it('02b the principal is told about the decision', async () => {
     // approved: an email goes to the principal
-    await call('POST', '/api/super/orgs', coaching('Mailco', 'mail@x.com'), sup);
+    await call('POST', '/api/public/register-coaching', coaching('Mailco', 'mail@x.com'));
     const mail = captureMail();
     let status: number, data: any;
     try {
@@ -98,7 +98,7 @@ describe('Coachings', () => {
     assert.ok(body.includes('You can sign in now'));
 
     // rejected with a reason, and email is not set up: the same words come back to be sent on WhatsApp
-    await call('POST', '/api/super/orgs', coaching('Nomail', 'no@x.com'), sup);
+    await call('POST', '/api/public/register-coaching', coaching('Nomail', 'no@x.com'));
     mailer.overrideSend(() => false);
     try {
       [status, data] = await call('POST', `/api/super/orgs/${await orgId('Nomail')}/reject`, { reason: 'Wrong city' }, sup);
@@ -110,7 +110,7 @@ describe('Coachings', () => {
     assert.ok(data.message.includes('Reason: Wrong city'));
     assert.equal(data.phone, '+91 98000 11111');
     // the request is gone, so that email can register again
-    assert.equal((await call('POST', '/api/super/orgs', coaching('Nomail', 'no@x.com'), sup))[0], 200);
+    assert.equal((await call('POST', '/api/public/register-coaching', coaching('Nomail', 'no@x.com')))[0], 200);
     await call('POST', `/api/super/orgs/${await orgId('Nomail')}/reject`, {}, sup);
     // the two coachings of this test are removed again, the next tests count on the coachings that were there
     await call('DELETE', `/api/super/orgs/${await orgId('Mailco')}`, { confirmName: 'Mailco', password: PASSWORD }, sup);
@@ -153,23 +153,20 @@ describe('Coachings', () => {
     adminA = data.token; // the reset signed the old sessions out
   });
 
-  it('02e ONLY the Super Admin adds a coaching: the public address and every other login are refused', async () => {
-    // a visitor (also a student or a teacher) cannot register a coaching
-    assert.equal((await call('POST', '/api/public/register-coaching', coaching('Zeta', 'z@x.com')))[0], 403);
-    assert.equal((await login('z@x.com'))[0], 401); // nothing was made
-    // a principal, a teacher and a student cannot add one either
-    const mine = await call('POST', '/api/super/orgs', coaching('Zeta', 'z@x.com'), adminA);
-    assert.equal(mine[0], 403);
-    // the Super Admin can: the principal is told by email, from the Super Admin
+  it('02e a new request is told to the principal and the super admin', async () => {
     const mail = captureMail();
     try {
-      assert.equal((await call('POST', '/api/super/orgs', coaching('Zeta', 'z@x.com'), sup))[0], 200);
+      assert.equal((await call('POST', '/api/public/register-coaching', coaching('Zeta', 'z@x.com')))[0], 200);
     } finally {
       mail.stop();
     }
     const to = mail.sent.map((m) => m[0]);
-    assert.deepEqual(to, ['z@x.com']);
-    assert.ok(mail.sent[0][4]!.name.includes('Super Admin'));
+    assert.ok(to.includes('z@x.com'));
+    assert.ok(to.includes('super@x.com'));
+    const superMail = mail.sent.find((m) => m[0] === 'super@x.com')!;
+    assert.ok(superMail[2].includes('z@x.com')); // who asked
+    assert.ok(superMail[2].includes('Approve or Reject')); // what to do
+    assert.ok(superMail[2].includes('http')); // where to go
     await call('POST', `/api/super/orgs/${await orgId('Zeta')}/reject`, {}, sup);
   });
 
@@ -422,7 +419,7 @@ describe('Coachings', () => {
     assert.equal((await login('b@x.com', 'Own12345pw'))[0], 200);
     assert.equal((await call('POST', `/api/super/orgs/${orgB}/reset-admin-password`, { newPassword: 'Fresh12345' }, sup))[0], 200);
 
-    await call('POST', '/api/super/orgs', coaching('Gamma', 'g@x.com'), sup);
+    await call('POST', '/api/public/register-coaching', coaching('Gamma', 'g@x.com'));
     const gamma = (await orgs()).find((o) => o.name === 'Gamma');
     assert.equal((await call('POST', `/api/super/orgs/${orgB}/reject`, null, sup))[0], 400); // active, not pending
     assert.equal((await call('POST', `/api/super/orgs/${gamma.id}/reject`, null, sup))[0], 200);

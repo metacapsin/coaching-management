@@ -92,11 +92,12 @@ describe('the public website', () => {
     }
   });
 
-  it('there is no way to register a coaching on the website: only the Super Admin adds one', () => {
+  it('the Add coaching buttons open the registration of a coaching in the form at the top', () => {
     render(<LandingPage />);
-    expect(screen.queryAllByRole('button', { name: 'Add coaching' }).length).toBe(0);
-    expect(screen.queryByText('Register your coaching')).toBeNull();
-    expect(screen.queryByRole('heading', { name: 'Register your coaching' })).toBeNull();
+    const form = within(document.getElementById('signin') as HTMLElement);
+    expect(form.queryByRole('heading', { name: 'Register your coaching' })).toBeNull();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Add coaching' })[0]);
+    expect(form.getByRole('heading', { name: 'Register your coaching' })).not.toBeNull();
   });
 
   it('the slider of a day moves with the arrows, and the gallery shows the screens of the app', () => {

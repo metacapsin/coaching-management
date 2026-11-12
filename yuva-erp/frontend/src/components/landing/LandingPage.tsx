@@ -82,7 +82,7 @@ const WHY_TABS: { id: string; label: string; title: string; text: string; points
 ];
 
 const STEPS = [
-  { n: '01', title: 'Your coaching is added', text: 'The Super Admin adds your coaching with the name of the principal, and gives the principal the email and password to sign in.' },
+  { n: '01', title: 'Register your coaching', text: 'Send a request from the sign in page with the name of your coaching and the principal. The Super Admin approves it.' },
   { n: '02', title: 'Add programs and batches', text: 'Write down your programs with their fees. Add a batch to a program while you admit the first student, or in Batches.' },
   { n: '03', title: 'Admit students and add teachers', text: 'Admission gives the student a login. Add teachers and the parents of your students.' },
   { n: '04', title: 'Run the day', text: 'Attendance, fees, tests, notices and study material, with reports and reminders for every month.' }
@@ -121,7 +121,7 @@ const SECURITY: { icon: React.ElementType; title: string; text: string }[] = [
 const FAQ: { q: string; a: string }[] = [
   { q: 'Who can use AcademiaOS?', a: 'Any coaching institute: the principal, the teachers, the students and their parents. The Super Admin runs the platform for many coachings.' },
   { q: 'Does one coaching see the data of another?', a: 'No. Every coaching has its own data and its own principal login. Not even the Super Admin opens the data inside a coaching without the principal’s login.' },
-  { q: 'How do I start?', a: 'The Super Admin adds your coaching and gives you the email and password. Then you sign in, add a program, and admit the first student. The dashboard shows these steps.' },
+  { q: 'How do I start?', a: 'Choose "Register your coaching" on the sign in page. After the Super Admin approves it you sign in, add a program, and admit the first student. The dashboard shows these steps.' },
   { q: 'Can the students and parents sign in?', a: 'Yes. The principal makes the logins (a student’s login is made together with the admission). They see only their own data, read only.' },
   { q: 'Do fees get paid online?', a: 'Not yet. The principal writes down every payment and the app prints the receipt. Online payment needs a paid gateway and can be added later.' },
   { q: 'How are parents told about fees or absence?', a: 'The app prepares the message and opens it in WhatsApp for you to send. Automatic sending needs a paid service and is not included yet.' },
@@ -190,6 +190,13 @@ const SectionHead: React.FC<{ kicker: string; title: React.ReactNode; text?: str
 export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () => void; onSignOut: () => void } }> = ({ signedIn }) => {
   const { t: tr } = useLang();
   const [menu, setMenu] = useState(false);
+  // the "Add coaching" buttons open the registration of a coaching in the form at the top
+  const [registerSignal, setRegisterSignal] = useState(0);
+  const openRegister = () => {
+    setRegisterSignal(n => n + 1);
+    setMenu(false);
+    document.getElementById('signin')?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+  };
   const [tab, setTab] = useState(WHY_TABS[0].id);
   const [open, setOpen] = useState<number | null>(0);
   const [scrolled, setScrolled] = useState(false);
@@ -244,6 +251,9 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
             ))}
           </nav>
           <div className="flex items-center gap-2">
+            <button type="button" onClick={openRegister} className="px-2.5 sm:px-3.5 py-2 text-xs sm:text-sm font-semibold text-white bg-[#1565c0] hover:bg-[#0d47a1] rounded-lg transition-colors">
+              {tr('Add coaching')}
+            </button>
             <button onClick={() => setMenu(m => !m)} aria-label={menu ? 'Close menu' : 'Open menu'} className="lg:hidden p-2 rounded-lg text-slate-300 hover:bg-white/10">
               {menu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -292,6 +302,9 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
                 </button>
               ))}
             </div>
+            <button type="button" onClick={openRegister} className="mt-6 px-6 py-3 text-sm font-semibold text-white bg-[#1565c0] hover:bg-[#0d47a1] rounded-lg shadow-lg shadow-blue-900/30 transition-colors">
+              {tr('Add coaching')}
+            </button>
             <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-300">
               {['No app to install', 'Works on a phone', 'Each coaching’s data stays separate'].map(item => (
                 <li key={item} className="flex items-center gap-2">
@@ -318,7 +331,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
                   </div>
                 </div>
               )}
-              <AuthPage embedded />
+              <AuthPage embedded registerSignal={registerSignal} />
             </div>
           </div>
         </div>
@@ -560,7 +573,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
         </div>
       </section>
 
-      <FloatingButtons />
+      <FloatingButtons onAddCoaching={openRegister} />
 
       {/* Footer */}
       <footer className="bg-[#16222d] border-t border-white/10">
@@ -603,7 +616,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
           <div>
             <h4 className="text-base font-semibold text-white">{tr('Get started')}</h4>
             <ul className="mt-4 space-y-2.5 text-sm">
-              {[['#top', 'Sign in'], ['#faq', 'FAQ']].map(([h, l]) => (
+              {[['#top', 'Sign in'], ['#top', 'Register your coaching'], ['#faq', 'FAQ']].map(([h, l]) => (
                 <li key={l}>
                   <a href={h} className="text-sky-100/70 hover:text-white">
                     {tr(l)}

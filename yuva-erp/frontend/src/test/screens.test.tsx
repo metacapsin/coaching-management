@@ -25,8 +25,7 @@ describe('login page', () => {
     expect(screen.getByRole('button', { name: 'Coaching Admin' })).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Teacher / Student' })).not.toBeNull();
     expect(screen.getByText('Sign in as Coaching Admin to continue.')).not.toBeNull();
-    expect(screen.queryByText(/Register your coaching/)).toBeNull(); // only the Super Admin adds a coaching
-    expect(screen.getByText(/added by the Super Admin/)).not.toBeNull();
+    expect(screen.getByText(/Register your coaching/)).not.toBeNull();
   });
 
   it('asks to create the Super Admin first when there is none', () => {

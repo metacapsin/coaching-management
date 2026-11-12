@@ -1,7 +1,7 @@
 import { Select } from '../ui/Pickers';
 import React, { useEffect, useState } from 'react';
 import { Building2, CheckCircle2, Loader2 } from 'lucide-react';
-import { ApiError, listCoachings, setPublicOrg } from '../utils/api';
+import { ApiError, listCoachings, registerCoaching, setPublicOrg } from '../utils/api';
 import type { PublicCoaching } from '../utils/api';
 import { useLang } from '../../i18n/LangContext';
 
@@ -69,5 +69,93 @@ export const CoachingPicker: React.FC<{ onChange: (orgId: string) => void }> = (
         ))}
       </Select>
     </div>
+  );
+};
+
+// A coaching asks to join. Its principal can sign in only after the super admin approves it.
+export const RegisterCoachingForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const { t } = useLang();
+  const [f, setF] = useState({ coachingName: '', city: '', adminName: '', phone: '', email: '', password: '', confirm: '', appPassword: '' });
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (f.password !== f.confirm) {
+      setError('Passwords do not match.');
+      return;
+    }
+    setBusy(true);
+    try {
+      await registerCoaching({
+        coachingName: f.coachingName.trim(),
+        city: f.city.trim(),
+        adminName: f.adminName.trim(),
+        phone: f.phone.trim(),
+        email: f.email.trim(),
+        password: f.password,
+        ...(f.appPassword.trim() ? { appPassword: f.appPassword.trim() } : {})
+      });
+      setSent(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not send the request. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (sent)
+    return (
+      <div className="mt-4 p-4 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 space-y-2">
+        <p className="flex items-center gap-1.5 font-semibold">
+          <CheckCircle2 className="w-4 h-4" />
+          Request sent
+        </p>
+        <p>
+          The super admin will check your request. After it is approved, sign in here with the email and password you just
+          chose (Administration tab).
+        </p>
+        <button onClick={onClose} className="font-semibold text-emerald-800 hover:underline">
+          Back to sign in
+        </button>
+      </div>
+    );
+
+  const field = (label: string, key: keyof typeof f, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
+    <div>
+      <label className="block text-xs font-medium text-slate-700 mb-1">{t(label)}</label>
+      <input value={f[key]} onChange={set(key)} className={fieldCls} {...props} placeholder={props.placeholder ? t(props.placeholder) : undefined} />
+    </div>
+  );
+
+  return (
+    <form onSubmit={submit} className="mt-4 space-y-3">
+      <p className="text-xs text-slate-500">
+        {t('Register your coaching. You become its principal (administrator) once the super admin approves.')}
+      </p>
+      {field('Name of your coaching *', 'coachingName')}
+      {field('City / area', 'city')}
+      {field('Your name (principal) *', 'adminName')}
+      {field('Your mobile number *', 'phone', { inputMode: 'tel', placeholder: '10-digit mobile number' })}
+      {field('Your email *', 'email', { type: 'email', autoComplete: 'username' })}
+      {field('Password *', 'password', { type: 'password', autoComplete: 'new-password', placeholder: 'At least 8 characters, letters and numbers' })}
+      {field('Confirm password *', 'confirm', { type: 'password', autoComplete: 'new-password' })}
+      {field('Gmail app password (optional)', 'appPassword', { type: 'password', autoComplete: 'off', placeholder: '16 letters, only if your email is a Gmail' })}
+      <p className="text-[11px] text-slate-500 -mt-1.5">
+        {t('If you give it, every email of your coaching goes out from your own email address. Google account → 2-Step Verification → App passwords. You can also do this later.')}
+      </p>
+      {error && <p className="text-xs text-rose-600">{t(error)}</p>}
+      <div className="flex gap-2 justify-end">
+        <button type="button" onClick={onClose} className="px-3 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">
+          {t('Cancel')}
+        </button>
+        <button type="submit" disabled={busy} className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-lg">
+          {busy ? t('Sending...') : t('Send request')}
+        </button>
+      </div>
+    </form>
   );
 };

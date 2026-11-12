@@ -406,3 +406,16 @@ export interface PublicCoaching {
 
 export const listCoachings = () => request<{ coachings: PublicCoaching[] }>('GET', '/public/coachings', undefined, { auth: false }).then(r => r.coachings);
 
+export interface CoachingRequest {
+  coachingName: string;
+  city: string;
+  adminName: string;
+  phone: string;
+  email: string;
+  password: string;
+  appPassword?: string; // optional: the app password of the Gmail above, so the emails of the coaching go out from it
+}
+
+// A coaching asks to join; the super admin has to approve it before its principal can sign in
+export const registerCoaching = (input: CoachingRequest) =>
+  request<{ ok: true }>('POST', '/public/register-coaching', input, { auth: false });

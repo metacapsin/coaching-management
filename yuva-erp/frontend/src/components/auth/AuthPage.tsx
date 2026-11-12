@@ -4,6 +4,7 @@ import { useAuth } from '../../Context/AuthContext';
 import { useLang } from '../../i18n/LangContext';
 import type { Portal } from '../../Context/AuthContext';
 import { ApiError, requestPasswordReset, resetPasswordWithCode, resetSuperPassword } from '../utils/api';
+import { RegisterCoachingForm } from './CoachingForms';
 import { MemberSignup } from './MemberSignup';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import {
@@ -263,13 +264,24 @@ const portalOfLink = (): Portal | null => {
 };
 
 // `embedded`: the form is part of the website (no side panel, no full page of its own)
-export const AuthPage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
+// `registerSignal`: each time it grows, the form opens on "Register your coaching" (the "Add coaching" button of the website)
+export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }> = ({ embedded = false, registerSignal = 0 }) => {
   const { signIn, signUp, hasSuper } = useAuth();
   const { t } = useLang();
 
   // Without a Super Admin the page starts on the Super Admin tab, to create it first
   // a link in an email can say which form to open: /?portal=super (or admin, member)
   const [portal, setPortal] = useState<Portal>(() => (hasSuper ? portalOfLink() ?? 'admin' : 'super'));
+  // the principal of a new coaching registers here (and waits for the Super Admin's approval)
+  const [registering, setRegistering] = useState(false);
+  useEffect(() => {
+    if (registerSignal > 0 && hasSuper) {
+      setPortal('admin');
+      setMemberSignup(false);
+      setRegistering(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [registerSignal]);
   // a teacher or student creating an own account (Teacher / Student tab)
   const [memberSignup, setMemberSignup] = useState(false);
 
@@ -299,6 +311,7 @@ export const AuthPage: React.FC<{ embedded?: boolean }> = ({ embedded = false })
 
   const choosePortal = (next: Portal) => {
     setPortal(next);
+    setRegistering(false);
     setMemberSignup(false);
     resetForm();
   };
@@ -410,11 +423,13 @@ export const AuthPage: React.FC<{ embedded?: boolean }> = ({ embedded = false })
           {React.createElement(
             embedded ? 'h2' : 'h1',
             { className: 'text-2xl font-bold tracking-tight text-slate-900' },
-            t(createSuper ? 'Create the Super Admin' : memberSignup ? 'Create your account' : 'Welcome back')
+            t(createSuper ? 'Create the Super Admin' : registering ? 'Register your coaching' : memberSignup ? 'Create your account' : 'Welcome back')
           )}
           <p className="text-sm text-slate-500 mt-1">
             {createSuper
               ? 'The Super Admin approves coachings. Create this account first (only once).'
+              : registering
+              ? t('The Super Admin checks your request. After approval you sign in here as Coaching Admin.')
               : memberSignup
               ? t('For teachers and students. Choose your coaching first.')
               : t('Sign in as {x} to continue.').replace('{x}', t(activePortal.label))}
@@ -458,7 +473,9 @@ export const AuthPage: React.FC<{ embedded?: boolean }> = ({ embedded = false })
             </div>
           )}
 
-          {memberSignup ? (
+          {registering ? (
+            <RegisterCoachingForm onClose={() => setRegistering(false)} />
+          ) : memberSignup ? (
             <MemberSignup onClose={() => setMemberSignup(false)} />
           ) : (
             <form onSubmit={handleSubmit} noValidate className="mt-5 space-y-4">
@@ -560,10 +577,13 @@ export const AuthPage: React.FC<{ embedded?: boolean }> = ({ embedded = false })
             </form>
           )}
 
-          {portal === 'admin' && (
-            <p className="mt-5 text-xs text-slate-500 text-center leading-relaxed">
-              {t('A new coaching is added by the Super Admin. You get your email and password from the Super Admin.')}
-            </p>
+          {portal === 'admin' && !registering && (
+            <div className="mt-5 text-sm text-slate-600 text-center">
+              {t('New coaching?')}{' '}
+              <button type="button" onClick={() => setRegistering(true)} className="font-semibold text-blue-600 hover:underline">
+                {t('Register your coaching')}
+              </button>
+            </div>
           )}
 
           {portal === 'member' && !memberSignup && (
@@ -575,7 +595,7 @@ export const AuthPage: React.FC<{ embedded?: boolean }> = ({ embedded = false })
             </div>
           )}
 
-          {!memberSignup && !createSuper && (
+          {!registering && !memberSignup && !createSuper && (
             <div className="mt-6">
               <div className="flex items-center gap-3 text-[11px] uppercase tracking-wider text-slate-400">
                 <span className="h-px flex-1 bg-slate-200" />
@@ -594,7 +614,7 @@ export const AuthPage: React.FC<{ embedded?: boolean }> = ({ embedded = false })
           )}
 
           {portal === 'super' && !createSuper && <SuperForgotPassword initialEmail={email} />}
-          {portal !== 'super' && !memberSignup && <ForgotPassword initialEmail={email} />}
+          {portal !== 'super' && !registering && !memberSignup && <ForgotPassword initialEmail={email} />}
 
           <p className="mt-6 text-[11px] text-slate-400 text-center leading-relaxed">
             {t("Your account and data are stored on the institute's server.")}
