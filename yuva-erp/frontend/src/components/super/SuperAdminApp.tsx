@@ -10,6 +10,9 @@ import {
   KeyRound,
   LogOut,
   PlayCircle,
+  MapPin,
+  Mail,
+  Phone,
   Trash2,
   Search,
   UserPlus,
@@ -503,83 +506,115 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {shown.map(o => {
+            const principal = o.admin?.name || '-';
+            const initials = principal.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]?.toUpperCase()).join('') || '?';
+            const needsAction = o.status === 'pending' || o.status === 'suspended';
             return (
-              <div
-                key={o.id}
-                className={`bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden flex flex-col ${o.status === 'active' ? '' : 'opacity-80'}`}
-              >
-                <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
-                  <h3 className="flex items-center gap-2 text-sm font-semibold min-w-0">
-                    <Building2 className="w-4 h-4 text-indigo-600 shrink-0" />
-                    <span className="truncate">{o.name}</span>
-                  </h3>
-                  <span className="flex items-center gap-1.5 shrink-0">
-                    {o.id === 'default' && <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-200 text-slate-600">Demo</span>}
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${STATUS_STYLE[o.status]}`}>{STATUS_LABEL[o.status]}</span>
-                  </span>
-                </div>
-                <div className="px-5 py-4 flex-1 space-y-3">
-                  <div>
-                    <div className="text-[11px] text-slate-500">Principal</div>
-                    <div className="text-sm font-medium text-slate-900">{o.admin?.name || '-'}</div>
-                    <div className="text-[11px] text-slate-500 truncate h-4">{o.admin?.email || ' '}</div>
-                    <div className="text-[11px] text-slate-400 font-mono h-4">{o.admin?.phone || ' '}</div>
-                    {o.admin?.resetRequestedAt && (
-                      <div className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
-                        <KeyRound className="w-3 h-3" />
-                        Asked for a new password
+              <div key={o.id} className={`bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden self-start ${o.status === 'active' ? '' : 'opacity-80'}`}>
+                <div className="p-5">
+                  {/* the coaching: a letter, the name, where and since when; on the right the state and the delete */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-lg font-bold shrink-0">
+                        {o.name.trim().charAt(0).toUpperCase() || <Building2 className="w-5 h-5" />}
+                      </span>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold text-slate-900 truncate">{o.name}</h3>
+                        <div className="mt-0.5 text-[11px] text-slate-500 flex items-center gap-1 min-w-0">
+                          <MapPin className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{o.city || 'City not given'}</span>
+                          <span className="text-slate-300">·</span>
+                          <span className="whitespace-nowrap">since {formatDate(o.createdAt)}</span>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-lg bg-slate-50 p-2.5">
-                      <div className="text-[11px] text-slate-500 flex items-center gap-1">
-                        <Users className="w-3 h-3" />
-                        Students
-                      </div>
-                      <div className="text-lg font-bold">{o.students}</div>
                     </div>
-                    <div className="rounded-lg bg-slate-50 p-2.5">
-                      <div className="text-[11px] text-slate-500">Accounts</div>
-                      <div className="text-lg font-bold">{o.accounts}</div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {o.id === 'default' && <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-200 text-slate-600">Demo</span>}
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${STATUS_STYLE[o.status]}`}>{STATUS_LABEL[o.status]}</span>
+                      {o.id !== 'default' && (
+                        <button title="Delete this coaching" onClick={() => setModal({ kind: 'delete', org: o })} className="ml-0.5 p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
-                  <div className="text-[11px] text-slate-400">
-                    {o.city || 'City not given'} · since {formatDate(o.createdAt)}
+
+                  {/* the principal */}
+                  <div className="mt-4 rounded-xl bg-slate-50 border border-slate-100 p-3 flex items-center gap-3">
+                    <span className="w-10 h-10 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold shrink-0">{initials}</span>
+                    <div className="min-w-0">
+                      <div className="text-[10px] uppercase tracking-wide text-slate-400">Principal</div>
+                      <div className="text-sm font-semibold text-slate-900 truncate">{principal}</div>
+                      {o.admin?.email && (
+                        <div className="text-[11px] text-slate-500 flex items-center gap-1 truncate">
+                          <Mail className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{o.admin.email}</span>
+                        </div>
+                      )}
+                      {o.admin?.phone && (
+                        <div className="text-[11px] text-slate-500 flex items-center gap-1">
+                          <Phone className="w-3 h-3 shrink-0" />
+                          {o.admin.phone}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {o.admin?.resetRequestedAt && (
+                    <div className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+                      <KeyRound className="w-3 h-3" />
+                      Asked for a new password
+                    </div>
+                  )}
+
+                  {/* how big it is */}
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <div className="rounded-xl border border-slate-200 p-3 flex items-center gap-3">
+                      <span className="p-2 rounded-lg bg-indigo-50 text-indigo-600">
+                        <Users className="w-4 h-4" />
+                      </span>
+                      <div>
+                        <div className="text-lg font-bold leading-none text-slate-900">{o.students}</div>
+                        <div className="text-[11px] text-slate-500 mt-1">Students</div>
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 p-3 flex items-center gap-3">
+                      <span className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
+                        <KeyRound className="w-4 h-4" />
+                      </span>
+                      <div>
+                        <div className="text-lg font-bold leading-none text-slate-900">{o.accounts}</div>
+                        <div className="text-[11px] text-slate-500 mt-1">Accounts</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="px-5 py-3 min-h-[3.5rem] border-t border-slate-100 flex items-center justify-between gap-2">
-                  {o.status === 'pending' ? (
-                      <div className="flex gap-1.5">
-                        <button
-                          onClick={() => decide('approve', o)}
-                          className="px-2.5 py-1 text-[11px] font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-md"
-                        >
-                          Approve
-                        </button>
-                        <button
-                          onClick={() => decide('reject', o)}
-                          className="px-2.5 py-1 text-[11px] font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-md"
-                        >
-                          Reject
-                        </button>
-                      </div>
+
+                {/* only when there is something to do: a request to answer, a coaching that is switched off */}
+                {needsAction && (
+                  <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/60 flex items-center justify-between gap-2">
+                    {o.status === 'pending' ? (
+                      <>
+                        <span className="text-[11px] text-slate-500">Waiting for your answer</span>
+                        <div className="flex gap-1.5">
+                          <button onClick={() => decide('approve', o)} className="px-3 py-1.5 text-[11px] font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg">
+                            Approve
+                          </button>
+                          <button onClick={() => decide('reject', o)} className="px-3 py-1.5 text-[11px] font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg">
+                            Reject
+                          </button>
+                        </div>
+                      </>
                     ) : (
-                      <span className="text-[11px] text-slate-400">{o.id === 'default' ? 'Demo coaching (kept for trying the app)' : o.status === 'suspended' ? 'Switched off' : ''}</span>
-                    )}
-                  <div className="flex gap-1">
-                    {o.status === 'suspended' && (
-                      <button title="Switch on again" onClick={() => act(() => superApi.activate(o.id), `${o.name} is active again.`)} className="p-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg">
-                        <PlayCircle className="w-4 h-4" />
-                      </button>
-                    )}
-                    {o.id !== 'default' && (
-                      <button title="Delete" onClick={() => setModal({ kind: 'delete', org: o })} className="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <>
+                        <span className="text-[11px] text-slate-500">Switched off</span>
+                        <button title="Switch on again" onClick={() => act(() => superApi.activate(o.id), `${o.name} is active again.`)} className="px-3 py-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg flex items-center gap-1">
+                          <PlayCircle className="w-3.5 h-3.5" />
+                          Switch on
+                        </button>
+                      </>
                     )}
                   </div>
-                </div>
+                )}
               </div>
             );
           })}
