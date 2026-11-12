@@ -34,13 +34,12 @@ const LOOKS: Record<'parent', Look> = {
     subtitle: 'Sign in to see the attendance, fees, tests and results of your child.',
     points: ['Attendance of your child, day by day', 'Fees paid and pending, with receipts and Pay now', 'Tests that are coming, and the results', 'You can only look: nothing can be changed'],
     accent: 'bg-rose-500',
-    signup: true,
+    signup: false,
     other: 'Teacher, student or coaching login'
   }
 };
 
-// The own page of the parents (/parent), not a tab of the main sign in. A parent can create an account (roll number of the child
-// and the parent mobile number that was given at admission).
+// The own page of the parents (/parent): a parent only signs in (the principal adds the parents, so there is no Create an account).
 export const ParentLoginPage: React.FC = () => <SeparateLoginPage kind="parent" />;
 
 const SeparateLoginPage: React.FC<{ kind: 'parent' }> = ({ kind }) => {

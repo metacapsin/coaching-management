@@ -153,12 +153,12 @@ describe('the public website', () => {
     expect(form.queryByRole('link', { name: /staff/i })).toBeNull(); // there is no front desk role
   });
 
-  it('the parent page signs in as a parent, and can create an account', () => {
+  it('the parent page signs in as a parent, and has no Create an account link (the principal adds the parents)', () => {
     render(<ParentLoginPage />);
     expect(screen.getByRole('heading', { name: 'Parent login' })).not.toBeNull();
     expect(screen.getByRole('button', { name: /Sign In as Parent/ })).not.toBeNull();
     expect(screen.getByRole('link', { name: /Teacher, student or coaching login/ }).getAttribute('href')).toBe('/');
-    fireEvent.click(screen.getByRole('button', { name: 'Create an account' }));
-    expect(screen.getByText('Choose the coaching of your child to go on.')).not.toBeNull();
+    expect(screen.queryByRole('button', { name: 'Create an account' })).toBeNull();
+    expect(screen.queryByText('New parent?')).toBeNull();
   });
 });
