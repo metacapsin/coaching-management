@@ -61,20 +61,20 @@ The first run downloads a MongoDB program once (about 800 MB, kept in your user 
 
 ### The Super Admin
 
-- Sees each coaching as a card: principal, number of students and accounts, status.
+- **The Super Admin page is a record, not a control panel.** Each coaching is a card: its **logo** (the one the principal put in the Institute Profile, else the
+  first letter), principal with email and phone, number of students and accounts, status. There is **no "Add coaching"** and **no "Enter coaching"** on this page,
+  and no edit / password / switch-off buttons: the principal does those for the own coaching. Only **Delete** stays (and "Switch on" for a coaching that is already off).
 - **Approves or rejects** coachings that registered themselves. A coaching can add itself only through this approval.
-- "+ Add coaching" only sends a request too: the coaching waits in "Requests waiting for your approval" and works only after
-  the Super Admin presses **Approve**. Nothing becomes active without that Approve.
+- A coaching registers itself on the website ("Add coaching" / "Register your coaching", with an optional Gmail app password) and waits in "Requests waiting for your
+  approval"; it works only after the Super Admin presses **Approve**. Nothing becomes active without that Approve.
 - Everybody can change the **email they sign in with** (the current password is asked): Super Admin in "My account", the others in Team & Access.
 - Can add **another Super Admin** (so two people can help each other when one forgets the password: "Set new password" for the other, who then chooses an own one) and remove one. Nobody of a coaching can. A Super Admin who is alone can reset the password on the server computer ("Forgot your password?").
 - Keeps the **subscription** of every coaching: the monthly fee, payments ("Record a payment" moves the paid-until date on)
   and a Paid / Payment due badge; the top shows the income of this month.
   (The Super Admin page does not show the subscription now; the server keeps the part, only the page was cleared.)
-- Switch a coaching off or on, edit it, delete it (the name must be typed), set a new password for its principal
-  (the principal then has to choose an own password at the next sign in), and read the platform activity log.
-- Never sees a coaching's data (students, fees, exams...). To enter a coaching the Super Admin needs the
-  principal's own email and password, like anybody else. "Back to Super Admin" in the sidebar (or signing out)
-  returns to the list.
+- Deletes a coaching (the name must be typed) and reads the platform activity log. (The server routes to add / edit a coaching, to set a principal's password and to
+  switch it off are still there; no screen uses them.)
+- Never sees a coaching's data (students, fees, exams...). The Super Admin cannot enter a coaching from the page.
 
 ### Isolation and security
 
