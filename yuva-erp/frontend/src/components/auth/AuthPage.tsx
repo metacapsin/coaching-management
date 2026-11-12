@@ -195,7 +195,7 @@ const SuperForgotPassword: React.FC<{ initialEmail: string }> = ({ initialEmail 
 const PORTALS: { id: Portal; label: string; icon: LucideIcon; blurb: string }[] = [
   { id: 'super', label: 'Super Admin', icon: Crown, blurb: 'Approves coachings and manages all of them.' },
   { id: 'admin', label: 'Coaching Admin', icon: ShieldCheck, blurb: 'Principal of one coaching, with its own data.' },
-  { id: 'member', label: 'Teacher / Student', icon: Users, blurb: 'Teacher or student: sign in here, or create your account.' }
+  { id: 'member', label: 'Teacher / Student', icon: Users, blurb: 'Teacher or student: sign in here. The principal makes your account.' }
 ];
 
 const FEATURES = [
@@ -583,15 +583,6 @@ export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }>
               {t('New coaching?')}{' '}
               <button type="button" onClick={() => setRegistering(true)} className="font-semibold text-blue-600 hover:underline">
                 {t('Register your coaching')}
-              </button>
-            </div>
-          )}
-
-          {portal === 'member' && !memberSignup && (
-            <div className="mt-5 text-sm text-slate-600 text-center">
-              {t('New teacher or student?')}{' '}
-              <button type="button" onClick={() => setMemberSignup(true)} className="font-semibold text-blue-600 hover:underline">
-                {t('Create an account')}
               </button>
             </div>
           )}

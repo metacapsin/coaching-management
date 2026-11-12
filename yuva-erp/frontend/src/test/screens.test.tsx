@@ -42,10 +42,10 @@ describe('login page', () => {
     expect(screen.getByText('Forgot your password?')).not.toBeNull();
   });
 
-  it('offers "Create an account" to teachers and students', () => {
+  it('has no "Create an account" for teachers and students (the principal makes the accounts)', () => {
     render(<AuthPage />);
     fireEvent.click(screen.getByRole('button', { name: 'Teacher / Student' }));
-    expect(screen.getByText('Create an account')).not.toBeNull();
+    expect(screen.queryByText('Create an account')).toBeNull();
   });
 });
 
