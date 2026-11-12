@@ -138,6 +138,22 @@ code...) show the name AcademiaOS.
 When a student, a parent or a teacher forgets the password, the principal gets an email (from that person) when the code is asked for and when the new
 password was set; the code and the password are never in that email.
 
+## An address of the product for the emails (free, no domain)
+
+Every email that has no own Gmail of a coaching goes out from the account in `backend/.env`. Do not use a personal or the Super Admin's Gmail there:
+make a **new free Gmail only for the product** (for example `academiaos.app@gmail.com`), turn on 2-Step Verification, make an app password and write:
+
+```
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=academiaos.app@gmail.com
+SMTP_PASSWORD=<the 16 letters of the app password>
+SMTP_FROM=AcademiaOS <academiaos.app@gmail.com>
+```
+
+Then the inbox shows `AcademiaOS <academiaos.app@gmail.com>` as the sender (the same address in `SMTP_FROM` and `SMTP_USER` is needed: Gmail rewrites another one).
+Restart the backend after changing `.env`. (A real address on an own domain, like `noreply@academiaos.in`, needs a domain and an email service.)
+
 ## The own Gmail of a coaching
 
 By default every email goes out from the account of the platform (`SMTP_USER`). A principal can connect the own Gmail in **Institute Profile → Emails**

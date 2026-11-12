@@ -938,6 +938,7 @@ describe('Leave of a student: the student asks, the principal calls the parent a
     assert.deepEqual(to(mail), ['p@x.com', 'pa@x.com', 't@x.com']);
     const principalMail = mail.sent.find((m) => m[0] === 'p@x.com')!;
     assert.ok(principalMail[1].includes('Leave request') && principalMail[2].includes(reason) && principalMail[2].includes('call the parent'));
+    assert.ok(principalMail[1].includes('alice@x.com'), principalMail[1]); // the email of the student is in the SUBJECT: it shows in every inbox
     const teacherMail = mail.sent.find((m) => m[0] === 't@x.com')!;
     assert.ok(teacherMail[2].includes('Alice') && teacherMail[2].includes(reason) && teacherMail[2].includes('not answered yet')); // why she is not in the class
     assert.ok(mail.sent.find((m) => m[0] === 'pa@x.com')![2].includes('If this is not true'));
@@ -1028,7 +1029,7 @@ describe('Leave of a student: the student asks, the principal calls the parent a
     }
     const board = (await call('GET', '/api/sync', null, other))[1].institute;
     assert.ok(board.notificationLogs.every((l: any) => l.type !== 'leave'));
-    assert.ok(mail.sent[0][1].includes('Leave request'));
+    assert.ok(mail.sent[0][1].includes('Leave request') && mail.sent[0][1].includes('t@x.com'), mail.sent[0][1]); // the email of the teacher is in the subject
     const mail2 = captureMail();
     try {
       assert.equal((await call('PUT', `/api/leaves/${id}`, { decision: 'approved' }, admin))[0], 200);
@@ -1072,7 +1073,7 @@ describe('My Account: a student, a parent and a teacher change the password, the
       mail.stop();
     }
     assert.deepEqual(mail.sent.map((m) => m[0]), ['p@x.com']);
-    assert.ok(mail.sent[0][1].includes('Tina') && mail.sent[0][1].includes('mobile number'));
+    assert.ok(mail.sent[0][1].includes('Tina') && mail.sent[0][1].includes('mobile number') && mail.sent[0][1].includes('t@x.com'), mail.sent[0][1]);
     assert.ok(mail.sent[0][2].includes('9800000001') && mail.sent[0][2].includes('9811122233') && mail.sent[0][2].includes('Teacher'));
     assert.ok(mail.sent[0][2].includes('http')); // a link to sign in
   });

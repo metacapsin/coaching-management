@@ -56,7 +56,7 @@ async function tellPrincipalAboutReset(c: any, s: any, target: any, stage: 'aske
     await tellPrincipals(
       c,
       s,
-      asked ? `${target.name} (${kind}) forgot the password` : `${target.name} (${kind}) set a new password`,
+      asked ? `${target.name} (${target.email}) forgot the password` : `${target.name} (${target.email}) set a new password`,
       asked ? `${target.name} asked for a password reset code` : `${target.name} set a new password with the reset code`,
       asked
         ? [`${kind} ${target.name} forgot the password. A 6-digit code was sent to ${target.email}; with it the person can choose a new password. You can also set a new password in Team & Access.`, 'If this was not the person, nothing else is needed: the old password still works until the code is used.']
@@ -545,7 +545,7 @@ async function tellPrincipalAboutAccount(c: any, what: string, rows: [string, an
     await tellPrincipals(
       c,
       c.store,
-      `${u.name} (${kind}) changed ${what}`,
+      `${u.name} (${u.email}) changed ${what}`,
       `${u.name} changed ${what}`,
       [`${kind} ${u.name} changed ${what} of the own login.`, ...lines],
       [['Person', u.name], ['Role', kind], ['Email', u.email], ...rows, ['Coaching', coaching]],
@@ -987,10 +987,11 @@ async function emailAboutLeave(c: any, leave: any, stage: 'asked' | 'approved' |
     const teachers = isTeacherLeave ? [] : users.filter((u: any) => u.role === 'teacher' && (u.batchIds || []).includes(leave.batchId));
     // the person who asked
     const asker = isTeacherLeave ? users.find((u: any) => u.id === leave.teacherId) : users.find((u: any) => u.role === 'student' && !u.isParent && u.studentId === leave.studentId);
+    const askerEmail: string = (asker?.email || student?.email || '').trim(); // the email written for this person (it shows in the subject)
 
     if (stage === 'asked') {
       for (const a of admins) {
-        send(a.email, `Leave request: ${who} wants leave ${days}`, `${isTeacherLeave ? 'Teacher ' : ''}${who} has asked for leave ${days}`, [reasonLine, isTeacherLeave ? 'Please approve the leave or write why it is not given.' : 'Please call the parent to check the reason, then approve the leave or write why it is not given. You find the request on the Notice Board.'], { details: detailRows, button: ['Open the Notice Board', c.loginLink('admin')], name: a.name });
+        send(a.email, `Leave request: ${who}${askerEmail ? ` (${askerEmail})` : ''} wants leave ${days}`, `${isTeacherLeave ? 'Teacher ' : ''}${who} has asked for leave ${days}`, [reasonLine, isTeacherLeave ? 'Please approve the leave or write why it is not given.' : 'Please call the parent to check the reason, then approve the leave or write why it is not given. You find the request on the Notice Board.'], { details: detailRows, button: ['Open the Notice Board', c.loginLink('admin')], name: a.name });
       }
       if (!isTeacherLeave) {
         for (const pr of parents) {
