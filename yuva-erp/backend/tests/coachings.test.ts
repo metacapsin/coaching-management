@@ -490,6 +490,16 @@ describe('Coachings', () => {
     assert.equal((await alpha()).logoUrl, '');
   });
 
+  it('05d the card of a coaching counts the students, the teachers and the principal login', async () => {
+    const o = (await orgs()).find((x) => x.id === orgA);
+    const sync = (await call('GET', '/api/sync', null, adminA))[1];
+    assert.equal(o.principals, 1);
+    assert.equal(o.teachers, sync.users.filter((u: any) => u.role === 'teacher' && (u.status || 'active') === 'active').length);
+    assert.ok(o.teachers >= 1, 'Tina is a teacher');
+    assert.equal(o.students, sync.institute.students.length);
+    assert.ok(o.accounts > o.principals, 'accounts = all the logins');
+  });
+
   it('06 switching a coaching off and on', async () => {
     assert.equal((await call('POST', `/api/super/orgs/${orgB}/suspend`, null, sup))[0], 200);
     assert.equal((await call('GET', '/api/sync', null, adminB))[0], 401); // signed out

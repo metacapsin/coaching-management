@@ -20,7 +20,8 @@ import {
   Users,
   X,
   AlertTriangle,
-  Download
+  Download,
+  GraduationCap
 } from 'lucide-react';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { ChangeEmailForm } from '../auth/ChangeEmailForm';
@@ -579,22 +580,31 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
                   )}
 
                   {/* how big it is */}
-                  <div className="mt-3 grid grid-cols-2 gap-3">
-                    <div className="rounded-xl border border-slate-200 p-3 flex items-center gap-3">
-                      <span className="p-2 rounded-lg bg-indigo-50 text-indigo-600">
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    <div className="rounded-xl border border-slate-200 p-2.5 flex items-center gap-2">
+                      <span className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600">
                         <Users className="w-4 h-4" />
                       </span>
                       <div>
-                        <div className="text-lg font-bold leading-none text-slate-900">{o.students}</div>
+                        <div className="text-base font-bold leading-none text-slate-900">{o.students}</div>
                         <div className="text-[11px] text-slate-500 mt-1">Students</div>
                       </div>
                     </div>
-                    <div className="rounded-xl border border-slate-200 p-3 flex items-center gap-3">
-                      <span className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
+                    <div className="rounded-xl border border-slate-200 p-2.5 flex items-center gap-2">
+                      <span className="p-1.5 rounded-lg bg-sky-50 text-sky-600">
+                        <GraduationCap className="w-4 h-4" />
+                      </span>
+                      <div>
+                        <div className="text-base font-bold leading-none text-slate-900">{o.teachers}</div>
+                        <div className="text-[11px] text-slate-500 mt-1">Teachers</div>
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 p-2.5 flex items-center gap-2">
+                      <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600">
                         <KeyRound className="w-4 h-4" />
                       </span>
                       <div>
-                        <div className="text-lg font-bold leading-none text-slate-900">{o.accounts}</div>
+                        <div className="text-base font-bold leading-none text-slate-900">{o.principals}</div>
                         <div className="text-[11px] text-slate-500 mt-1">Accounts</div>
                       </div>
                     </div>

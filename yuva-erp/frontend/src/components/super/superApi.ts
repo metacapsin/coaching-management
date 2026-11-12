@@ -24,7 +24,9 @@ export interface OrgSummary {
   admin: { id: string; name: string; email: string; phone: string; resetRequestedAt?: string | null } | null;
   logoUrl?: string; // the address of the logo the principal put in the Institute Profile ('' when there is none)
   students: number;
-  accounts: number;
+  teachers: number;
+  principals: number; // the logins of the principal (1)
+  accounts: number; // all the logins of the coaching
   // what the coaching pays the platform
   monthlyFee: number;
   paidUntil: string | null;

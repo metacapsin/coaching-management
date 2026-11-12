@@ -235,7 +235,8 @@ route('/api/logo/<org_id>/<token>', ['GET'], 'public', async (c) => {
 /** What the super admin may see of a coaching: who runs it and how big it is. Never its data. */
 async function orgSummary(c: Ctx, org: any): Promise<any> {
   const tenant = c.root.forOrg(org.id);
-  const admins = (await tenant.usersAll()).filter((u) => u.role === 'admin');
+  const everybody = await tenant.usersAll();
+  const admins = everybody.filter((u) => u.role === 'admin');
   const admin = admins.length ? admins[0] : null;
   const { payments: _payments, ...rest } = org;
   // the logo of the coaching is its public face, so it is shown on the card (nothing else of the profile). The list only has the ADDRESS of
@@ -247,7 +248,9 @@ async function orgSummary(c: Ctx, org: any): Promise<any> {
     logoUrl: logoToken ? `/api/logo/${encodeURIComponent(org.id)}/${logoToken}` : '',
     admin: admin ? { id: admin.id, name: admin.name, email: admin.email, phone: admin.phone ?? '', resetRequestedAt: admin.resetRequestedAt ?? null } : null,
     students: await tenant.lists.students.countDocuments({}),
-    accounts: await tenant.userCount(),
+    teachers: everybody.filter((u) => u.role === 'teacher' && (u.status || 'active') === 'active').length,
+    principals: admins.length, // (the card shows it as "Accounts": the principal's own login)
+    accounts: everybody.length, // all the logins (the sentence of the delete box)
   };
 }
 
