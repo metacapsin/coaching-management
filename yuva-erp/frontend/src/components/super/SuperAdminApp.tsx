@@ -9,12 +9,9 @@ import {
   Crown,
   KeyRound,
   LogOut,
-  Pencil,
   PauseCircle,
   PlayCircle,
-  Plus,
   Trash2,
-  Lock,
   Search,
   UserPlus,
   History,
@@ -31,7 +28,7 @@ import { ApiError } from '../utils/api';
 import type { AuthUser } from '../utils/api';
 import { useAuth } from '../../Context/AuthContext';
 import { superApi, useOrgs } from './superApi';
-import type { ActivityEntry, NewCoaching, OrgStatus, OrgSummary } from './superApi';
+import type { ActivityEntry, OrgStatus, OrgSummary } from './superApi';
 
 const inputCls = 'w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500';
 
@@ -68,144 +65,6 @@ const Shell: React.FC<{ children: React.ReactNode; right?: React.ReactNode }> = 
 );
 
 // ---------- pop-ups ----------
-
-const AddCoachingModal: React.FC<{ onClose: () => void; onDone: (name: string) => void }> = ({ onClose, onDone }) => {
-  const [f, setF] = useState<NewCoaching>({ coachingName: '', city: '', adminName: '', phone: '', email: '', password: '', appPassword: '' });
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-  type TextField = keyof NewCoaching;
-  const set = (k: TextField) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setBusy(true);
-    try {
-      await superApi.add({ ...f, coachingName: f.coachingName.trim(), adminName: f.adminName.trim(), email: f.email.trim(), appPassword: (f.appPassword ?? '').trim() || undefined });
-      onDone(f.coachingName.trim());
-      onClose();
-    } catch (err) {
-      setError(errText(err));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const field = (label: string, key: TextField, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
-    <div>
-      <label className="block text-xs font-medium text-slate-700 mb-1">{label}</label>
-      <input value={f[key]} onChange={set(key)} className={inputCls} {...props} />
-    </div>
-  );
-
-  return (
-    <ModalShell title="Add a coaching" subtitle="It waits for your approval before it works" icon={Building2} iconClass="bg-indigo-600" width="lg" onClose={onClose}>
-      <form onSubmit={submit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {field('Name of the coaching *', 'coachingName')}
-          {field('City / area', 'city')}
-          {field('Principal (administrator) name *', 'adminName')}
-          {field('Principal mobile *', 'phone', { placeholder: '10-digit mobile number' })}
-          {field('Principal email *', 'email', { type: 'email', autoComplete: 'off' })}
-          {field('Password for the principal *', 'password', { type: 'text', autoComplete: 'off', placeholder: 'At least 8 characters, letters and numbers' })}
-          {field('Gmail app password of the principal (optional)', 'appPassword', { type: 'password', autoComplete: 'off', placeholder: '16 letters, only if the email is a Gmail' })}
-        </div>
-        <p className="text-[11px] text-slate-500">With the app password of the principal's Gmail, every email of this coaching goes out from the principal's own email address. The principal can also connect it later in Institute Profile.</p>
-        <div className="flex items-start gap-2 text-xs text-amber-900 p-3 rounded-lg border-2 border-amber-300 bg-amber-50">
-          <Clock className="w-4 h-4 shrink-0 mt-0.5" />
-          <span>
-            <strong>This only sends a request.</strong> The coaching goes to "Requests waiting for your approval". It becomes active, and its
-            principal can sign in, only after you press <strong>Approve</strong> there.
-          </span>
-        </div>
-        <p className="text-[11px] text-slate-500">Give this email and password to the principal. They choose an own password at the first sign in.</p>
-        {error && <p className="text-xs text-rose-600">{error}</p>}
-        <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg">
-            Cancel
-          </button>
-          <button type="submit" disabled={busy} className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 rounded-lg flex items-center gap-1.5">
-            <Check className="w-4 h-4" />
-            {busy ? 'Sending...' : 'Send for approval'}
-          </button>
-        </div>
-      </form>
-    </ModalShell>
-  );
-};
-
-const EditModal: React.FC<{ org: OrgSummary; onClose: () => void; onDone: () => void }> = ({ org, onClose, onDone }) => {
-  const [name, setName] = useState(org.name);
-  const [city, setCity] = useState(org.city);
-  const [error, setError] = useState('');
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await superApi.edit(org.id, { name: name.trim(), city: city.trim() });
-      onDone();
-      onClose();
-    } catch (err) {
-      setError(errText(err));
-    }
-  };
-  return (
-    <ModalShell title="Edit coaching" icon={Pencil} iconClass="bg-blue-600" width="sm" onClose={onClose}>
-      <form onSubmit={submit} className="p-6 space-y-4">
-        <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">Name</label>
-          <input value={name} onChange={e => setName(e.target.value)} className={inputCls} />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">City / area</label>
-          <input value={city} onChange={e => setCity(e.target.value)} className={inputCls} />
-        </div>
-        {error && <p className="text-xs text-rose-600">{error}</p>}
-        <div className="flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">
-            Cancel
-          </button>
-          <button type="submit" className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg">
-            Save
-          </button>
-        </div>
-      </form>
-    </ModalShell>
-  );
-};
-
-const PasswordModal: React.FC<{ org: OrgSummary; onClose: () => void; onDone: (msg: string) => void }> = ({ org, onClose, onDone }) => {
-  const [pw, setPw] = useState('');
-  const [error, setError] = useState('');
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await superApi.resetAdminPassword(org.id, pw);
-      onDone(`New password set for ${org.admin?.name}. Give it to them; they can change it after signing in.`);
-      onClose();
-    } catch (err) {
-      setError(errText(err));
-    }
-  };
-  return (
-    <ModalShell title="Set a new password" subtitle={`${org.name} · ${org.admin?.email}`} icon={KeyRound} iconClass="bg-amber-600" width="sm" onClose={onClose}>
-      <form onSubmit={submit} className="p-6 space-y-4">
-        <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">New password for the principal</label>
-          <input value={pw} onChange={e => setPw(e.target.value)} autoComplete="off" className={inputCls} placeholder="At least 8 characters, letters and numbers" />
-        </div>
-        {error && <p className="text-xs text-rose-600">{error}</p>}
-        <div className="flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">
-            Cancel
-          </button>
-          <button type="submit" className="px-4 py-2 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-lg">
-            Set password
-          </button>
-        </div>
-      </form>
-    </ModalShell>
-  );
-};
 
 const DeleteModal: React.FC<{ org: OrgSummary; onClose: () => void; onDone: (msg: string) => void }> = ({ org, onClose, onDone }) => {
   const [typed, setTyped] = useState('');
@@ -284,51 +143,6 @@ const MyPasswordModal: React.FC<{ onClose: () => void; onDone: (msg: string) => 
           </button>
           <button type="submit" className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg">
             Change
-          </button>
-        </div>
-      </form>
-    </ModalShell>
-  );
-};
-
-const EnterModal: React.FC<{ org: OrgSummary; onClose: () => void }> = ({ org, onClose }) => {
-  const { signIn } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setBusy(true);
-    // Only the principal of THIS coaching is let in; the server checks it, not this screen
-    const result = await signIn({ email: email.trim(), password, remember: false, portal: 'admin', orgId: org.id });
-    setBusy(false);
-    if (!result.ok) setError(result.error || 'Could not sign in.');
-  };
-
-  return (
-    <ModalShell title={`Enter ${org.name}`} subtitle="Sign in with this coaching's principal email and password" icon={Lock} iconClass="bg-indigo-600" width="sm" onClose={onClose}>
-      <form onSubmit={submit} className="p-6 space-y-4">
-        <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-600">
-          Only the principal of this coaching can enter. Not even the Super Admin can open it without that login.
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">Principal email</label>
-          <input type="email" autoFocus value={email} onChange={e => setEmail(e.target.value)} autoComplete="off" className={inputCls} />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">Password</label>
-          <PasswordInput value={password} onChange={e => setPassword(e.target.value)} autoComplete="off" className={inputCls} />
-        </div>
-        {error && <p className="text-xs text-rose-600">{error}</p>}
-        <div className="flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">
-            Cancel
-          </button>
-          <button type="submit" disabled={busy} className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 rounded-lg">
-            {busy ? 'Signing in...' : 'Enter coaching'}
           </button>
         </div>
       </form>
@@ -419,8 +233,7 @@ const Dashboard: React.FC<{ user: AuthUser; onSignOut: () => void }> = ({ user, 
   const { orgs, error, loaded, reload } = useOrgs(true);
   const [notice, setNotice] = useState<{ type: 'ok' | 'error'; text: string; wa?: string } | null>(null);
   const [modal, setModal] = useState<
-    | { kind: 'add' }
-    | { kind: 'edit' | 'password' | 'delete' | 'enter'; org: OrgSummary }
+    | { kind: 'delete'; org: OrgSummary }
     | { kind: 'mine' }
     | null
   >(null);
@@ -562,13 +375,6 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
             <Download className="w-4 h-4" />
             Download list (CSV)
           </button>
-          <button
-            onClick={() => setModal({ kind: 'add' })}
-            className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm flex items-center gap-1.5"
-          >
-            <Plus className="w-5 h-5" />
-            Add coaching
-          </button>
         </div>
       </div>
 
@@ -619,7 +425,7 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
             No coaching is waiting for approval
           </div>
           A coaching owner sends a request from the login page (Coaching Admin tab, "Register your coaching"). It appears here with Approve and
-          Reject. A coaching you add with <strong>+ Add coaching</strong> waits here too, until you press Approve.
+          Reject. This page is your record of all the coachings: you can look at them here, you cannot enter one.
         </section>
       )}
       {pending.length > 0 && (
@@ -693,22 +499,15 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
         <div className="bg-white border border-slate-200 rounded-xl py-14 text-center shadow-xs">
           <Building2 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
           <p className="text-sm font-medium text-slate-700">No coaching yet</p>
-          <p className="text-xs text-slate-400 mt-1">Press + Add coaching, or wait for requests from the login page.</p>
+          <p className="text-xs text-slate-400 mt-1">A coaching appears here when its owner registers on the login page.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {shown.map(o => {
-            const canEnter = o.status === 'active';
             return (
               <div
                 key={o.id}
-                role={canEnter ? 'button' : undefined}
-                tabIndex={canEnter ? 0 : undefined}
-                onClick={() => canEnter && setModal({ kind: 'enter', org: o })}
-                onKeyDown={e => canEnter && e.key === 'Enter' && setModal({ kind: 'enter', org: o })}
-                className={`bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden flex flex-col transition-shadow ${
-                  canEnter ? 'cursor-pointer hover:shadow-md hover:border-indigo-300' : 'opacity-80'
-                }`}
+                className={`bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden flex flex-col ${o.status === 'active' ? '' : 'opacity-80'}`}
               >
                 <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
                   <h3 className="flex items-center gap-2 text-sm font-semibold min-w-0">
@@ -748,13 +547,7 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
                   </div>
                 </div>
                 <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between gap-2" onClick={e => e.stopPropagation()}>
-                  {canEnter ? (
-                    <button onClick={() => setModal({ kind: 'enter', org: o })} className="text-xs font-semibold text-blue-600 hover:underline flex items-center gap-1">
-                      <Lock className="w-3.5 h-3.5" />
-                      Enter coaching →
-                    </button>
-                  ) : (
-                    o.status === 'pending' ? (
+                  {o.status === 'pending' ? (
                       <div className="flex gap-1.5">
                         <button
                           onClick={() => decide('approve', o)}
@@ -770,9 +563,8 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
                         </button>
                       </div>
                     ) : (
-                      <span className="text-[11px] text-slate-400">Switch it on again to enter</span>
-                    )
-                  )}
+                      <span className="text-[11px] text-slate-400">{o.status === 'suspended' ? 'Switched off' : ''}</span>
+                    )}
                   <div className="flex gap-1">
                     {o.status === 'active' && o.id !== 'default' && (
                       <button
@@ -788,14 +580,6 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
                         <PlayCircle className="w-4 h-4" />
                       </button>
                     )}
-                    {o.admin && (
-                      <button title="Set a new password for the principal" onClick={() => setModal({ kind: 'password', org: o })} className="p-1.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg">
-                        <KeyRound className="w-4 h-4" />
-                      </button>
-                    )}
-                    <button title="Edit" onClick={() => setModal({ kind: 'edit', org: o })} className="p-1.5 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg">
-                      <Pencil className="w-4 h-4" />
-                    </button>
                     {o.id !== 'default' && (
                       <button title="Delete" onClick={() => setModal({ kind: 'delete', org: o })} className="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg">
                         <Trash2 className="w-4 h-4" />
@@ -811,16 +595,7 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
 
       <ActivityPanel />
 
-      {modal?.kind === 'add' && <AddCoachingModal onClose={() => setModal(null)} onDone={name => {
-          flash('ok', `${name} is waiting for your approval. Press Approve to make it active.`);
-          setFilter('pending');
-          reload();
-          setTimeout(() => pendingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 400);
-        }} />}
-      {modal?.kind === 'edit' && <EditModal org={modal.org} onClose={() => setModal(null)} onDone={() => { flash('ok', 'Saved.'); reload(); }} />}
-      {modal?.kind === 'password' && <PasswordModal org={modal.org} onClose={() => setModal(null)} onDone={msg => flash('ok', msg)} />}
       {modal?.kind === 'delete' && <DeleteModal org={modal.org} onClose={() => setModal(null)} onDone={msg => { flash('ok', msg); reload(); }} />}
-      {modal?.kind === 'enter' && <EnterModal org={modal.org} onClose={() => setModal(null)} />}
       {modal?.kind === 'mine' && <MyPasswordModal onClose={() => setModal(null)} onDone={msg => flash('ok', msg)} />}
     </Shell>
   );
