@@ -223,9 +223,12 @@ async function orgSummary(c: Ctx, org: any): Promise<any> {
   const admins = (await tenant.usersAll()).filter((u) => u.role === 'admin');
   const admin = admins.length ? admins[0] : null;
   const { payments: _payments, ...rest } = org;
+  // the logo of the coaching is its public face, so it is shown on the card (nothing else of the profile): only a real, small picture
+  const logo = (await tenant.profile())?.logo;
   return {
     ...rest,
     ...plan(org),
+    logo: typeof logo === 'string' && /^data:image\/(png|jpeg|webp|gif|svg\+xml);base64,/.test(logo) && logo.length < 400_000 ? logo : '',
     admin: admin ? { id: admin.id, name: admin.name, email: admin.email, phone: admin.phone ?? '', resetRequestedAt: admin.resetRequestedAt ?? null } : null,
     students: await tenant.lists.students.countDocuments({}),
     accounts: await tenant.userCount(),

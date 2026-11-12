@@ -384,6 +384,25 @@ describe('Coachings', () => {
     assert.equal((await loginTo('a@x.com', 'no-such-coaching'))[0], 401);
   });
 
+  it('05c the logo of a coaching shows on its card for the super admin, and nothing else of the profile', async () => {
+    const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+    const alpha = async () => (await orgs()).find((o) => o.name === 'Alpha');
+    assert.equal((await alpha()).logo, ''); // no logo yet: the card shows the first letter
+    assert.equal((await call('PUT', '/api/institute', { changes: { profile: { name: 'Alpha', logo: PNG, upiId: 'secret@upi', address: 'private road' } } }, adminA))[0], 200);
+    const seen = await alpha();
+    assert.equal(seen.logo, PNG); // the logo of the principal comes to the card
+    assert.ok(!JSON.stringify(seen).includes('secret@upi') && !JSON.stringify(seen).includes('private road')); // nothing else of the profile
+    // not a picture / too big: not shown
+    await call('PUT', '/api/institute', { changes: { profile: { name: 'Alpha', logo: 'javascript:alert(1)' } } }, adminA);
+    assert.equal((await alpha()).logo, '');
+    await call('PUT', '/api/institute', { changes: { profile: { name: 'Alpha', logo: 'data:image/png;base64,' + 'A'.repeat(450_000) } } }, adminA);
+    assert.equal((await alpha()).logo, '');
+    // the principal takes the logo away: the card goes back to the letter
+    await call('PUT', '/api/institute', { changes: { profile: { name: 'Alpha', logo: PNG } } }, adminA);
+    await call('PUT', '/api/institute', { changes: { profile: { name: 'Alpha' } } }, adminA);
+    assert.equal((await alpha()).logo, '');
+  });
+
   it('06 switching a coaching off and on', async () => {
     assert.equal((await call('POST', `/api/super/orgs/${orgB}/suspend`, null, sup))[0], 200);
     assert.equal((await call('GET', '/api/sync', null, adminB))[0], 401); // signed out

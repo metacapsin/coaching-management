@@ -22,6 +22,7 @@ export interface OrgSummary {
   status: OrgStatus;
   createdAt: string;
   admin: { id: string; name: string; email: string; phone: string; resetRequestedAt?: string | null } | null;
+  logo?: string; // the logo the principal put in the Institute Profile ('' when there is none)
   students: number;
   accounts: number;
   // what the coaching pays the platform
