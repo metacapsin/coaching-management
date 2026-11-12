@@ -254,6 +254,58 @@ describe('Coachings', () => {
     await call('PUT', '/api/institute', { changes: { students: { remove: ['k1', 'k2'] }, exams: { remove: ['ex9'] } } }, adminA);
   });
 
+  it('02i2 a test notice and a notice of the Notice Board reach the students, the parents and the teachers (the principal and the teacher can send)', async () => {
+    const kid = (id: string, email: string, parentEmail: string) => ({ id, rollNo: id, name: 'Kid ' + id, email, phone: '9811122233', parentName: 'Parent ' + id, parentEmail, parentPhone: '9811100000', grade: 'Class 12', courseId: 'c1', batchId: 'bx', targetExam: 'JEE', dateOfAdmission: '2026-11-01', status: 'active', photoUrl: '/avatar.svg', address: '', totalFees: 1000, discount: 0, feePaid: 0 });
+    const exam = (id: string, subject: string, batchId = 'bx') => ({ id, code: id, title: 'Test ' + id, batchId, batchName: 'Batch X', subject, date: '2026-12-01', maxMarks: 100, passMarks: 35, status: 'scheduled', syllabusTopics: ['Motion'], results: {} });
+    await call('PUT', '/api/institute', { changes: { students: { upsert: [kid('n1', 'n1s@x.com', 'n1p@x.com'), kid('n2', '', '')] }, exams: { upsert: [exam('exp', 'Physics'), exam('exm', 'Maths'), exam('exo', 'Physics', 'other')] } } }, adminA);
+    const tinaId = (await call('GET', '/api/sync', null, adminA))[1].users.find((u: any) => u.email === 'tina@x.com').id;
+    assert.equal((await call('PUT', `/api/users/${tinaId}/batches`, { batchIds: ['bx'] }, adminA))[0], 200);
+    const [ls, ld] = await call('POST', '/api/auth/login', { email: 'tina@x.com', password: 'Teach#12345', portal: 'member' });
+    assert.equal(ls, 200);
+    const tina = ld.token;
+    const to = (m: any[]) => m.map((x) => x[0]).sort();
+    const send = async (examId: string, token: string) => {
+      const mail = captureMail();
+      try {
+        const [status, data] = await call('POST', '/api/exams/notice-email', { examId }, token);
+        return { status, data, to: to(mail.sent) };
+      } finally {
+        mail.stop();
+      }
+    };
+    // the teacher sends the test of the own subject: the student and the parent (not himself)
+    let r = await send('exp', tina);
+    assert.equal(r.status, 200);
+    assert.deepEqual(r.to, ['n1p@x.com', 'n1s@x.com']);
+    assert.equal(r.data.noEmail, 1); // Kid n2: nobody has an email
+    // the principal sends it: the same, and the teacher of the batch too (not the principal)
+    r = await send('exp', adminA);
+    assert.deepEqual(r.to, ['n1p@x.com', 'n1s@x.com', 'tina@x.com']);
+    // a teacher cannot send the test of another subject or of a batch that is not his
+    assert.equal((await send('exm', tina)).status, 403);
+    assert.equal((await send('exo', tina)).status, 403);
+    // a notice of the Notice Board: everybody gets it once; saving it again does not mail again
+    const notice = (id: string, audience: string, extra: any = {}) => ({ id, title: 'Holiday ' + id, body: 'The coaching is closed on Monday.', audience, date: '2026-11-12', ...extra });
+    const put = async (changes: any, token: string) => {
+      const mail = captureMail();
+      try {
+        const [status] = await call('PUT', '/api/institute', { changes }, token);
+        return { status, to: to(mail.sent) };
+      } finally {
+        mail.stop();
+      }
+    };
+    r = (await put({ announcements: { upsert: [notice('na1', 'all')] } }, adminA)) as any;
+    assert.equal(r.status, 200);
+    assert.deepEqual(r.to.filter((x: string) => ['n1p@x.com', 'n1s@x.com', 'tina@x.com', 'a@x.com'].includes(x)), ['n1p@x.com', 'n1s@x.com', 'tina@x.com']);
+    assert.deepEqual((await put({ announcements: { upsert: [notice('na1', 'all', { body: 'Changed' })] } }, adminA)).to, []);
+    assert.deepEqual((await put({ announcements: { upsert: [notice('na2', 'teachers')] } }, adminA)).to.filter((x: string) => ['n1p@x.com', 'n1s@x.com', 'tina@x.com'].includes(x)), ['tina@x.com']);
+    // a teacher posts a notice to the own batch: the students and the parents (not himself, not the other teachers' batches)
+    assert.deepEqual((await put({ announcements: { upsert: [notice('na3', 'batch', { batchId: 'bx', batchName: 'Batch X' })] } }, tina)).to, ['n1p@x.com', 'n1s@x.com']);
+    await call('PUT', '/api/institute', { changes: { students: { remove: ['n1', 'n2'] }, exams: { remove: ['exp', 'exm', 'exo'] }, announcements: { remove: ['na1', 'na2', 'na3'] } } }, adminA);
+    await call('PUT', `/api/users/${tinaId}/batches`, { batchIds: [] }, adminA);
+  });
+
   it('02j the parent is emailed when the child is marked absent, once for each day', async () => {
     const today = new Date().toISOString().slice(0, 10);
     const kid = { id: 'ab1', rollNo: 'ab1', name: 'Absent Kid', email: '', phone: '9811122233', parentName: 'Absent Parent', parentEmail: 'abparent@x.com', parentPhone: '9811100000', grade: 'Class 12', courseId: 'c1', batchId: 'bq', targetExam: 'JEE', dateOfAdmission: '2026-11-01', status: 'active', photoUrl: '/avatar.svg', address: '', totalFees: 1000, discount: 0, feePaid: 0 };

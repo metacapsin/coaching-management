@@ -626,32 +626,75 @@ route('/api/fees/notice-email', ['POST'], 'user', async (c) => {
   return { notified: sent ? 'sent' : 'no-email' };
 });
 
-/** The office tells the parents of a batch about a test that is coming (date, subject, marks, what it covers). Every parent with
- * an email gets it; the others are counted, the office tells them by WhatsApp. */
+interface Receiver { email: string; name: string; portal: string; }
+
+/** Who gets the email of a batch (or of the whole coaching): the students (the email of the admission and of the login), the parents
+ * (the parent email of the admission and of a parent login) and the teachers. One address once; `except` (the sender) is left out. */
+async function receiversOf(s: any, scope: { batchId?: string; students?: boolean; parents?: boolean; teachers?: boolean }, except: string): Promise<{ list: Receiver[]; noEmail: number }> {
+  const users = (await s.usersAll()).filter((u: any) => (u.status || 'active') === 'active');
+  const kids = (await s.find('students')).filter((x: any) => x.status !== 'inactive' && (!scope.batchId || x.batchId === scope.batchId));
+  const seen = new Set<string>([except.toLowerCase()]);
+  const list: Receiver[] = [];
+  const add = (email: any, name: any, portal: string): boolean => {
+    const to = text(email, 150).toLowerCase();
+    if (!to.includes('@')) return false;
+    if (!seen.has(to)) {
+      seen.add(to);
+      list.push({ email: to, name: text(name, 120), portal });
+    }
+    return true;
+  };
+  let noEmail = 0;
+  for (const st of kids) {
+    let reached = false;
+    if (scope.students !== false) {
+      const login = users.find((u: any) => u.role === 'student' && !u.isParent && u.studentId === st.id);
+      const a = add(login?.email, login?.name || st.name, 'member');
+      const b = add(st.email, st.name, 'member');
+      reached = reached || a || b;
+    }
+    if (scope.parents !== false) {
+      const parentLogin = users.find((u: any) => u.role === 'student' && u.isParent && u.studentId === st.id);
+      const a = add(st.parentEmail, st.parentName, 'parent');
+      const b = add(parentLogin?.email, parentLogin?.name || st.parentName, 'parent');
+      reached = reached || a || b;
+    }
+    if (!reached) noEmail++; // nobody of this student (neither the student nor the parent) has an email
+  }
+  if (scope.teachers !== false) {
+    for (const u of users) {
+      if (u.role === 'teacher' && (!scope.batchId || (u.batchIds || []).includes(scope.batchId))) add(u.email, u.name, 'member');
+    }
+  }
+  return { list, noEmail };
+}
+
+/** A test is coming: the students of the batch, their parents and the teachers of the batch get the date, the subject, the marks and what
+ * it covers. The principal can send it for any batch; a teacher only for a test of the own subject in the own batches. */
 route('/api/exams/notice-email', ['POST'], 'user', async (c) => {
-  if (c.user.role !== 'admin') throw new HttpError(403, 'Only the principal can send a test notice.');
   const s = c.store;
   const exam = (await s.find('exams')).find((x: any) => x.id === c.body().examId);
   if (!exam) throw new HttpError(404, 'Test not found.');
+  if (c.user.role === 'teacher') {
+    const own = (c.user.batchIds || []).includes(exam.batchId);
+    const sameSubject = String(c.user.subject || '').trim().toLowerCase() === String(exam.subject || '').trim().toLowerCase();
+    if (!own || !sameSubject) throw new HttpError(403, 'You can send a test notice only for a test of your own subject in your own batches.');
+  } else if (c.user.role !== 'admin') {
+    throw new HttpError(403, 'Only the principal or the teacher can send a test notice.');
+  }
   const coaching = await coachingName(c, s);
-  const students = (await s.find('students')).filter((x: any) => x.batchId === exam.batchId && x.status !== 'inactive');
+  const { list, noEmail } = await receiversOf(s, { batchId: exam.batchId }, c.user.email || '');
+  const topics = Array.isArray(exam.syllabusTopics) ? exam.syllabusTopics.filter(Boolean).join(', ') : '';
   let sent = 0;
-  let noEmail = 0;
-  for (const st of students) {
-    const to = text(st.parentEmail, 150).toLowerCase();
-    if (!to) {
-      noEmail++;
-      continue;
-    }
-    const topics = Array.isArray(exam.syllabusTopics) ? exam.syllabusTopics.filter(Boolean).join(', ') : '';
+  for (const r of list) {
     const [ok] = mail(
-      to,
-      `Test of ${st.name} on ${exam.date}`,
+      r.email,
+      `Test: ${exam.title} on ${exam.date}`,
       'A test is coming',
-      [`${st.name} has a test at ${coaching}. Please make sure the preparation is done.`],
+      [`There is a test at ${coaching} for ${exam.batchName || 'the batch'}. Please make sure the preparation is done.`],
       {
         details: [
-          ['Student', st.name],
+          ['Batch', exam.batchName || ''],
           ['Test', exam.title],
           ['Subject', exam.subject],
           ['Date', exam.date],
@@ -659,9 +702,9 @@ route('/api/exams/notice-email', ['POST'], 'user', async (c) => {
           ['It covers', topics],
         ],
         from: fromPerson(c.user, coaching),
-        button: ['Sign in as Parent', c.loginLink('parent')],
-        note: 'In the parent login you see the tests, the results, the attendance and the fees of your child.',
-        name: st.parentName,
+        button: [r.portal === 'parent' ? 'Sign in as Parent' : 'Open AcademiaOS', c.loginLink(r.portal)],
+        note: r.portal === 'parent' ? 'In the parent login you see the tests, the results, the attendance and the fees of your child.' : 'You see the tests and the results in your login.',
+        name: r.name,
       },
     );
     if (ok) sent++;
@@ -669,6 +712,30 @@ route('/api/exams/notice-email', ['POST'], 'user', async (c) => {
   await s.audit(c.user, 'test-notice-email', `${exam.title}: ${sent} email(s)`);
   return { sent, noEmail };
 });
+
+/** A NEW notice of the Notice Board (a holiday, "the coaching is closed"...) also goes by email: to everybody of its audience (all = teachers,
+ * students and parents; teachers; a batch = its students, parents and teachers). The author does not get his own notice. A mail that
+ * fails never breaks the saving of the notice. */
+async function mailNotices(c: any, s: any, known: string[], upsert: any[]): Promise<void> {
+  const fresh = upsert.filter((a) => a && typeof a.id === 'string' && !known.includes(a.id));
+  if (!fresh.length) return;
+  const coaching = await coachingName(c, s);
+  for (const a of fresh) {
+    if (a.audience === 'batch' && !a.batchId) continue;
+    const scope = a.audience === 'teachers' ? { students: false, parents: false } : a.audience === 'batch' ? { batchId: a.batchId } : {};
+    const { list } = await receiversOf(s, scope, c.user.email || '');
+    const title = text(a.title, 200);
+    for (const r of list) {
+      mail(r.email, `Notice: ${title}`, title, [text(a.body, 2000)], {
+        details: [['Coaching', coaching], ['For', a.audience === 'batch' ? a.batchName || 'a batch' : a.audience === 'teachers' ? 'The teachers' : 'Everybody']],
+        from: fromPerson(c.user, coaching),
+        button: [r.portal === 'parent' ? 'Sign in as Parent' : 'Open AcademiaOS', c.loginLink(r.portal)],
+        note: 'You find this notice on the Notice Board too.',
+        name: r.name,
+      });
+    }
+  }
+}
 
 /** The browser asks for changes since the version it already has. */
 route('/api/sync', ['GET'], 'user', async (c) => {
@@ -723,6 +790,9 @@ route('/api/institute', ['PUT'], 'user', async (c) => {
   const saved: any[] = Array.isArray(b.changes?.attendance?.upsert) ? b.changes.attendance.upsert : [];
   const ids = saved.map((a) => a?.id).filter((i) => typeof i === 'string');
   const before = new Map<string, any>(ids.length ? (await s.find('attendance', { _id: { $in: ids } })).map((x: any) => [x.id, x]) : []);
+  const notices: any[] = Array.isArray(b.changes?.announcements?.upsert) ? b.changes.announcements.upsert : [];
+  const noticeIds = notices.map((a) => a?.id).filter((i) => typeof i === 'string');
+  const knownNotices: string[] = noticeIds.length ? (await s.find('announcements', { _id: { $in: noticeIds } })).map((x: any) => x.id) : [];
   const [summary, adjusted] = await applyChanges(c.user, s, b.changes);
   if (summary.length) {
     await s.bump();
@@ -733,6 +803,13 @@ route('/api/institute', ['PUT'], 'user', async (c) => {
       await mailAbsences(c, s, saved, before); // a mail that fails never breaks the saving of the roll call
     } catch {
       /* the roll call is saved all the same */
+    }
+  }
+  if (notices.length) {
+    try {
+      await mailNotices(c, s, knownNotices, notices);
+    } catch {
+      /* the notice is saved all the same */
     }
   }
   // adjusted: how many things the server changed itself (renumbered, photo moved): the browser must fetch them

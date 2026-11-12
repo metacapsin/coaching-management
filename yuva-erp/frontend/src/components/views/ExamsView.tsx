@@ -106,10 +106,10 @@ export const ExamsView: React.FC = () => {
     // The same notice as when the test was scheduled: ALL the parents of the batch (the parent login, and WhatsApp in Parent Broadcasts)
     const queued = notifyTest(exam, 'again');
     let emailPart = '';
-    if (office) {
+    if (office || user?.role === 'teacher') {
       try {
         const r = await emailTestNotice(exam.id);
-        emailPart = r.sent > 0 ? ` ${r.sent} parent${r.sent === 1 ? ' was' : 's were'} also emailed.` : '';
+        emailPart = r.sent > 0 ? ` ${r.sent} email${r.sent === 1 ? ' was' : 's were'} also sent (students, parents and teachers of the batch).` : '';
       } catch {
         /* the messages are sent all the same */
       }
