@@ -30,7 +30,7 @@ const Table: React.FC<{ head: string[]; rows: (string | number)[][]; right?: num
       <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase">
         <tr>
           {head.map((h, i) => (
-            <th key={h} className={`p-3 ${right.includes(i) ? 'text-right' : ''}`}>
+            <th key={h} className={`p-3 whitespace-nowrap ${right.includes(i) ? 'text-right' : ''}`}>
               {h}
             </th>
           ))}
@@ -49,7 +49,7 @@ const Table: React.FC<{ head: string[]; rows: (string | number)[][]; right?: num
               {r.map((c, j) => (
                 <td
                   key={j}
-                  className={`p-3 ${right.includes(j) ? 'text-right font-mono' : ''} ${
+                  className={`p-3 align-top ${typeof c !== 'string' ? '' : c.includes('\n') ? 'whitespace-pre-line leading-5' : /^\d{4}-\d\d-\d\d$/.test(c) ? 'whitespace-nowrap' : ''} ${right.includes(j) ? 'text-right font-mono' : ''} ${
                     j === profitCol ? (String(c).endsWith('(Loss)') ? 'font-bold text-rose-600' : 'font-bold text-emerald-700') : j === 0 ? 'font-semibold text-slate-900' : 'text-slate-700'
                   }`}
                 >
@@ -130,9 +130,9 @@ export const ReportsView: React.FC = () => {
             .filter(st => st.batchId === e.batchId && (st.status !== 'inactive' || e.results[st.id]))
             .map(st => {
               const r = e.results[st.id];
-              return `${st.name} (${!r ? 'marks not entered' : r.absent ? 'absent' : `${r.marksObtained}/${e.maxMarks}`})`;
+              return `${st.name} - ${!r ? 'not entered' : r.absent ? 'absent' : `${r.marksObtained}/${e.maxMarks}`}`;
             })
-            .join(', ');
+            .join('\n'); // one student on each line
           return {
             people,
             title: e.title,
@@ -274,7 +274,8 @@ export const ReportsView: React.FC = () => {
   };
   const current = tables[report];
 
-  const exportCsv = () => downloadCsv(`report_${report}_${toLocalISODate()}.csv`, current.head, current.rows);
+  // (in a file, the lines of a cell are joined with ;)
+  const exportCsv = () => downloadCsv(`report_${report}_${toLocalISODate()}.csv`, current.head, current.rows.map(r => r.map(c => (typeof c === 'string' ? c.replace(/\n/g, '; ') : c))));
 
   return (
     <div className="space-y-6">
