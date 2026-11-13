@@ -160,7 +160,7 @@ export const AttendanceView: React.FC = () => {
           {/* Batch Selector */}
           <div className="w-full sm:w-auto">
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
-              Show
+              Batch
             </label>
             <Select
               value={selectedBatchId}
@@ -180,7 +180,7 @@ export const AttendanceView: React.FC = () => {
           {/* Date Picker */}
           <div>
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
-              Lecture Date
+              Date
             </label>
             <DateInput
               value={selectedDate}
