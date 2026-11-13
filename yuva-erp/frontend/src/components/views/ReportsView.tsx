@@ -173,21 +173,25 @@ export const ReportsView: React.FC = () => {
     [exams, students]
   );
 
-  // The admissions as a plain list: every student with the month, the date, the roll number and the batch (newest first)
-  const adm = useMemo(
-    () =>
-      [...students]
-        .sort((a, b) => b.dateOfAdmission.localeCompare(a.dateOfAdmission) || a.name.localeCompare(b.name))
-        .map(s => ({
-          month: monthLabel(monthKey(s.dateOfAdmission)),
-          name: s.name,
-          roll: s.rollNo,
-          batch: batches.find(b => b.id === s.batchId)?.name || '-',
-          date: s.dateOfAdmission,
-          status: s.status === 'inactive' ? 'Inactive' : 'Active'
-        })),
-    [students, batches]
-  );
+  // The admissions as a plain list: every student and every teacher who joined, with the month, the date, the batch (or the subject of the
+  // teacher) and the type (newest first)
+  const { users } = useAuth();
+  const adm = useMemo(() => {
+    const kids = students.map(s => ({
+      date: s.dateOfAdmission,
+      type: 'Student',
+      name: s.name,
+      roll: s.rollNo,
+      where: batches.find(b => b.id === s.batchId)?.name || '-',
+      status: s.status === 'inactive' ? 'Inactive' : 'Active'
+    }));
+    const teachers = users
+      .filter(u => u.role === 'teacher' && u.status !== 'pending')
+      .map(u => ({ date: (u.createdAt || '').slice(0, 10), type: 'Teacher', name: u.name, roll: '-', where: u.subject || '-', status: 'Active' }));
+    return [...kids, ...teachers]
+      .sort((a, b) => b.date.localeCompare(a.date) || a.name.localeCompare(b.name))
+      .map(a => ({ ...a, month: a.date ? monthLabel(monthKey(a.date)) : '-' }));
+  }, [students, batches, users]);
 
   // the batches side by side: which one needs attention
   const cmp = useMemo(
@@ -300,8 +304,8 @@ export const ReportsView: React.FC = () => {
       right: [3, 4, 5, 6, 7]
     },
     admissions: {
-      head: ['Month', 'Student', 'Roll no', 'Batch', 'Date of admission', 'Status'],
-      rows: adm.map(a => [a.month, a.name, a.roll, a.batch, a.date, a.status]) as (string | number)[][],
+      head: ['Month', 'Type', 'Name', 'Roll no', 'Batch / subject', 'Date joined', 'Status'],
+      rows: adm.map(a => [a.month, a.type, a.name, a.roll, a.where, a.date || '-', a.status]) as (string | number)[][],
       right: []
     }
   };
