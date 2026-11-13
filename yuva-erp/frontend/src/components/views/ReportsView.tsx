@@ -173,11 +173,21 @@ export const ReportsView: React.FC = () => {
     [exams, students]
   );
 
-  const adm = useMemo(() => {
-    const byMonth = new Map<string, number>();
-    for (const s of students) byMonth.set(monthKey(s.dateOfAdmission), (byMonth.get(monthKey(s.dateOfAdmission)) || 0) + 1);
-    return [...byMonth.entries()].sort((a, b) => b[0].localeCompare(a[0]));
-  }, [students]);
+  // The admissions as a plain list: every student with the month, the date, the roll number and the batch (newest first)
+  const adm = useMemo(
+    () =>
+      [...students]
+        .sort((a, b) => b.dateOfAdmission.localeCompare(a.dateOfAdmission) || a.name.localeCompare(b.name))
+        .map(s => ({
+          month: monthLabel(monthKey(s.dateOfAdmission)),
+          name: s.name,
+          roll: s.rollNo,
+          batch: batches.find(b => b.id === s.batchId)?.name || '-',
+          date: s.dateOfAdmission,
+          status: s.status === 'inactive' ? 'Inactive' : 'Active'
+        })),
+    [students, batches]
+  );
 
   // the batches side by side: which one needs attention
   const cmp = useMemo(
@@ -290,9 +300,9 @@ export const ReportsView: React.FC = () => {
       right: [3, 4, 5, 6, 7]
     },
     admissions: {
-      head: ['Month', 'New admissions'],
-      rows: adm.map(([k, n]) => [monthLabel(k), n]) as (string | number)[][],
-      right: [1]
+      head: ['Month', 'Student', 'Roll no', 'Batch', 'Date of admission', 'Status'],
+      rows: adm.map(a => [a.month, a.name, a.roll, a.batch, a.date, a.status]) as (string | number)[][],
+      right: []
     }
   };
   const current = tables[report];
