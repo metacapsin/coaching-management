@@ -6,6 +6,7 @@ import { CourseModal } from '../modals/CourseModal';
 import { CancelReceiptModal } from '../modals/CancelReceiptModal';
 import { Pager } from '../ui/Pager';
 import { usePaged } from '../utils/usePaged';
+import { emailFeeNotice } from '../utils/api';
 import { daysBetween, downloadCsv, fillTemplate, formatDate, openWhatsApp, payPageLink, plural, toLocalISODate, withPayLink } from '../utils/helpers';
 import {
   CreditCard,
@@ -13,6 +14,7 @@ import {
   Plus,
   Printer,
   MessageSquare,
+  Mail,
   CheckCircle2,
   Download,
   Ban,
@@ -40,8 +42,7 @@ interface DefaulterRow {
 export const FeesView: React.FC<FeesViewProps> = ({
   onOpenRecordPayment,
   onViewReceipt,
-  onSelectStudent,
-  onCollectPayment
+  onSelectStudent
 }) => {
   const { transactions, students, courses, batches, profile, sendNotification, templates, deleteCourse, notificationLogs } = useInstitute();
 
@@ -153,6 +154,43 @@ export const FeesView: React.FC<FeesViewProps> = ({
         ? 'Every reminder is already waiting in the queue.'
         : 'No account to remind.'
     );
+  };
+
+  // "Send notice": the parent gets the fee notice by EMAIL (with the Pay now button when the UPI id is written) and in the own login (the bell
+  // and the Notice Board: the message is kept for the parent there). The money is written in the Fees page when it arrives.
+  const [sending, setSending] = useState<string | null>(null);
+  const handleSendNotice = async (item: DefaulterRow) => {
+    const s = item.student;
+    if (sending) return;
+    setSending(s.id);
+    try {
+      const msg = reminderText(item);
+      const waiting = notificationLogs.some(l => l.type === 'fee_due' && l.studentId === s.id && l.status === 'pending');
+      if (msg && !waiting) {
+        sendNotification({
+          type: 'fee_due',
+          channel: 'whatsapp',
+          recipientName: s.parentName,
+          recipientPhone: s.parentPhone,
+          studentName: s.name,
+          studentId: s.id,
+          content: msg
+        });
+      }
+      if (!s.parentEmail) {
+        showNotice('error', `${s.name} has no parent email, so the notice is only in the parent login (bell and Notice Board). Add the email in Edit to send it by email.`);
+        return;
+      }
+      const r = await emailFeeNotice(s.id);
+      showNotice(
+        r.notified === 'sent' ? 'success' : 'error',
+        r.notified === 'sent' ? `The fee notice for ${s.name} was emailed to ${s.parentEmail} and is in the parent login too.` : `The email for ${s.name} could not be sent. The notice is in the parent login (bell and Notice Board).`
+      );
+    } catch (err) {
+      showNotice('error', err instanceof Error ? err.message : 'The notice could not be sent.');
+    } finally {
+      setSending(null);
+    }
   };
 
   const handleSendFeeReminder = (item: DefaulterRow) => {
@@ -582,12 +620,13 @@ export const FeesView: React.FC<FeesViewProps> = ({
                             Remind
                           </button>
                           <button
-                            onClick={() =>
-                              onCollectPayment ? onCollectPayment(item.student.id) : onSelectStudent(item.student.id)
-                            }
-                            className="px-2.5 py-1 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+                            onClick={() => void handleSendNotice(item)}
+                            disabled={sending !== null}
+                            title="Send the fee notice by email to the parent (it is in the parent login too)"
+                            className="px-2.5 py-1 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-md transition-colors flex items-center gap-1"
                           >
-                            Collect
+                            <Mail className="w-3 h-3" />
+                            {sending === item.student.id ? 'Sending…' : 'Send notice'}
                           </button>
                         </div>
                       </td>
