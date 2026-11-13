@@ -29,6 +29,7 @@ import {
   welcomeMail,
 } from './http.ts';
 import { nextRollNumber } from './rollno.ts';
+import { monthName, sendMonthlyAttendance } from './attendanceMail.ts';
 import { applyChanges, parsePhotoDataUrl, scopeInstitute } from './scope.ts';
 import { DEFAULT_ORG, PLATFORM_ORG } from './store.ts';
 import { GREEN, RED } from './emailTemplate.ts';
@@ -711,6 +712,77 @@ route('/api/exams/notice-email', ['POST'], 'user', async (c) => {
   }
   await s.audit(c.user, 'test-notice-email', `${exam.title}: ${sent} email(s)`);
   return { sent, noEmail };
+});
+
+/** The result of a test goes by email to the PARENT of every student who has a result (marks, pass or fail; absent is told too). The principal
+ * can send it for any test; a teacher only for the test that he takes (his own subject in his own batch, and when the principal chose the
+ * teacher of the test, only that teacher). It can be sent again. */
+route('/api/exams/result-email', ['POST'], 'user', async (c) => {
+  const s = c.store;
+  const exam = (await s.find('exams')).find((x: any) => x.id === c.body().examId);
+  if (!exam) throw new HttpError(404, 'Test not found.');
+  if (c.user.role === 'teacher') {
+    const own = (c.user.batchIds || []).includes(exam.batchId);
+    const sameSubject = String(c.user.subject || '').trim().toLowerCase() === String(exam.subject || '').trim().toLowerCase();
+    const takes = !exam.teacherId || exam.teacherId === c.user.id;
+    if (!own || !sameSubject || !takes) throw new HttpError(403, 'You can send the result only of the test that you take.');
+  } else if (c.user.role !== 'admin') {
+    throw new HttpError(403, 'Only the principal or the teacher of the test can send the result.');
+  }
+  const results = exam.results && typeof exam.results === 'object' ? exam.results : {};
+  if (!Object.keys(results).length) throw new HttpError(400, 'There are no marks for this test yet.');
+  const coaching = await coachingName(c, s);
+  const students = (await s.find('students')).filter((x: any) => results[x.id]);
+  let sent = 0;
+  let noEmail = 0;
+  for (const st of students) {
+    const to = text(st.parentEmail, 150).toLowerCase();
+    if (!to.includes('@')) {
+      noEmail++;
+      continue;
+    }
+    const r = results[st.id];
+    const absent = Boolean(r.absent);
+    const pass = !absent && Number(r.marksObtained) >= Number(exam.passMarks);
+    const outcome = absent ? 'Absent' : pass ? 'Pass' : 'Fail';
+    const [ok] = mail(
+      to,
+      `Result of ${st.name}: ${exam.title} (${exam.subject}) - ${absent ? 'absent' : `${r.marksObtained}/${exam.maxMarks}`}`,
+      'Test result',
+      [absent ? `${st.name} was absent in the test at ${coaching}.` : `${st.name} got ${r.marksObtained} marks out of ${exam.maxMarks} in the test at ${coaching}.`, 'This email is only to tell you about the result. You do not have to answer it.'],
+      {
+        details: [
+          ['Student', st.name],
+          ['Test', exam.title],
+          ['Subject', exam.subject],
+          ['Date', exam.date],
+          ['Marks', absent ? 'Absent' : `${r.marksObtained} / ${exam.maxMarks}`],
+          ['Result', outcome],
+          ['Remarks', text(r.remarks, 300)],
+        ],
+        accent: absent ? undefined : pass ? GREEN : RED,
+        button: ['Sign in as Parent', c.loginLink('parent')],
+        note: 'In the parent login you see all the tests and the results of your child.',
+        name: st.parentName,
+        from: fromPerson(c.user, coaching),
+      },
+    );
+    if (ok) sent++;
+  }
+  await s.audit(c.user, 'test-result-email', `${exam.title}: ${sent} email(s)`);
+  return { sent, noEmail };
+});
+
+/** The attendance of a month (YYYY-MM) goes by email to the parents (the principal presses it; the server also does it by itself for the last
+ * month when a new month starts). */
+route('/api/attendance/monthly-email', ['POST'], 'admin', async (c) => {
+  const s = c.store;
+  const month = String(c.body().month ?? '');
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new HttpError(400, 'Choose a month.');
+  const coaching = await coachingName(c, s);
+  const r = await sendMonthlyAttendance(s, coaching, month, c.user, c.loginLink('parent'));
+  await s.audit(c.user, 'attendance-month-email', `${monthName(month)}: ${r.sent} email(s)`);
+  return r;
 });
 
 /** Homework was given: the students of the batch, their parents and the teachers of the batch get a notice with the title, the subject, the

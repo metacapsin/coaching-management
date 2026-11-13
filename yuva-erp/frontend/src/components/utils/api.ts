@@ -388,6 +388,12 @@ export const emailFeeNotice = (studentId: string) =>
 // Emails the parents of the batch that a test is coming (the number of emails sent, and the parents without an email)
 export const emailTestNotice = (examId: string) => request<{ sent: number; noEmail: number }>('POST', '/exams/notice-email', { examId });
 
+// Emails the result of a test to the parents (each parent gets the marks of the own child)
+export const emailTestResult = (examId: string) => request<{ sent: number; noEmail: number }>('POST', '/exams/result-email', { examId });
+
+// Emails the attendance percentage of a month (YYYY-MM) to the parents (the principal)
+export const emailMonthlyAttendance = (month: string) => request<{ sent: number; noEmail: number; already: number }>('POST', '/attendance/monthly-email', { month });
+
 // Emails the students, the parents and the teachers of the batch that homework was given
 export const emailHomeworkNotice = (materialId: string) => request<{ sent: number; noEmail: number }>('POST', '/homework/notice-email', { materialId });
 

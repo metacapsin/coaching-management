@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
+import { emailMonthlyAttendance } from '../utils/api';
 import { useAuth } from '../../Context/AuthContext';
 import { downloadCsv, formatINR, toLocalISODate } from '../utils/helpers';
 import { BarChart3, Download, Printer } from 'lucide-react';
@@ -67,6 +68,33 @@ const Table: React.FC<{ head: string[]; rows: (string | number)[][]; right?: num
 export const ReportsView: React.FC = () => {
   const { students, transactions, attendance, exams, batches, profile, expenses } = useInstitute();
   const { user } = useAuth();
+  // the attendance percentage of a month goes to the parents by email (the principal; the last month is chosen at first)
+  const lastMonth = (() => {
+    const d = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  })();
+  const [mailMonth, setMailMonth] = useState(lastMonth);
+  const [mailState, setMailState] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
+  const [mailBusy, setMailBusy] = useState(false);
+  const sendMonthMail = async () => {
+    setMailBusy(true);
+    try {
+      const r = await emailMonthlyAttendance(mailMonth);
+      setMailState({
+        type: 'ok',
+        text:
+          r.sent > 0
+            ? `The attendance of ${mailMonth} was emailed to ${r.sent} parent${r.sent === 1 ? '' : 's'}${r.noEmail ? ` (${r.noEmail} without an email)` : ''}${r.already ? ` (${r.already} had it already)` : ''}.`
+            : r.already > 0
+            ? 'Every parent already got the attendance of this month.'
+            : 'No email was sent: no attendance is marked in this month, or the parents have no email.'
+      });
+    } catch (err) {
+      setMailState({ type: 'error', text: err instanceof Error ? err.message : 'The emails could not be sent.' });
+    } finally {
+      setMailBusy(false);
+    }
+  };
   const reports = REPORTS.filter(r => r.id !== 'profit' || user?.role === 'admin');
   const [report, setReport] = useState<ReportId>('fees');
   const cur = profile.currencySymbol;
@@ -116,37 +144,32 @@ export const ReportsView: React.FC = () => {
     [attendance, batches, students]
   );
 
+  // The results as a plain list: one line for every student of every test, with the subject, the marks and the result. A student who did not
+  // write the test (absent, or no marks yet) is in the list too.
   const ex = useMemo(
     () =>
-      exams
+      [...exams]
         .filter(e => e.status === 'published' || Object.keys(e.results).length > 0)
-        .map(e => {
-          const rows = Object.values(e.results).filter(r => !r.absent);
-          const marks = rows.map(r => r.marksObtained);
-          const avg = marks.length ? marks.reduce((a, b) => a + b, 0) / marks.length : 0;
-          const passed = rows.filter(r => r.marksObtained >= e.passMarks).length;
-          // who is in the test: every student of the batch with the marks, "absent", or "marks not entered"
-          const people = students
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .flatMap(e =>
+          students
             .filter(st => st.batchId === e.batchId && (st.status !== 'inactive' || e.results[st.id]))
             .map(st => {
               const r = e.results[st.id];
-              return `${st.name} - ${!r ? 'not entered' : r.absent ? 'absent' : `${r.marksObtained}/${e.maxMarks}`}`;
+              const given = !!r && !r.absent;
+              return {
+                title: e.title,
+                subject: e.subject,
+                batch: e.batchName,
+                date: e.date,
+                student: st.name,
+                marks: given ? r.marksObtained : -1,
+                label: !r ? 'Not given' : r.absent ? 'Absent' : `${r.marksObtained} / ${e.maxMarks}`,
+                result: !r ? '-' : r.absent ? 'Absent' : r.marksObtained >= e.passMarks ? 'Pass' : 'Fail'
+              };
             })
-            .join('\n'); // one student on each line
-          return {
-            people,
-            title: e.title,
-            batch: e.batchName,
-            date: e.date,
-            appeared: rows.length,
-            absent: Object.values(e.results).filter(r => r.absent).length,
-            avg: Math.round(avg * 10) / 10,
-            high: marks.length ? Math.max(...marks) : 0,
-            max: e.maxMarks,
-            passPct: rows.length ? Math.round((passed / rows.length) * 100) : 0
-          };
-        })
-        .sort((a, b) => b.date.localeCompare(a.date)),
+            .sort((a, b) => b.marks - a.marks || a.student.localeCompare(b.student))
+        ),
     [exams, students]
   );
 
@@ -242,9 +265,9 @@ export const ReportsView: React.FC = () => {
       right: [1, 2, 3, 4, 5, 6]
     },
     exams: {
-      head: ['Test', 'Batch', 'Date', 'Appeared', 'Absent', 'Average', 'Highest', 'Pass %', 'Students (marks)'],
-      rows: ex.map(e => [e.title, e.batch, e.date, e.appeared, e.absent, `${e.avg} / ${e.max}`, e.high, `${e.passPct}%`, e.people || '-']) as (string | number)[][],
-      right: [3, 4, 5, 6, 7]
+      head: ['Test', 'Subject', 'Batch', 'Date', 'Student', 'Marks', 'Result'],
+      rows: ex.map(e => [e.title, e.subject, e.batch, e.date, e.student, e.label, e.result]) as (string | number)[][],
+      right: [5]
     },
     profit: {
       head: ['Month', `Fees collected (${cur})`, `Expenses (${cur})`, `Profit / loss (${cur})`],
@@ -354,6 +377,24 @@ export const ReportsView: React.FC = () => {
               <div className="text-xl font-bold text-rose-600 font-mono">{fees.cancelled.length}</div>
               <div className="text-[11px] text-slate-400">Not counted in the totals</div>
             </div>
+          </div>
+        )}
+
+        {report === 'attendance' && user?.role === 'admin' && (
+          <div className="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center gap-3 print:hidden">
+            <label className="text-xs font-medium text-slate-600" htmlFor="mail-month">
+              Email the attendance % of the month to the parents
+            </label>
+            <input id="mail-month" type="month" value={mailMonth} max={lastMonth} onChange={e => setMailMonth(e.target.value)} className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white" />
+            <button
+              onClick={() => void sendMonthMail()}
+              disabled={mailBusy || !mailMonth}
+              className="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-lg"
+            >
+              {mailBusy ? 'Sending…' : 'Email to parents'}
+            </button>
+            <span className="text-[11px] text-slate-400">The server also does it by itself for the last month, when a new month starts.</span>
+            {mailState && <p className={`w-full text-xs ${mailState.type === 'ok' ? 'text-emerald-700' : 'text-rose-600'}`}>{mailState.text}</p>}
           </div>
         )}
 

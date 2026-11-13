@@ -337,6 +337,72 @@ describe('Coachings', () => {
     await call('PUT', `/api/users/${tinaId}/batches`, { batchIds: [] }, adminA);
   });
 
+  it('02i4 the result of a test and the attendance of a month go to the parent by email', async () => {
+    const kid = (id: string, parentEmail: string) => ({ id, rollNo: id, name: 'Kid ' + id, email: '', phone: '9811122233', parentName: 'Parent ' + id, parentEmail, parentPhone: '9811100000', grade: 'Class 12', courseId: 'c1', batchId: 'br', targetExam: 'JEE', dateOfAdmission: '2026-11-01', status: 'active', photoUrl: '/avatar.svg', address: '', totalFees: 1000, discount: 0, feePaid: 0 });
+    const exam = (id: string, extra: any = {}) => ({ id, code: id, title: 'Test ' + id, batchId: 'br', batchName: 'Batch R', subject: 'Physics', date: '2026-10-05', maxMarks: 100, passMarks: 35, status: 'published', syllabusTopics: [], results: { r1: { marksObtained: 80 }, r2: { marksObtained: 0, absent: true }, r3: { marksObtained: 10 } }, ...extra });
+    const att = (month: string, status: string[]) => ({ id: `att-${month}`, date: `${month}-10`, batchId: 'br', records: { r1: status[0], r2: status[1] }, markedBy: 'x', updatedAt: `${month}-10T10:00:00` });
+    await call('PUT', '/api/institute', { changes: { students: { upsert: [kid('r1', 'r1p@x.com'), kid('r2', 'r2p@x.com'), kid('r3', '')] }, exams: { upsert: [exam('rx1'), exam('rx2', { teacherId: 'another' }), exam('rx3', { results: {} })] }, attendance: { upsert: [att('2026-10', ['present', 'late']), att('2026-09', ['present', 'absent'])] } } }, adminA);
+    const tinaId = (await call('GET', '/api/sync', null, adminA))[1].users.find((u: any) => u.email === 'tina@x.com').id;
+    await call('PUT', `/api/users/${tinaId}/batches`, { batchIds: ['br'] }, adminA);
+    const tina = (await call('POST', '/api/auth/login', { email: 'tina@x.com', password: 'Teach#12345', portal: 'member' }))[1].token;
+    const result = async (examId: string, token: string) => {
+      const mail = captureMail();
+      try {
+        const [status, data] = await call('POST', '/api/exams/result-email', { examId }, token);
+        return { status, data, mails: mail.sent };
+      } finally {
+        mail.stop();
+      }
+    };
+    // the teacher of the test sends the result: only the parents (not the student, not a teacher), each with the own child
+    let r = await result('rx1', tina);
+    assert.equal(r.status, 200);
+    assert.deepEqual(r.mails.map((x) => x[0]).sort(), ['r1p@x.com', 'r2p@x.com']);
+    assert.equal(r.data.noEmail, 1); // Kid r3: no parent email
+    const first = r.mails.find((x) => x[0] === 'r1p@x.com')!;
+    assert.ok(first[1].includes('80/100') && first[2].includes('Pass') && first[2].includes('Kid r1'));
+    assert.ok(r.mails.find((x) => x[0] === 'r2p@x.com')![2].includes('Absent'));
+    // the principal can send it too; a teacher that does not take the test, and a test without marks, cannot
+    assert.equal((await result('rx1', adminA)).status, 200);
+    assert.equal((await result('rx2', tina)).status, 403);
+    assert.equal((await result('rx3', adminA)).status, 400);
+    assert.equal((await result('nope', adminA)).status, 404);
+    // the attendance of a month: the principal sends it, each parent once; a teacher cannot
+    const month = async (m: string, token: string) => {
+      const mail = captureMail();
+      try {
+        const [status, data] = await call('POST', '/api/attendance/monthly-email', { month: m }, token);
+        return { status, data, mails: mail.sent };
+      } finally {
+        mail.stop();
+      }
+    };
+    assert.equal((await month('2026-10', tina)).status, 403);
+    assert.equal((await month('bad', adminA)).status, 400);
+    let a = await month('2026-10', adminA);
+    assert.deepEqual([a.status, a.data.sent, a.data.noEmail], [200, 2, 0]); // (Kid r3 has no marks of attendance in the month)
+    assert.deepEqual(a.mails.map((x) => x[0]).sort(), ['r1p@x.com', 'r2p@x.com']);
+    assert.ok(a.mails.find((x) => x[0] === 'r1p@x.com')![1].includes('100%'), 'present + late = 100%');
+    assert.ok(a.mails.find((x) => x[0] === 'r2p@x.com')![2].includes('October 2026'));
+    a = await month('2026-10', adminA);
+    assert.deepEqual([a.data.sent, a.data.already], [0, 2]); // the second time nobody gets it again
+    // at the start of a new month the server does it by itself for the last month, once
+    const { monthlyAttendanceIfDue } = await import('../src/scheduler.ts');
+    const capture = captureMail();
+    try {
+      await monthlyAttendanceIfDue(api.root, orgA, new Date(2026, 9, 15)); // October: the last month is September
+      const sentNow = capture.sent.map((x) => x[0]).sort();
+      assert.deepEqual(sentNow, ['r1p@x.com', 'r2p@x.com']);
+      assert.ok(capture.sent.find((x) => x[0] === 'r2p@x.com')![2].includes('September 2026: 0%'), 'September: the student was absent = 0%');
+      await monthlyAttendanceIfDue(api.root, orgA, new Date(2026, 9, 20));
+      assert.equal(capture.sent.length, 2); // the second check in the same month sends nothing
+    } finally {
+      capture.stop();
+    }
+    await call('PUT', '/api/institute', { changes: { students: { remove: ['r1', 'r2', 'r3'] }, exams: { remove: ['rx1', 'rx2', 'rx3'] }, attendance: { remove: ['att-2026-10', 'att-2026-09'] } } }, adminA);
+    await call('PUT', `/api/users/${tinaId}/batches`, { batchIds: [] }, adminA);
+  });
+
   it('02j the parent is emailed when the child is marked absent, once for each day', async () => {
     const today = new Date().toISOString().slice(0, 10);
     const kid = { id: 'ab1', rollNo: 'ab1', name: 'Absent Kid', email: '', phone: '9811122233', parentName: 'Absent Parent', parentEmail: 'abparent@x.com', parentPhone: '9811100000', grade: 'Class 12', courseId: 'c1', batchId: 'bq', targetExam: 'JEE', dateOfAdmission: '2026-11-01', status: 'active', photoUrl: '/avatar.svg', address: '', totalFees: 1000, discount: 0, feePaid: 0 };

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { Exam, Student } from '../../types';
 import { fillTemplate, formatDate, rankOf, toLocalISODate } from '../utils/helpers';
-import { emailTestNotice } from '../utils/api';
+import { emailTestNotice, emailTestResult } from '../utils/api';
 import { CreateExamModal } from '../modals/CreateExamModal';
 import { ExamMarksModal } from '../modals/ExamMarksModal';
 import { PrintableReportCardModal } from '../modals/PrintableReportCardModal';
@@ -67,7 +67,7 @@ export const ExamsView: React.FC = () => {
     })
     .sort((a, b) => (a.isGraded === b.isGraded ? b.score - a.score : a.isGraded ? -1 : 1));
 
-  const handleBroadcastResults = (exam: Exam) => {
+  const handleBroadcastResults = async (exam: Exam) => {
     const template = templates.find(t => t.type === 'exam_result') || templates[0];
     if (!template) return;
 
@@ -98,6 +98,20 @@ export const ExamsView: React.FC = () => {
 
     setBroadcastSentExamId(exam.id);
     setTimeout(() => setBroadcastSentExamId(null), 4000);
+
+    // and the parents get the result by email too (each parent the marks of the own child), when the parent has an email
+    if (office || user?.role === 'teacher') {
+      try {
+        const r = await emailTestResult(exam.id);
+        setTestNotice({
+          examId: exam.id,
+          text: r.sent > 0 ? `The result was also emailed to ${r.sent} parent${r.sent === 1 ? '' : 's'}${r.noEmail ? ` (${r.noEmail} without an email)` : ''}.` : 'No parent has an email, so no email was sent.'
+        });
+      } catch (err) {
+        setTestNotice({ examId: exam.id, text: err instanceof Error ? err.message : 'The result email could not be sent.' });
+      }
+      setTimeout(() => setTestNotice(null), 6000);
+    }
   };
 
   // "Tell parents": the parents of the batch get the date of the test, what it covers and the marks, by WhatsApp (queued in
@@ -294,7 +308,7 @@ export const ExamsView: React.FC = () => {
 
                   {currentExam.status === 'published' && (
                     <button
-                      onClick={() => handleBroadcastResults(currentExam)}
+                      onClick={() => void handleBroadcastResults(currentExam)}
                       className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5 ${
                         broadcastSentExamId === currentExam.id
                           ? 'bg-emerald-600 text-white'
@@ -302,7 +316,7 @@ export const ExamsView: React.FC = () => {
                       }`}
                     >
                       <Send className="w-3.5 h-3.5" />
-                      {broadcastSentExamId === currentExam.id ? 'Dispatched to Parents!' : 'Dispatch to Parents'}
+                      {broadcastSentExamId === currentExam.id ? 'Dispatched to Parents!' : 'Dispatch to Parents (and email)'}
                     </button>
                   )}
                 </div>

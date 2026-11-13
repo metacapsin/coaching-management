@@ -198,6 +198,11 @@ export class Store {
     return r.modifiedCount === 1 || r.upsertedCount === 1;
   }
 
+  /** Gives a key back (the email could not be handed over, so it can be tried again later). */
+  async unclaimAbsenceMail(key: string): Promise<void> {
+    await this.meta.updateOne({ _id: 'absenceMailed' }, { $pull: { keys: key } } as any);
+  }
+
   async version(): Promise<number> {
     const doc = await this.meta.findOne({ _id: 'version' });
     return doc ? doc.value : 0;
