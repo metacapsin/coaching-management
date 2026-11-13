@@ -108,9 +108,12 @@ export const ReportsView: React.FC = () => {
         }
         const total = present + absent + late + excused;
         const pct = total ? Math.round(((present + late) / total) * 100) : 0;
-        return { name: b.name, days: recs.length, present, absent, late, excused, pct };
+        // the batch with the names of its students in brackets (the first six, then "+N more")
+        const names = students.filter(st => st.batchId === b.id && st.status !== 'inactive').map(st => st.name);
+        const shown = names.slice(0, 6).join(', ') + (names.length > 6 ? ` +${names.length - 6} more` : '');
+        return { name: names.length ? `${b.name} (${shown})` : b.name, days: recs.length, present, absent, late, excused, pct };
       }),
-    [attendance, batches]
+    [attendance, batches, students]
   );
 
   const ex = useMemo(
