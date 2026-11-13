@@ -689,9 +689,9 @@ route('/api/exams/notice-email', ['POST'], 'user', async (c) => {
   for (const r of list) {
     const [ok] = mail(
       r.email,
-      `Test: ${exam.title} on ${exam.date}`,
-      'A test is coming',
-      [`There is a test at ${coaching} for ${exam.batchName || 'the batch'}. Please make sure the preparation is done.`],
+      `Test notice: ${exam.title} (${exam.subject}) on ${exam.date}`,
+      'Test notice',
+      [`There is a test at ${coaching} for ${exam.batchName || 'the batch'}. Please make sure the preparation is done.`, 'This email is only to tell you about the test. You do not have to answer it.'],
       {
         details: [
           ['Batch', exam.batchName || ''],
@@ -710,6 +710,48 @@ route('/api/exams/notice-email', ['POST'], 'user', async (c) => {
     if (ok) sent++;
   }
   await s.audit(c.user, 'test-notice-email', `${exam.title}: ${sent} email(s)`);
+  return { sent, noEmail };
+});
+
+/** Homework was given: the students of the batch, their parents and the teachers of the batch get a notice with the title, the subject, the
+ * last day and what to do. Only to read. The principal can send it for any batch; a teacher only for the own subject in the own batches. */
+route('/api/homework/notice-email', ['POST'], 'user', async (c) => {
+  const s = c.store;
+  const work = (await s.find('materials')).find((x: any) => x.id === c.body().materialId && x.type === 'homework');
+  if (!work) throw new HttpError(404, 'Homework not found.');
+  if (c.user.role === 'teacher') {
+    const own = (c.user.batchIds || []).includes(work.batchId);
+    const sameSubject = String(c.user.subject || '').trim().toLowerCase() === String(work.subject || '').trim().toLowerCase();
+    if (!own || !sameSubject) throw new HttpError(403, 'You can send a homework notice only for the homework of your own subject in your own batches.');
+  } else if (c.user.role !== 'admin') {
+    throw new HttpError(403, 'Only the principal or the teacher can send a homework notice.');
+  }
+  const coaching = await coachingName(c, s);
+  const { list, noEmail } = await receiversOf(s, { batchId: work.batchId }, c.user.email || '');
+  let sent = 0;
+  for (const r of list) {
+    const [ok] = mail(
+      r.email,
+      `Homework notice: ${work.title} (${work.subject})${work.dueDate ? `, submit by ${niceDay(work.dueDate)}` : ''}`,
+      'Homework notice',
+      [`Homework was given at ${coaching} for ${work.batchName || 'the batch'}.`, text(work.description, 1500), 'This email is only to tell you about the homework. You do not have to answer it.'].filter(Boolean),
+      {
+        details: [
+          ['Homework', work.title],
+          ['Subject', work.subject],
+          ['Batch', work.batchName || ''],
+          ['Submit by', work.dueDate ? niceDay(work.dueDate) : ''],
+          ['Given by', work.teacherName || ''],
+        ],
+        from: fromPerson(c.user, coaching),
+        button: [r.portal === 'parent' ? 'Sign in as Parent' : 'Open AcademiaOS', c.loginLink(r.portal)],
+        note: r.portal === 'parent' ? 'In the parent login you see the homework of your child and if it is done.' : 'You see the homework in your login.',
+        name: r.name,
+      },
+    );
+    if (ok) sent++;
+  }
+  await s.audit(c.user, 'homework-notice-email', `${work.title}: ${sent} email(s)`);
   return { sent, noEmail };
 });
 

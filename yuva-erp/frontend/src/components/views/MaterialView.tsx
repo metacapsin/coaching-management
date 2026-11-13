@@ -6,6 +6,7 @@ import { canManageInstitute } from '../../Context/Access';
 import type { StudyMaterial } from '../../types';
 import { MaterialModal, TYPE_LABEL } from '../modals/MaterialModal';
 import { formatDate, toLocalISODate } from '../utils/helpers';
+import { emailHomeworkNotice } from '../utils/api';
 import { BookOpen, Plus, Pencil, Trash2, ExternalLink, FileText, ClipboardList, Search, CheckCircle2, Circle, Send } from 'lucide-react';
 
 const TYPE_STYLE = {
@@ -178,9 +179,16 @@ export const MaterialView: React.FC = () => {
                       {canChange(m) && m.type === 'homework' && m.confirmed !== false && mayTellAbout(m.subject) && (
                         <button
                           title="Tell the parents of this batch about this homework (and a test that is coming)"
-                          onClick={() => {
+                          onClick={async () => {
                             const told = notifyHomework(m);
-                            flash(told > 0 ? `The ${told} student${told === 1 ? '' : 's'} and the parent${told === 1 ? '' : 's'} were told about this homework.` : 'There is no student in this batch yet.');
+                            let emailPart = '';
+                            try {
+                              const r = await emailHomeworkNotice(m.id);
+                              emailPart = r.sent > 0 ? ` ${r.sent} email${r.sent === 1 ? ' was' : 's were'} also sent (students, parents and teachers of the batch).` : '';
+                            } catch {
+                              /* the messages in the app are sent all the same */
+                            }
+                            flash(told > 0 ? `The ${told} student${told === 1 ? '' : 's'} and the parent${told === 1 ? '' : 's'} were told about this homework.${emailPart}` : 'There is no student in this batch yet.');
                           }}
                           className="px-2 py-1 text-[11px] font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg flex items-center gap-1"
                         >

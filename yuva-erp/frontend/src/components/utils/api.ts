@@ -388,6 +388,9 @@ export const emailFeeNotice = (studentId: string) =>
 // Emails the parents of the batch that a test is coming (the number of emails sent, and the parents without an email)
 export const emailTestNotice = (examId: string) => request<{ sent: number; noEmail: number }>('POST', '/exams/notice-email', { examId });
 
+// Emails the students, the parents and the teachers of the batch that homework was given
+export const emailHomeworkNotice = (materialId: string) => request<{ sent: number; noEmail: number }>('POST', '/homework/notice-email', { materialId });
+
 // Tells the principal that somebody forgot the password (the answer is always the same)
 export const requestPasswordReset = (email: string) =>
   request<{ ok: true }>('POST', '/auth/forgot-password', { email }, { auth: false });

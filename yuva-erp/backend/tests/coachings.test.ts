@@ -306,6 +306,37 @@ describe('Coachings', () => {
     await call('PUT', `/api/users/${tinaId}/batches`, { batchIds: [] }, adminA);
   });
 
+  it('02i3 homework notice: the students, the parents and the batch teachers get it (the principal, or the teacher of the subject)', async () => {
+    const kid = { id: 'h1', rollNo: 'h1', name: 'Kid h1', email: 'h1s@x.com', phone: '9811122233', parentName: 'Parent h1', parentEmail: 'h1p@x.com', parentPhone: '9811100000', grade: 'Class 12', courseId: 'c1', batchId: 'bh', targetExam: 'JEE', dateOfAdmission: '2026-11-01', status: 'active', photoUrl: '/avatar.svg', address: '', totalFees: 1000, discount: 0, feePaid: 0 };
+    const work = (id: string, subject: string, batchId = 'bh') => ({ id, title: 'Chapter ' + id, description: 'Solve the sums.', type: 'homework', batchId, batchName: 'Batch H', subject, dueDate: '2026-12-05', confirmed: true, createdAt: '2026-11-12T10:00:00Z', authorId: 'x', authorName: 'x' });
+    await call('PUT', '/api/institute', { changes: { students: { upsert: [kid] }, materials: { upsert: [work('hwp', 'Physics'), work('hwm', 'Maths'), work('hwo', 'Physics', 'other')] } } }, adminA);
+    const tinaId = (await call('GET', '/api/sync', null, adminA))[1].users.find((u: any) => u.email === 'tina@x.com').id;
+    await call('PUT', `/api/users/${tinaId}/batches`, { batchIds: ['bh'] }, adminA);
+    const tina = (await call('POST', '/api/auth/login', { email: 'tina@x.com', password: 'Teach#12345', portal: 'member' }))[1].token;
+    const send = async (id: string, token: string | null) => {
+      const mail = captureMail();
+      try {
+        const [status, data] = await call('POST', '/api/homework/notice-email', { materialId: id }, token);
+        return { status, data, mails: mail.sent };
+      } finally {
+        mail.stop();
+      }
+    };
+    let r = await send('hwp', adminA);
+    assert.equal(r.status, 200);
+    assert.deepEqual(r.mails.map((x) => x[0]).sort(), ['h1p@x.com', 'h1s@x.com', 'tina@x.com']);
+    assert.ok(r.mails[0][1].startsWith('Homework notice: Chapter hwp (Physics)'), 'the subject says what it is');
+    assert.ok(r.mails[0][2].includes('only to tell you'), 'only to read');
+    r = await send('hwp', tina);
+    assert.deepEqual(r.mails.map((x) => x[0]).sort(), ['h1p@x.com', 'h1s@x.com']); // not himself
+    assert.equal((await send('hwm', tina)).status, 403); // another subject
+    assert.equal((await send('hwo', tina)).status, 403); // not his batch
+    assert.equal((await send('nope', adminA)).status, 404);
+    assert.equal((await send('hwp', null)).status, 401);
+    await call('PUT', '/api/institute', { changes: { students: { remove: ['h1'] }, materials: { remove: ['hwp', 'hwm', 'hwo'] } } }, adminA);
+    await call('PUT', `/api/users/${tinaId}/batches`, { batchIds: [] }, adminA);
+  });
+
   it('02j the parent is emailed when the child is marked absent, once for each day', async () => {
     const today = new Date().toISOString().slice(0, 10);
     const kid = { id: 'ab1', rollNo: 'ab1', name: 'Absent Kid', email: '', phone: '9811122233', parentName: 'Absent Parent', parentEmail: 'abparent@x.com', parentPhone: '9811100000', grade: 'Class 12', courseId: 'c1', batchId: 'bq', targetExam: 'JEE', dateOfAdmission: '2026-11-01', status: 'active', photoUrl: '/avatar.svg', address: '', totalFees: 1000, discount: 0, feePaid: 0 };
