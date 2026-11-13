@@ -57,14 +57,6 @@ export const AttendanceView: React.FC = () => {
     }));
   };
 
-  const handleMarkAll = (status: AttendanceStatus) => {
-    const updated: Record<string, AttendanceStatus> = {};
-    batchStudents.forEach(st => {
-      updated[st.id] = status;
-    });
-    setLocalRecords(updated);
-  };
-
   const handleSave = () => {
     // The roll call is stored per batch: the list of all students is split by batch
     const byBatch: Record<string, Record<string, AttendanceStatus>> = {};
@@ -196,23 +188,6 @@ export const AttendanceView: React.FC = () => {
               className="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
             />
           </div>
-        </div>
-
-        {/* Quick Batch Selection Buttons */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-500 mr-1">Bulk:</span>
-          <button
-            onClick={() => handleMarkAll('present')}
-            className="px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-md transition-colors"
-          >
-            All Present
-          </button>
-          <button
-            onClick={() => handleMarkAll('absent')}
-            className="px-3 py-1.5 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-md transition-colors"
-          >
-            All Absent
-          </button>
         </div>
       </div>
 
