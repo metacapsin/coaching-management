@@ -165,6 +165,15 @@ export const LibraryView: React.FC = () => {
                     Read
                     <ExternalLink className="w-3 h-3 opacity-80" />
                   </a>
+                ) : canManage ? (
+                  <button
+                    onClick={() => setEditing({ book: b })}
+                    title="This book has no link yet: add the link to let everybody read it"
+                    className="px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg flex items-center gap-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add link to read
+                  </button>
                 ) : (
                   <span className="text-[11px] text-slate-400">No link added</span>
                 )}

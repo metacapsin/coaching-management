@@ -216,7 +216,7 @@ export async function scopeInstitute(user: any, store: Store): Promise<any> {
     // teacher tells the parents only about homework and tests (those are messages, above)
     announcements: await store.find('announcements', parentOnly(user, await teacherIds(store), { $or: [{ audience: 'all' }, { audience: 'batch', batchId: orNull(me.batchId) }] })),
     materials: await store.find('materials', { batchId: orNull(me.batchId) }),
-    books: await store.find('books'),
+    books: user.isParent ? [] : await store.find('books'), // (the library is for the principal, the teachers and the students, not for a parent)
     submissions: await store.find('submissions', { studentId: me.id }),
     // leave is for the student only (the principal decides it): not for a teacher and not for a parent account
     leaveRequests: user.isParent ? [] : await store.find('leaveRequests', { studentId: me.id }),

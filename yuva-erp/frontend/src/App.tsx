@@ -100,7 +100,9 @@ function MainApp() {
   const isManager = canManageInstitute(role);
 
   // each page has its own address (/fees, /attendance...): a reload stays on it and the Back button works
-  const [activeTab, setActiveTab] = useTabRoute(tab => canAccessTab(role, tab));
+  // (a parent has no Library: it is for the principal, the teachers and the students)
+  const mayOpen = (tab: Parameters<typeof canAccessTab>[1]) => canAccessTab(role, tab) && !(tab === 'library' && user?.isParent);
+  const [activeTab, setActiveTab] = useTabRoute(tab => mayOpen(tab));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   // each press on an "Add Teacher" button opens the Add Account window in Team & Access
   const [addTeacherSignal, setAddTeacherSignal] = useState(0);
@@ -162,7 +164,7 @@ function MainApp() {
   ];
 
   // Each role sees only the pages it is allowed to open
-  const visibleNavItems = navItems.filter(item => canAccessTab(role, item.id) && !(item.id === 'leave' && user?.isParent)); // a parent has no leave to ask
+  const visibleNavItems = navItems.filter(item => mayOpen(item.id) && !(item.id === 'leave' && user?.isParent)); // a parent has no leave to ask
 
   // the name of the open page is in the title of the browser tab
   const pageName = navItems.find(item => item.id === activeTab)?.label ?? 'Dashboard';
@@ -174,7 +176,7 @@ function MainApp() {
   }, [pageName, profile.name]);
 
   const renderTab = () => {
-    if (!canAccessTab(role, activeTab)) {
+    if (!mayOpen(activeTab)) {
       return (
         <div className="bg-white rounded-xl border border-slate-200 p-12 text-center shadow-xs">
           <ShieldCheck className="w-10 h-10 text-slate-300 mx-auto mb-3" />

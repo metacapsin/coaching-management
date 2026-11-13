@@ -237,6 +237,16 @@ describe('Parents: the child\'s data only, read only', () => {
     assert.deepEqual(seen.map((x: any) => x.studentId), ['s1']);
   });
 
+  it('3b the library is for the students, not for a parent', async () => {
+    const book = { id: 'bkp', title: 'Physics', author: 'A', category: 'Physics', description: '', url: 'https://example.com/b.pdf', createdAt: '2026-11-01T00:00:00Z' };
+    assert.equal((await call('PUT', '/api/institute', { changes: { books: { upsert: [book] } } }, admin))[0], 200);
+    const parent = await login('mum@x.com');
+    assert.deepEqual((await call('GET', '/api/sync', null, parent))[1].institute.books, []);
+    const student = await tokenOf(s.api, 'alice@x.com', 'member');
+    assert.deepEqual((await call('GET', '/api/sync', null, student))[1].institute.books.map((b: any) => b.id), ['bkp']);
+    await call('PUT', '/api/institute', { changes: { books: { remove: ['bkp'] } } }, admin);
+  });
+
   it('4 a parent signs in on the Parent tab, the others on their own tabs', async () => {
     const login = (email: string, portal: string) => call('POST', '/api/auth/login', { email, password: PASSWORD, portal });
     assert.equal((await login('mum@x.com', 'parent'))[0], 200);
