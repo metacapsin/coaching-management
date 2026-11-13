@@ -359,6 +359,17 @@ describe('Coachings', () => {
       mail.stop();
     }
     assert.equal(mail.sent.length, 0);
+    // late: the parent (only the parent) is told too, once for each day
+    mail = captureMail();
+    try {
+      await call('PUT', '/api/institute', roll('late'), adminA);
+      await call('PUT', '/api/institute', roll('present'), adminA);
+      await call('PUT', '/api/institute', roll('late'), adminA);
+    } finally {
+      mail.stop();
+    }
+    assert.deepEqual(mail.sent.map((m) => m[0]), ['abparent@x.com']);
+    assert.ok(mail.sent[0][1].includes('late') && mail.sent[0][2].includes('came late'));
     await call('PUT', '/api/institute', { changes: { students: { remove: ['ab1'] }, attendance: { remove: ['att-bq-today'] } } }, adminA);
   });
 

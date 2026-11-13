@@ -800,18 +800,21 @@ async function mailAbsences(c: any, s: any, saved: any[], before: Map<string, an
   const today = new Date(todayLocal() + 'T00:00:00').getTime();
   const students = new Map<string, any>((await s.find('students')).map((x: any) => [x.id, x]));
   const coaching = await coachingName(c, s);
+  // the email comes in the name of the principal (whoever marked the roll call); only the parent gets it
+  const principal = (await s.usersAll()).find((u: any) => u.role === 'admin' && (u.status || 'active') === 'active') || c.user;
   for (const rec of saved) {
     if (!rec || typeof rec.date !== 'string' || !rec.records || typeof rec.records !== 'object') continue;
     const age = (today - new Date(rec.date + 'T00:00:00').getTime()) / 86400000;
     if (!(age >= 0 && age <= 2)) continue;
     const old = before.get(rec.id)?.records || {};
     for (const [sid, status] of Object.entries<any>(rec.records)) {
-      if (status !== 'absent' || old[sid] === 'absent') continue;
+      if ((status !== 'absent' && status !== 'late') || old[sid] === status) continue;
+      const late = status === 'late';
       const st = students.get(sid);
       const to = text(st?.parentEmail, 150).toLowerCase();
       if (!st || !to || st.status === 'inactive') continue;
-      if (!(await s.claimAbsenceMail(`${rec.date}:${sid}`))) continue;
-      mail(to, `${st.name} was absent on ${rec.date}`, 'Your child was absent', [`${st.name} was marked absent at ${coaching}. If this is a mistake, please tell the office.`], {
+      if (!(await s.claimAbsenceMail(late ? `${rec.date}:${sid}:late` : `${rec.date}:${sid}`))) continue;
+      mail(to, `${st.name} was ${late ? 'late' : 'absent'} on ${rec.date}`, late ? 'Your child came late' : 'Your child was absent', [`${st.name} was marked ${late ? 'late' : 'absent'} at ${coaching}. If this is a mistake, please tell the office.`], {
         details: [
           ['Student', st.name],
           ['Date', rec.date],
@@ -820,7 +823,7 @@ async function mailAbsences(c: any, s: any, saved: any[], before: Map<string, an
         button: ['Sign in as Parent', c.loginLink('parent')],
         note: 'In the parent login you see the attendance of your child day by day.',
         name: st.parentName,
-        from: fromPerson(c.user, coaching),
+        from: fromPerson(principal, coaching),
       });
     }
   }
