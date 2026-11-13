@@ -62,7 +62,13 @@ export const NoticeModal: React.FC<NoticeModalProps> = ({ notice, onClose, onSav
   return (
     <ModalShell
       title={notice ? 'Edit Notice' : 'New Notice'}
-      subtitle={office ? 'Visible to students and parents on their portal' : 'For the students of your batches. The parents are told only about homework and tests.'}
+      subtitle={
+        form.audience === 'teachers'
+          ? 'Only the teachers see it (login and email)'
+          : form.audience === 'batch'
+          ? 'The students, the parents and the teachers of the batch see it in their login and get an email too'
+          : 'The teachers, the students and the parents see it in their login and get an email too'
+      }
       icon={Megaphone}
       iconClass="bg-indigo-600"
       width="lg"
@@ -105,9 +111,9 @@ export const NoticeModal: React.FC<NoticeModalProps> = ({ notice, onClose, onSav
               onChange={e => setForm({ ...form, audience: e.target.value as 'all' | 'batch' | 'teachers' })}
               className={`${inputClass()} bg-white`}
             >
-              {office && <option value="all">Everybody (all students)</option>}
+              {office && <option value="all">Everybody (teachers, students and parents)</option>}
               {office && <option value="teachers">Teachers only (for example a meeting)</option>}
-              <option value="batch">One batch</option>
+              <option value="batch">One batch (its students, parents and teachers)</option>
             </Select>
           </div>
           {form.audience === 'batch' && (
