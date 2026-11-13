@@ -23,7 +23,8 @@ const monthLabel = (key: string) => {
   return new Date(y, m - 1, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 };
 
-const Table: React.FC<{ head: string[]; rows: (string | number)[][]; right?: number[] }> = ({ head, rows, right = [] }) => (
+// `profitCol`: the column with the profit or the loss of the month; a loss is red and says Loss, a profit is green and says Profit
+const Table: React.FC<{ head: string[]; rows: (string | number)[][]; right?: number[]; profitCol?: number }> = ({ head, rows, right = [], profitCol }) => (
   <div className="overflow-x-auto">
     <table className="w-full text-xs text-left">
       <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase">
@@ -46,7 +47,12 @@ const Table: React.FC<{ head: string[]; rows: (string | number)[][]; right?: num
           rows.map((r, i) => (
             <tr key={i} className="hover:bg-slate-50/60">
               {r.map((c, j) => (
-                <td key={j} className={`p-3 ${right.includes(j) ? 'text-right font-mono' : ''} ${j === 0 ? 'font-semibold text-slate-900' : 'text-slate-700'}`}>
+                <td
+                  key={j}
+                  className={`p-3 ${right.includes(j) ? 'text-right font-mono' : ''} ${
+                    j === profitCol ? (String(c).endsWith('(Loss)') ? 'font-bold text-rose-600' : 'font-bold text-emerald-700') : j === 0 ? 'font-semibold text-slate-900' : 'text-slate-700'
+                  }`}
+                >
                   {c}
                 </td>
               ))}
@@ -230,7 +236,7 @@ export const ReportsView: React.FC = () => {
     },
     profit: {
       head: ['Month', `Fees collected (${cur})`, `Expenses (${cur})`, `Profit / loss (${cur})`],
-      rows: pl.map(r => [monthLabel(r.key), formatINR(r.collected), formatINR(r.spent), `${r.profit < 0 ? '-' : ''}${formatINR(Math.abs(r.profit))}`]) as (string | number)[][],
+      rows: pl.map(r => [monthLabel(r.key), formatINR(r.collected), formatINR(r.spent), `${r.profit < 0 ? '-' : ''}${formatINR(Math.abs(r.profit))} (${r.profit < 0 ? 'Loss' : 'Profit'})`]) as (string | number)[][],
       right: [1, 2, 3]
     },
     batches: {
@@ -338,7 +344,7 @@ export const ReportsView: React.FC = () => {
           </div>
         )}
 
-        <Table head={current.head} rows={current.rows} right={current.right} />
+        <Table head={current.head} rows={current.rows} right={current.right} profitCol={report === 'profit' ? 3 : undefined} />
       </div>
     </div>
   );
