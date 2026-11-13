@@ -125,7 +125,16 @@ export const ReportsView: React.FC = () => {
           const marks = rows.map(r => r.marksObtained);
           const avg = marks.length ? marks.reduce((a, b) => a + b, 0) / marks.length : 0;
           const passed = rows.filter(r => r.marksObtained >= e.passMarks).length;
+          // who is in the test: every student of the batch with the marks, "absent", or "marks not entered"
+          const people = students
+            .filter(st => st.batchId === e.batchId && (st.status !== 'inactive' || e.results[st.id]))
+            .map(st => {
+              const r = e.results[st.id];
+              return `${st.name} (${!r ? 'marks not entered' : r.absent ? 'absent' : `${r.marksObtained}/${e.maxMarks}`})`;
+            })
+            .join(', ');
           return {
+            people,
             title: e.title,
             batch: e.batchName,
             date: e.date,
@@ -138,7 +147,7 @@ export const ReportsView: React.FC = () => {
           };
         })
         .sort((a, b) => b.date.localeCompare(a.date)),
-    [exams]
+    [exams, students]
   );
 
   const adm = useMemo(() => {
@@ -233,8 +242,8 @@ export const ReportsView: React.FC = () => {
       right: [1, 2, 3, 4, 5, 6]
     },
     exams: {
-      head: ['Test', 'Batch', 'Date', 'Appeared', 'Absent', 'Average', 'Highest', 'Pass %'],
-      rows: ex.map(e => [e.title, e.batch, e.date, e.appeared, e.absent, `${e.avg} / ${e.max}`, e.high, `${e.passPct}%`]) as (string | number)[][],
+      head: ['Test', 'Batch', 'Date', 'Appeared', 'Absent', 'Average', 'Highest', 'Pass %', 'Students (marks)'],
+      rows: ex.map(e => [e.title, e.batch, e.date, e.appeared, e.absent, `${e.avg} / ${e.max}`, e.high, `${e.passPct}%`, e.people || '-']) as (string | number)[][],
       right: [3, 4, 5, 6, 7]
     },
     profit: {
