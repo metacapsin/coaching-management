@@ -156,16 +156,16 @@ export const AttendanceView: React.FC = () => {
 
       {/* Control Bar: Date Selector & Batch Selector */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-3 w-full md:max-w-xl">
           {/* Batch Selector */}
-          <div className="w-full sm:w-auto">
+          <div className="min-w-0">
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
               Batch
             </label>
             <Select
               value={selectedBatchId}
               onChange={e => setSelectedBatchId(e.target.value)}
-              className="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium min-w-0 w-full sm:min-w-56 sm:w-auto"
+              className="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium min-w-0 w-full"
             >
               <option value={ALL}>All students ({students.filter(s => s.status !== 'inactive').length})</option>
               {batches.map(b => (
@@ -178,14 +178,14 @@ export const AttendanceView: React.FC = () => {
           </div>
 
           {/* Date Picker */}
-          <div>
+          <div className="min-w-0">
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
               Date
             </label>
             <DateInput
               value={selectedDate}
               onChange={e => setSelectedDate(e.target.value)}
-              className="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
             />
           </div>
         </div>
