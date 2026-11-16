@@ -1055,7 +1055,9 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
                 ) : (
                   <input type="text" maxLength={20} value={aDetails.idNumber} onChange={e => setD('idNumber', e.target.value.replace(/[^A-Za-z0-9]/g, ''))} placeholder="Passport or national ID" className={`${inputClass} font-mono`} />
                 )}
-                {(aDetails.country === 'India' ? aDetails.idNumber.length === 12 : aDetails.idNumber.length >= 4) && (
+                {(() => {
+                  const numberDone = aDetails.country === 'India' ? aDetails.idNumber.length === 12 : aDetails.idNumber.length >= 4;
+                  return (
                   <div className="mt-2">
                     {aDetails.idImage ? (
                       <div className="flex items-center gap-3">
@@ -1065,12 +1067,17 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
                         </button>
                       </div>
                     ) : (
-                      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 border border-blue-300 hover:bg-blue-50 rounded-lg cursor-pointer transition-colors">
+                      <label
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors ${
+                          numberDone ? 'text-blue-700 border-blue-300 hover:bg-blue-50 cursor-pointer' : 'text-slate-400 border-slate-300 bg-slate-50 cursor-not-allowed'
+                        }`}
+                      >
                         <Plus className="w-3.5 h-3.5" />
                         Upload the photo of the ID
                         <input
                           type="file"
                           accept="image/*"
+                          disabled={!numberDone}
                           className="sr-only"
                           onChange={async e => {
                             const file = e.target.files?.[0];
@@ -1086,9 +1093,13 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
                         />
                       </label>
                     )}
+                    {!numberDone && !aDetails.idImage && (
+                      <p className="text-[11px] text-slate-400 mt-1">Write the {aDetails.country === 'India' ? '12-digit Aadhaar number' : 'ID number'} first, then the photo of the ID can be uploaded here.</p>
+                    )}
                     {idError && <p className="text-[11px] text-rose-600 mt-1">{idError}</p>}
                   </div>
-                )}
+                  );
+                })()}
               </div>
             </div>
             <div>
