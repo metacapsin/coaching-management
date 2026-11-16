@@ -186,16 +186,16 @@ const CoachingCard: React.FC<{ co: PublicCoaching; showRules: boolean }> = ({ co
         <div className="min-w-0">
           <div className="text-[10px] uppercase tracking-wide text-slate-400">Owner</div>
           <div className="text-sm font-semibold text-white truncate">{co.principalName || '-'}</div>
-          {co.email && (
-            <a href={`mailto:${co.email}`} className="text-[11px] text-slate-300 hover:text-sky-300 flex items-center gap-1 min-w-0">
-              <Mail className="w-3 h-3 shrink-0" />
-              <span className="truncate">{co.email}</span>
-            </a>
-          )}
           {co.phone && (
             <a href={`tel:${co.phone.replace(/[^+\d]/g, '')}`} className="text-[11px] text-slate-300 hover:text-sky-300 flex items-center gap-1">
               <Phone className="w-3 h-3 shrink-0" />
               {co.phone}
+            </a>
+          )}
+          {co.email && (
+            <a href={`mailto:${co.email}`} className="text-[11px] text-slate-300 hover:text-sky-300 flex items-center gap-1 min-w-0">
+              <Mail className="w-3 h-3 shrink-0" />
+              <span className="truncate">{co.email}</span>
             </a>
           )}
         </div>
