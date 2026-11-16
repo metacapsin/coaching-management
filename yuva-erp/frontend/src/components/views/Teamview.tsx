@@ -1,5 +1,7 @@
 import { cleanName } from '../utils/names';
-import { Select } from '../ui/Pickers';
+import { Select, DateInput } from '../ui/Pickers';
+import { SignaturePad } from '../ui/SignaturePad';
+import { toLocalISODate } from '../utils/helpers';
 import React, { useCallback, useEffect, useState } from 'react';
 import { request, updateOwnDetails, refreshNow, ApiError } from '../utils/api';
 import { ChangeEmailForm } from '../auth/ChangeEmailForm';
@@ -82,14 +84,15 @@ const RoleBadge: React.FC<{ role: UserRole; parent?: boolean }> = ({ role, paren
   </span>
 );
 
-const Modal: React.FC<{ title: string; subtitle?: string; onClose: () => void; children: React.ReactNode }> = ({
+const Modal: React.FC<{ title: string; subtitle?: string; onClose: () => void; children: React.ReactNode; wide?: boolean }> = ({
   title,
   subtitle,
   onClose,
-  children
+  children,
+  wide = false
 }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-    <div className="relative w-full max-w-md bg-white border border-slate-200 rounded-xl shadow-2xl my-8 overflow-hidden text-slate-900">
+  <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+    <div className={`relative w-full ${wide ? 'max-w-2xl' : 'max-w-md'} bg-white border border-slate-200 rounded-xl shadow-2xl my-8 overflow-hidden text-slate-900`}>
       <div className="px-6 py-4 border-b border-slate-200 flex items-start justify-between bg-slate-50">
         <div>
           <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
@@ -229,6 +232,14 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
   const [aStudentId, setAStudentId] = useState('');
   const [aBatchIds, setABatchIds] = useState<string[]>([]);
   const [aPassword, setAPassword] = useState('');
+  // the registration form of a teacher: personal data, qualification, agreement
+  const emptyDetails = () => ({
+    firstName: '', middleName: '', lastName: '', guardianName: '', alternatePhone: '', addressLine: '', district: '', state: '', pin: '', dateOfBirth: '', idNumber: '',
+    qualification: '', experienceYears: '', workHistory: '', referenceName: '',
+    availability: 'offline', payType: 'monthly', payAmount: '', payNotes: '', facultySignature: '', managementSignature: '', registeredOn: toLocalISODate()
+  });
+  const [aDetails, setADetails] = useState(emptyDetails);
+  const setD = (key: keyof ReturnType<typeof emptyDetails>, value: string) => setADetails(prev => ({ ...prev, [key]: value }));
   const [aShowPw, setAShowPw] = useState(true);
   const [aError, setAError] = useState('');
   const [aBusy, setABusy] = useState(false);
@@ -299,6 +310,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
     setASubject('');
     setAStudentId('');
     setABatchIds([]);
+    setADetails(emptyDetails());
     setAPassword(generatePassword());
     setAShowPw(true);
     setAError('');
@@ -329,14 +341,19 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
     }
   };
 
+  const fullName = [aDetails.firstName, aDetails.middleName, aDetails.lastName].map(x => x.trim()).filter(Boolean).join(' ');
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (aBusy) return;
     setAError('');
+    if (!aDetails.firstName.trim() || !aDetails.lastName.trim()) {
+      setAError('Please write the first name and the last name of the teacher.');
+      return;
+    }
     setABusy(true);
     try {
       const result = await addUser({
-        name: aName,
+        name: fullName,
         email: aEmail,
         password: aPassword,
         role: aRole === 'parent' ? 'student' : aRole,
@@ -344,7 +361,28 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
         subject: aSubject,
         batchIds: aBatchIds,
         studentId: aRole === 'student' || aRole === 'parent' ? aStudentId : undefined,
-        isParent: aRole === 'parent' ? true : undefined
+        isParent: aRole === 'parent' ? true : undefined,
+        details: aRole === 'teacher' ? {
+          firstName: aDetails.firstName.trim(),
+          middleName: aDetails.middleName.trim(),
+          lastName: aDetails.lastName.trim(),
+          guardianName: aDetails.guardianName,
+          alternatePhone: aDetails.alternatePhone,
+          address: { line: aDetails.addressLine, district: aDetails.district, state: aDetails.state, pin: aDetails.pin },
+          dateOfBirth: aDetails.dateOfBirth,
+          idNumber: aDetails.idNumber,
+          qualification: aDetails.qualification,
+          experienceYears: aDetails.experienceYears,
+          workHistory: aDetails.workHistory,
+          referenceName: aDetails.referenceName,
+          availability: aDetails.availability,
+          payType: aDetails.payType,
+          payAmount: aDetails.payAmount,
+          payNotes: aDetails.payNotes,
+          facultySignature: aDetails.facultySignature,
+          managementSignature: aDetails.managementSignature,
+          registeredOn: aDetails.registeredOn
+        } : undefined
       });
       if (!result.ok) {
         setAError(result.error);
@@ -353,7 +391,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
       setShowAdd(false);
       setCopied(false);
       setCredentials({
-        name: aName.trim(),
+        name: fullName,
         email: aEmail.trim().toLowerCase(),
         password: aPassword,
         heading: 'Account created'
@@ -886,6 +924,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
       {showAdd && (
         <Modal
           title="Add Teacher"
+          wide
           subtitle="Create a login for a teacher. The logins of a student and of a parent are made from the student (Dossier)."
           onClose={() => setShowAdd(false)}
         >
@@ -897,46 +936,129 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
               </div>
             )}
 
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">Full Name</label>
-              <input
-                type="text"
-                value={aName}
-                onChange={e => setAName(cleanName(e.target.value))}
-                disabled={aRole === 'student' && !!aStudentId}
-                className={`${inputClass} disabled:bg-slate-50`}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">Email Address</label>
-              <input type="email" value={aEmail} onChange={e => setAEmail(e.target.value)} className={inputClass} />
-            </div>
-
-            {aRole === 'teacher' && (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Mobile</label>
-                    <input type="text" value={aPhone} onChange={e => setAPhone(e.target.value)} className={inputClass} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Subject</label>
-                    <input
-                      type="text"
-                      value={aSubject}
-                      onChange={e => setASubject(e.target.value)}
-                      className={inputClass}
-                    />
-                  </div>
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-blue-700 pt-1 border-b border-slate-200 pb-1.5">Personal &amp; contact</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">First Name</label>
+                  <input type="text" value={aDetails.firstName} onChange={e => setD('firstName', cleanName(e.target.value))} className={inputClass} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Assign Batches</label>
-                  <BatchPicker batches={batches} selected={aBatchIds} onChange={setABatchIds} />
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Middle Name <span className="text-slate-400 font-normal">(optional)</span></label>
+                  <input type="text" value={aDetails.middleName} onChange={e => setD('middleName', cleanName(e.target.value))} className={inputClass} />
                 </div>
-              </>
-            )}
-
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Last Name</label>
+                  <input type="text" value={aDetails.lastName} onChange={e => setD('lastName', cleanName(e.target.value))} className={inputClass} />
+                </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Guardian / Family Name <span className="text-slate-400 font-normal">(optional)</span></label>
+                  <input type="text" value={aDetails.guardianName} onChange={e => setD('guardianName', cleanName(e.target.value))} className={inputClass} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Primary Contact Number</label>
+                  <input type="tel" inputMode="numeric" value={aPhone} onChange={e => setAPhone(e.target.value.replace(/[^\d+ ]/g, ''))} placeholder="10-digit mobile number" className={inputClass} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Alternate Contact Number</label>
+                  <input type="tel" inputMode="numeric" maxLength={10} value={aDetails.alternatePhone} onChange={e => setD('alternatePhone', e.target.value.replace(/\D/g, ''))} className={inputClass} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Email Address</label>
+                  <input type="email" value={aEmail} onChange={e => setAEmail(e.target.value)} className={inputClass} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Date of Birth</label>
+                  <DateInput value={aDetails.dateOfBirth} onChange={e => setD('dateOfBirth', e.target.value)} max={toLocalISODate()} className={`${inputClass} bg-white`} />
+                </div>
+            </div>
+            <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Residential Address</label>
+                  <input type="text" value={aDetails.addressLine} onChange={e => setD('addressLine', e.target.value)} placeholder="House, street, area" className={inputClass} />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">District</label>
+                  <input type="text" value={aDetails.district} onChange={e => setD('district', e.target.value)} className={inputClass} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">State</label>
+                  <input type="text" value={aDetails.state} onChange={e => setD('state', e.target.value)} className={inputClass} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">PIN Code</label>
+                  <input type="text" inputMode="numeric" maxLength={6} value={aDetails.pin} onChange={e => setD('pin', e.target.value.replace(/\D/g, ''))} className={inputClass} />
+                </div>
+            </div>
+            <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Government ID (Aadhaar Number)</label>
+                  <input type="text" inputMode="numeric" maxLength={12} value={aDetails.idNumber} onChange={e => setD('idNumber', e.target.value.replace(/\D/g, ''))} placeholder="12 digits" className={`${inputClass} font-mono`} />
+            </div>
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-blue-700 pt-1 border-b border-slate-200 pb-1.5">Academic &amp; professional qualifications</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Highest Degree / Qualification</label>
+                  <input type="text" value={aDetails.qualification} onChange={e => setD('qualification', e.target.value)} placeholder="e.g. B.Sc, M.Sc, B.Ed, M.Tech" className={inputClass} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Subject / Course Joining For</label>
+                  <input type="text" value={aSubject} onChange={e => setASubject(e.target.value)} placeholder="e.g. Mathematics, Physics" className={inputClass} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Years of Teaching Experience</label>
+                  <input type="number" min={0} max={60} step="0.5" value={aDetails.experienceYears} onChange={e => setD('experienceYears', e.target.value)} className={inputClass} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Reference Name <span className="text-slate-400 font-normal">(if referred by someone)</span></label>
+                  <input type="text" value={aDetails.referenceName} onChange={e => setD('referenceName', cleanName(e.target.value))} className={inputClass} />
+                </div>
+            </div>
+            <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Previous Work History</label>
+                  <textarea rows={3} value={aDetails.workHistory} onChange={e => setD('workHistory', e.target.value)} placeholder="Where the teacher worked before, and for how long" className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">Assign Batches</label>
+              <BatchPicker batches={batches} selected={aBatchIds} onChange={setABatchIds} />
+            </div>
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-blue-700 pt-1 border-b border-slate-200 pb-1.5">Agreement &amp; management terms</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Availability</label>
+                  <Select value={aDetails.availability} onChange={e => setD('availability', e.target.value)} className={`${inputClass} bg-white`}>
+                    <option value="online">Online classes</option>
+                    <option value="offline">Offline classes</option>
+                    <option value="hybrid">Hybrid (online and offline)</option>
+                  </Select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Date of Registration</label>
+                  <DateInput value={aDetails.registeredOn} onChange={e => setD('registeredOn', e.target.value)} className={`${inputClass} bg-white`} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Remuneration / Honorarium</label>
+                  <Select value={aDetails.payType} onChange={e => setD('payType', e.target.value)} className={`${inputClass} bg-white`}>
+                    <option value="monthly">Monthly salary</option>
+                    <option value="per_lecture">Per lecture</option>
+                    <option value="per_hour">Per hour</option>
+                    <option value="honorarium">Honorarium</option>
+                  </Select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Amount</label>
+                  <input type="number" min={0} step="any" value={aDetails.payAmount} onChange={e => setD('payAmount', e.target.value)} placeholder="Agreed amount" className={inputClass} />
+                </div>
+            </div>
+            <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Payment Structure and Terms</label>
+                  <textarea rows={2} value={aDetails.payNotes} onChange={e => setD('payNotes', e.target.value)} placeholder="When and how the teacher is paid, agreed with the management" className={inputClass} />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <SignaturePad label="Faculty Signature" value={aDetails.facultySignature} onChange={png => setD('facultySignature', png)} />
+              <SignaturePad label="Management / Principal Signature" value={aDetails.managementSignature} onChange={png => setD('managementSignature', png)} />
+            </div>
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-blue-700 pt-1 border-b border-slate-200 pb-1.5">Login</h3>
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-xs font-medium text-slate-700">Temporary Password</label>

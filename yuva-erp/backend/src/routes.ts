@@ -30,6 +30,7 @@ import {
 } from './http.ts';
 import { nextRollNumber } from './rollno.ts';
 import { monthName, sendMonthlyAttendance } from './attendanceMail.ts';
+import { cleanTeacherDetails } from './teacherDetails.ts';
 import { applyChanges, parsePhotoDataUrl, scopeInstitute } from './scope.ts';
 import { DEFAULT_ORG, PLATFORM_ORG } from './store.ts';
 import { GREEN, RED } from './emailTemplate.ts';
@@ -1047,6 +1048,8 @@ route('/api/users', ['POST'], 'admin', async (c) => {
   checkEmail(email);
   checkPassword(b.password);
   if (await emailTaken(c, email)) throw new HttpError(409, 'An account with this email already exists.');
+  // the registration details of a teacher (personal data, qualification, the agreement): checked before anything is saved
+  const details = role === 'teacher' && b.details ? cleanTeacherDetails(b.details) : null;
 
   const isParent = role === 'student' && b.isParent === true;
   if (role === 'student') {
@@ -1073,6 +1076,7 @@ route('/api/users', ['POST'], 'admin', async (c) => {
     'active',
   );
   user.mustChangePassword = true; // the principal chose this password, so the person has to choose an own one
+  if (details) user.details = details; // (never in the public list of the accounts: only the principal can read it, below)
   await addUserOrConflict(c, user);
   await s.bump();
   await s.audit(c.user, 'user-add', `${user.email} (${roleLabel(role)})`);
@@ -1083,6 +1087,14 @@ route('/api/users', ['POST'], 'admin', async (c) => {
   }
   await welcomeMail(c, s, user, b.password);
   return { user: auth.publicUser(user) };
+});
+
+/** The registration details of a teacher: only the principal reads them (they hold the Aadhaar number and the signatures). */
+route('/api/users/<user_id>/details', ['GET'], 'admin', async (c) => {
+  const target = await c.store.userById(c.req.params.user_id as string);
+  if (!target || target.role !== 'teacher') throw new HttpError(404, 'Teacher not found.');
+  await c.store.audit(c.user, 'teacher-details-read', target.email);
+  return { name: target.name, email: target.email, phone: target.phone ?? '', subject: target.subject ?? '', details: target.details ?? null };
 });
 
 route('/api/users/<user_id>/approve', ['POST'], 'admin', async (c) => {

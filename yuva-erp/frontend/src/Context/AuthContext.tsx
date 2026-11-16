@@ -36,6 +36,8 @@ export interface NewAccountInput {
   batchIds?: string[];
   studentId?: string;
   isParent?: boolean;
+  // the registration details of a teacher (personal data, qualification, agreement)
+  details?: Record<string, unknown>;
 }
 
 export interface NewStudentInput {
