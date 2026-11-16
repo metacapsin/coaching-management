@@ -1453,7 +1453,7 @@ describe('Teacher registration details (the principal writes them when a teacher
   const good = {
     firstName: 'Rahul', middleName: 'Kumar', lastName: 'Sharma', guardianName: 'Mohan Sharma', alternatePhone: '9876500000',
     address: { line: '12 Main Road', district: 'Kota', state: 'Rajasthan', pin: '324001' }, dateOfBirth: '1990-05-10', idNumber: '1234 5678 9012',
-    qualification: 'M.Sc, B.Ed', workHistory: 'Taught at ABC for 5 years',
+    qualifications: ['M.Sc', 'B.Ed', 'Ph.D'], termsAccepted: true, workHistory: 'Taught at ABC for 5 years',
     payType: 'per_lecture', payAmount: '500', payNotes: 'Paid on the 5th of each month',
     registeredOn: '2000-01-01', // (ignored: the server writes the date of the day)
   };
@@ -1470,6 +1470,10 @@ describe('Teacher registration details (the principal writes them when a teacher
     assert.deepEqual([dd.details.firstName, dd.details.middleName, dd.details.lastName], ['Rahul', 'Kumar', 'Sharma']);
     assert.equal(dd.details.availability, 'online'); // always online: nothing to choose
     assert.equal(dd.details.payAmount, 500);
+    assert.deepEqual(dd.details.qualifications, ['M.Sc', 'B.Ed', 'Ph.D']); // more than one degree
+    assert.equal(dd.details.qualification, 'M.Sc'); // the first is the highest
+    assert.equal(dd.details.termsAccepted, true);
+    assert.equal(dd.details.termsAcceptedOn, new Date().toLocaleDateString('en-CA'));
     assert.equal(dd.details.address.pin, '324001');
     assert.equal(dd.details.registeredOn, new Date().toLocaleDateString('en-CA')); // the day of the registration, written by the server
     // a teacher cannot read them (not even his own), and the teacher does not see them in his own account
@@ -1487,8 +1491,10 @@ describe('Teacher registration details (the principal writes them when a teacher
     assert.equal(await bad('b6@x.com', { firstName: 'Ra@hul' }), 400); // no symbols in a name
     assert.equal(await bad('b7@x.com', { guardianName: 'Mo#han' }), 400);
     assert.equal(await bad('c1@x.com', { lastName: '' }), 400); // the last name is needed
+    assert.equal(await bad('c3@x.com', { termsAccepted: false }), 400); // the teacher must agree to the terms and conditions
+    assert.equal(await bad('c4@x.com', { termsAccepted: undefined }), 400);
     // the middle name, the guardian and the Aadhaar can stay empty
-    const [ok] = await call('POST', '/api/users', body('c2@x.com', { firstName: 'Anil', lastName: 'Rao', middleName: '' }), admin);
+    const [ok] = await call('POST', '/api/users', body('c2@x.com', { firstName: 'Anil', lastName: 'Rao', middleName: '', termsAccepted: true }), admin);
     assert.equal(ok, 200);
   });
 });

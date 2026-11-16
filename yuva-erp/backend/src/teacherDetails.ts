@@ -47,10 +47,16 @@ export function cleanTeacherDetails(raw: any): Record<string, any> {
   out.idNumber = id;
 
   // ---- qualification and work history
-  out.qualification = text(b.qualification, 150);
+  // the degrees: the first is the highest one, and the teacher can have more (up to 8)
+  const list = Array.isArray(b.qualifications) ? b.qualifications : b.qualification ? [b.qualification] : [];
+  out.qualifications = list.map((d: unknown) => text(d, 150)).filter(Boolean).slice(0, 8);
+  out.qualification = out.qualifications[0] ?? '';
   out.workHistory = text(b.workHistory, 1200);
 
   // ---- the agreement
+  if (b.termsAccepted !== true) throw new HttpError(400, 'The teacher must agree to the terms and conditions of the coaching.');
+  out.termsAccepted = true;
+  out.termsAcceptedOn = todayLocal();
   out.availability = 'online'; // (every class is online: the platform works on the website, so there is nothing to choose)
 
   const payType = text(b.payType, 20) || 'monthly';

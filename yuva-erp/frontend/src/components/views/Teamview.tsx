@@ -24,7 +24,8 @@ import {
   RefreshCw,
   Clock,
   Layers,
-  History
+  History,
+  Plus
 } from 'lucide-react';
 
 // ---------- Helpers ----------
@@ -237,10 +238,12 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
   // the registration form of a teacher: personal data, qualification, agreement
   const emptyDetails = () => ({
     firstName: '', middleName: '', lastName: '', guardianName: '', alternatePhone: '', addressLine: '', district: '', state: '', pin: '', dateOfBirth: '', idNumber: '',
-    qualification: '', workHistory: '',
+    workHistory: '',
     payType: 'monthly', payAmount: '', payNotes: ''
   });
   const [aDetails, setADetails] = useState(emptyDetails);
+  const [aDegrees, setADegrees] = useState<string[]>(['']); // the highest degree, and the other degrees (the + button adds one)
+  const [aAgree, setAAgree] = useState(false); // the teacher agrees to the rules and regulations of the coaching
   const setD = (key: keyof ReturnType<typeof emptyDetails>, value: string) => setADetails(prev => ({ ...prev, [key]: value }));
   const [aShowPw, setAShowPw] = useState(true);
   const [aError, setAError] = useState('');
@@ -313,6 +316,8 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
     setAStudentId('');
     setABatchIds([]);
     setADetails(emptyDetails());
+    setADegrees(['']);
+    setAAgree(false);
     setAPassword(generatePassword());
     setAShowPw(true);
     setAError('');
@@ -352,6 +357,10 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
       setAError('Please write the first name and the last name of the teacher.');
       return;
     }
+    if (!aAgree) {
+      setAError('The teacher must agree to the terms and conditions of the coaching (tick the box at the bottom).');
+      return;
+    }
     setABusy(true);
     try {
       const result = await addUser({
@@ -373,7 +382,8 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
           address: { line: aDetails.addressLine, district: aDetails.district, state: aDetails.state, pin: aDetails.pin },
           dateOfBirth: aDetails.dateOfBirth,
           idNumber: aDetails.idNumber,
-          qualification: aDetails.qualification,
+          qualifications: aDegrees.map(d => d.trim()).filter(Boolean),
+          termsAccepted: aAgree,
           workHistory: aDetails.workHistory,
           payType: aDetails.payType,
           payAmount: aDetails.payAmount,
@@ -1001,12 +1011,41 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Highest Degree / Qualification</label>
-                  <input type="text" value={aDetails.qualification} onChange={e => setD('qualification', e.target.value)} placeholder="e.g. B.Sc, M.Sc, B.Ed, M.Tech" className={inputClass} />
+                  <div className="flex gap-2">
+                    <input type="text" value={aDegrees[0] ?? ''} onChange={e => setADegrees(prev => prev.map((d, i) => (i === 0 ? e.target.value : d)))} placeholder="e.g. B.Sc, M.Sc, B.Ed, M.Tech" className={inputClass} />
+                    <button
+                      type="button"
+                      onClick={() => setADegrees(prev => (prev.length < 8 ? [...prev, ''] : prev))}
+                      disabled={aDegrees.length >= 8}
+                      title="Add another degree"
+                      aria-label="Add another degree"
+                      className="shrink-0 w-10 flex items-center justify-center text-blue-600 border border-blue-300 hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Subject / Course Joining For</label>
                   <input type="text" value={aSubject} onChange={e => setASubject(e.target.value)} placeholder="e.g. Mathematics, Physics" className={inputClass} />
                 </div>
+                {aDegrees.slice(1).map((degree, k) => (
+                  <div key={k} className="sm:col-span-2">
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Other Degree / Qualification {k + 2}</label>
+                    <div className="flex gap-2">
+                      <input type="text" value={degree} onChange={e => setADegrees(prev => prev.map((d, i) => (i === k + 1 ? e.target.value : d)))} placeholder="e.g. B.Ed, Diploma, Ph.D" className={inputClass} />
+                      <button
+                        type="button"
+                        onClick={() => setADegrees(prev => prev.filter((_, i) => i !== k + 1))}
+                        title="Remove this degree"
+                        aria-label="Remove this degree"
+                        className="shrink-0 w-10 flex items-center justify-center text-rose-600 border border-rose-300 hover:bg-rose-50 rounded-lg transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
             </div>
             <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Previous Work History</label>
@@ -1033,9 +1072,15 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
                 </div>
             </div>
             <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Payment Structure and Terms</label>
-                  <textarea rows={2} value={aDetails.payNotes} onChange={e => setD('payNotes', e.target.value)} placeholder="When and how the teacher is paid, agreed with the management" className={inputClass} />
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Other Terms &amp; Notes</label>
+                  <textarea rows={3} value={aDetails.payNotes} onChange={e => setD('payNotes', e.target.value)} placeholder="Write anything else that was agreed with the teacher: the payment date and how the payment is made, working hours, leave rules, notice period..." className={inputClass} />
             </div>
+            <label className="flex items-start gap-2.5 p-3 rounded-lg border border-slate-200 bg-slate-50 cursor-pointer">
+              <input type="checkbox" checked={aAgree} onChange={e => setAAgree(e.target.checked)} className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 shrink-0" />
+              <span className="text-xs text-slate-700">
+                <strong className="text-slate-900">Terms &amp; Conditions.</strong> The teacher has read and agrees to follow the rules and regulations of this coaching.
+              </span>
+            </label>
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-blue-700 pt-1 border-b border-slate-200 pb-1.5">Login</h3>
             <div>
               <div className="flex items-center justify-between mb-1">
