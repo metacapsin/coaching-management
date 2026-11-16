@@ -415,6 +415,7 @@ export interface PublicCoaching {
   city: string;
   principalName?: string;
   phone?: string;
+  logoUrl?: string;
 }
 
 export const listCoachings = () => request<{ coachings: PublicCoaching[] }>('GET', '/public/coachings', undefined, { auth: false }).then(r => r.coachings);

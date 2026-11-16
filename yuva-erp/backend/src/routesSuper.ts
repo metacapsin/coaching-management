@@ -90,8 +90,17 @@ route('/api/public/coachings', ['GET'], 'public', async (c) => {
   // the coachings on the platform, for the website: only the name, the principal's name and the contact number (a teacher who wants to join calls the principal)
   const out: any[] = [];
   for (const o of await c.root.orgActiveList()) {
-    const principal = (await c.root.forOrg(o.id).usersAll()).find((u) => u.role === 'admin');
-    out.push({ id: o.id, name: o.name, city: o.city ?? '', principalName: principal?.name ?? '', phone: principal?.phone ?? '' });
+    const tenant = c.root.forOrg(o.id);
+    const principal = (await tenant.usersAll()).find((u) => u.role === 'admin');
+    const logoToken = await tenant.logoToken();
+    out.push({
+      id: o.id,
+      name: o.name,
+      city: o.city ?? '',
+      principalName: principal?.name ?? '',
+      phone: principal?.phone ?? '',
+      logoUrl: logoToken ? `/api/logo/${encodeURIComponent(o.id)}/${logoToken}` : '', // (the logo is the public face of the coaching)
+    });
   }
   return { coachings: out };
 });

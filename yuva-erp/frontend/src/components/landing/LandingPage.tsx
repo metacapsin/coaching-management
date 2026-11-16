@@ -17,6 +17,7 @@ import {
   DatabaseBackup,
   Layers,
   Building2,
+  Phone,
   ChevronDown,
   Check,
   Lock,
@@ -160,6 +161,46 @@ const DAY: { title: string; text: string }[] = [
   { title: 'Evening: fees and notices', text: 'See who still has to pay, remind them, and send a notice or homework to a batch.' },
   { title: 'Month end: reports', text: 'Fees collected, expenses, salaries and profit. Download the reports as CSV.' }
 ];
+
+// One coaching on the website: its logo (or first letter), name and city, and its principal with the contact number.
+const CoachingCard: React.FC<{ co: PublicCoaching; showRules: boolean }> = ({ co, showRules }) => {
+  const [failed, setFailed] = useState(false);
+  const principal = co.principalName || 'Principal';
+  const initials = principal.split(/\s+/).map(w => w.charAt(0)).join('').slice(0, 2).toUpperCase();
+  return (
+    <div className="lp-lift rounded-2xl border border-white/10 bg-white/[0.03] p-5 hover:border-sky-400/40">
+      <div className="flex items-center gap-3 min-w-0">
+        {co.logoUrl && !failed ? (
+          <img src={co.logoUrl} alt="" onError={() => setFailed(true)} className="w-11 h-11 rounded-xl object-contain bg-white shrink-0" />
+        ) : (
+          <span className="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-lg font-bold shrink-0">{co.name.trim().charAt(0).toUpperCase()}</span>
+        )}
+        <div className="min-w-0">
+          <h3 className="text-sm font-bold text-white truncate">{co.name}</h3>
+          {co.city && <p className="text-[11px] text-slate-400 truncate">{co.city}</p>}
+        </div>
+      </div>
+      <div className="mt-4 rounded-xl bg-black/20 border border-white/5 p-3 flex items-center gap-3">
+        <span className="w-10 h-10 rounded-full bg-slate-600/60 text-white flex items-center justify-center text-xs font-bold shrink-0">{initials}</span>
+        <div className="min-w-0">
+          <div className="text-[10px] uppercase tracking-wide text-slate-400">Principal</div>
+          <div className="text-sm font-semibold text-white truncate">{co.principalName || '-'}</div>
+          {co.phone && (
+            <a href={`tel:${co.phone.replace(/[^+\d]/g, '')}`} className="text-[11px] text-slate-300 hover:text-sky-300 flex items-center gap-1">
+              <Phone className="w-3 h-3 shrink-0" />
+              {co.phone}
+            </a>
+          )}
+        </div>
+      </div>
+      {showRules && (
+        <a href={`/rules/${encodeURIComponent(co.id)}`} className="inline-block text-sm text-sky-300 hover:underline mt-3">
+          Read the rules
+        </a>
+      )}
+    </div>
+  );
+};
 
 const WHY_CARDS = [
   { icon: Building2, title: 'Built for coachings', text: 'Programs, batches, test series, ranks and fee receipts are the way a coaching works.' },
@@ -411,30 +452,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-400">{'— '}{tr('Coachings on AcademiaOS')}{' —'}</p>
             <Reveal stagger className="mt-5 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {coachings.map(co => (
-                <div key={co.id} className="lp-lift rounded-xl border border-white/10 bg-white/[0.03] p-5 hover:border-sky-400/40">
-                  <span className="w-11 h-11 rounded-full bg-sky-400/10 text-sky-400 flex items-center justify-center">
-                    <Building2 className="w-5 h-5" />
-                  </span>
-                  <h3 className="text-base font-semibold text-white mt-4">{co.name}</h3>
-                  <p className="text-sm text-sky-100/70 mt-2">
-                    {tr('Principal')}: {co.principalName || '-'}
-                  </p>
-                  <p className="text-sm text-sky-100/70 mt-1">
-                    {tr('Contact')}:{' '}
-                    {co.phone ? (
-                      <a href={`tel:${co.phone.replace(/[^+\d]/g, '')}`} className="text-sky-300 hover:underline">
-                        {co.phone}
-                      </a>
-                    ) : (
-                      '-'
-                    )}
-                  </p>
-                  {coachings.length > 1 && (
-                    <a href={`/rules/${encodeURIComponent(co.id)}`} className="inline-block text-sm text-sky-300 hover:underline mt-3">
-                      {tr('Read the rules')}
-                    </a>
-                  )}
-                </div>
+                <CoachingCard key={co.id} co={co} showRules={coachings.length > 1} />
               ))}
             </Reveal>
           </div>
