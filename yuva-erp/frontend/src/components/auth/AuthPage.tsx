@@ -423,9 +423,9 @@ export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }>
     try {
       const result = createSuper
         ? await signUp({ name: name.trim(), email: email.trim(), password })
-        : await signIn({ email: email.trim(), password, remember, portal });
+        : await signIn({ email: email.trim(), password, remember: portal === 'super' ? false : remember, portal }); // (the Super Admin is never remembered: every sign in asks the code)
       if (!result.ok) setFormError(result.error);
-      else if (result.otp) setCodeStep({ masked: result.otp.email, minutes: result.otp.minutes, email: email.trim(), remember });
+      else if (result.otp) setCodeStep({ masked: result.otp.email, minutes: result.otp.minutes, email: email.trim(), remember: false });
     } finally {
       setSubmitting(false);
     }
@@ -630,7 +630,7 @@ export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }>
                 />
               )}
 
-              {!createSuper && (
+              {!createSuper && portal !== 'super' && (
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"

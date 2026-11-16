@@ -249,7 +249,8 @@ route('/api/auth/verify-login-code', ['POST'], 'public', async (c) => {
   await s.saveUser(found);
   c.limiters.ip.reset(ip);
   await s.audit(found, 'login');
-  return startSession(c, found, b.remember !== false);
+  // the Super Admin is never remembered: the session is the short one, so closing the tab (and a new day) means a new code
+  return startSession(c, found, false);
 });
 
 /** A new code (only while a code of a password that was right is waiting; not more than 3 times, and not faster than every 30 seconds). */
