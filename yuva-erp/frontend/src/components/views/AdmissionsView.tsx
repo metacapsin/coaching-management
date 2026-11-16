@@ -150,9 +150,9 @@ export const AdmissionsView: React.FC<AdmissionsViewProps> = ({
   };
 
   // "Send notice": tells the parent that the fee of the child is not fully paid (the amount, and the date if one is set).
-  // The fee is collected on the Fees page; here the office only sends the notice. It opens ready in WhatsApp and is kept in
-  // Parent Broadcasts.
-  const sendFeeNotice = useFeeNotice();
+  // The fee is collected on the Fees page; here the office only sends the notice. It goes by email to the parent (with the Pay now
+  // button when the UPI id is written) and is in the login of the parent too (the bell and the Notice Board).
+  const sendFeeNotice = useFeeNotice({ viaEmail: true }); // (by email: WhatsApp is not opened)
   const handleFeeNotice = (e: React.MouseEvent, s: Student) => {
     e.stopPropagation();
     sendFeeNotice(s, r => showNotice(r.type, r.text));
@@ -424,7 +424,7 @@ export const AdmissionsView: React.FC<AdmissionsViewProps> = ({
                             <button
                               onClick={e => handleFeeNotice(e, student)}
                               className="px-2 py-1 text-[11px] font-semibold text-white bg-amber-500 hover:bg-amber-600 rounded-md transition-colors flex items-center gap-1"
-                              title="Tell the parent that the fee is not fully paid"
+                              title="Email the parent that the fee is not fully paid (the notice is in the parent login too)"
                             >
                               <Bell className="w-3 h-3" />
                               Send notice
