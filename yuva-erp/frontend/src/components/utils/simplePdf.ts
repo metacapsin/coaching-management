@@ -2,6 +2,8 @@
 // a table with a coloured heading and every second row shaded, and a footer with the page number). Landscape A4, several pages when the list
 // is long. Only the Latin letters can be written (the standard font of the PDF); any other letter becomes a "?".
 
+import { saveBlobAs } from './saveFile';
+
 const PAGE_W = 842;
 const PAGE_H = 595;
 const MARGIN = 30;
@@ -187,15 +189,7 @@ export function buildTablePdf(t: PdfTable): Uint8Array {
   return bytes;
 }
 
-/** Saves the table as a PDF file on the computer of the person. */
-export function downloadTablePdf(filename: string, table: PdfTable): void {
-  const blob = new Blob([buildTablePdf(table) as BlobPart], { type: 'application/pdf' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+/** Asks where to save (the "Save as" window), then saves the table as a PDF file. */
+export function downloadTablePdf(filename: string, table: PdfTable): Promise<boolean> {
+  return saveBlobAs(filename, new Blob([buildTablePdf(table) as BlobPart], { type: 'application/pdf' }), 'PDF document', '.pdf');
 }

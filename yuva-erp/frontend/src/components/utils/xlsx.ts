@@ -2,6 +2,8 @@
 // stores the files without squeezing them. Every letter of every language is kept (the text is UTF-8). It opens in Excel, Google Sheets and
 // LibreOffice by a double click (unlike a .csv file, which some computers open with the wrong program).
 
+import { saveBlobAs } from './saveFile';
+
 const encoder = new TextEncoder();
 
 // ---------- the zip ----------
@@ -167,15 +169,8 @@ export function buildXlsx(sheetName: string, headers: string[], rows: (string | 
   return zipStore(files.map(f => ({ name: f.name, data: encoder.encode(f.text) })));
 }
 
-/** Saves the table as an Excel file on the computer of the person. */
-export function downloadXlsx(filename: string, sheetName: string, headers: string[], rows: (string | number)[][], widths?: number[], options?: XlsxOptions): void {
+/** Asks where to save (the "Save as" window), then saves the table as an Excel file. */
+export function downloadXlsx(filename: string, sheetName: string, headers: string[], rows: (string | number)[][], widths?: number[], options?: XlsxOptions): Promise<boolean> {
   const blob = new Blob([buildXlsx(sheetName, headers, rows, widths, options) as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return saveBlobAs(filename, blob, 'Excel workbook', '.xlsx');
 }
