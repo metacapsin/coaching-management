@@ -2,6 +2,8 @@ import { cleanName } from '../utils/names';
 import { Select, DateInput } from '../ui/Pickers';
 import { toLocalISODate } from '../utils/helpers';
 import { DialCodePicker } from '../ui/DialCodePicker';
+import { RulesText } from './RulesView';
+import { TeacherDetailsModal } from '../modals/TeacherDetailsModal';
 import { countryForPostalCode } from '../utils/countries';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { request, updateOwnDetails, refreshNow, ApiError } from '../utils/api';
@@ -245,6 +247,8 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
   });
   const [aDetails, setADetails] = useState(emptyDetails);
   const [aDegrees, setADegrees] = useState<string[]>(['']); // the highest degree, and the other degrees (the + button adds one)
+  const [detailsOf, setDetailsOf] = useState<AuthUser | null>(null); // the registration details of a teacher
+  const [showRules, setShowRules] = useState(false); // the rules and regulations are read in a window
   const [aAgree, setAAgree] = useState(false); // the teacher agrees to the rules and regulations of the coaching
   const setD = (key: keyof ReturnType<typeof emptyDetails>, value: string) => setADetails(prev => ({ ...prev, [key]: value }));
   // the postal code can show the country: a PIN code of India (6 digits) chooses India and its +91, a code of Canada, the UK, Japan or a ZIP+4 of the USA its own country
@@ -788,6 +792,14 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
                         <div className="flex items-center justify-end gap-1.5">
                           {member.role === 'teacher' && (
                             <button
+                              onClick={() => setDetailsOf(member)}
+                              className="px-2.5 py-1 text-[11px] font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
+                            >
+                              Details
+                            </button>
+                          )}
+                          {member.role === 'teacher' && (
+                            <button
                               onClick={() => openBatches(member)}
                               className="px-2.5 py-1 text-[11px] font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-md transition-colors flex items-center gap-1"
                             >
@@ -1136,7 +1148,10 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
             <label className="flex items-start gap-2.5 p-3 rounded-lg border border-slate-200 bg-slate-50 cursor-pointer">
               <input type="checkbox" checked={aAgree} onChange={e => setAAgree(e.target.checked)} className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 shrink-0" />
               <span className="text-xs text-slate-700">
-                <strong className="text-slate-900">Terms &amp; Conditions.</strong> The teacher has read and agrees to follow the rules and regulations of this coaching.
+                <button type="button" onClick={e => { e.preventDefault(); setShowRules(true); }} className="font-bold text-blue-600 hover:underline">
+                  Terms &amp; Conditions
+                </button>
+                . The teacher has read and agrees to follow the rules and regulations of this coaching. When you add the teacher, all the rules are sent to the teacher by email, and the teacher agrees to them again at the first sign in.
               </span>
             </label>
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-blue-700 pt-1 border-b border-slate-200 pb-1.5">Login</h3>
@@ -1188,6 +1203,29 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
             </div>
           </form>
         </Modal>
+      )}
+
+      {detailsOf && <TeacherDetailsModal teacher={detailsOf} onClose={() => setDetailsOf(null)} />}
+
+      {showRules && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="w-full max-w-3xl max-h-[calc(100dvh-2rem)] flex flex-col bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden text-slate-900">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50 shrink-0">
+              <h2 className="text-lg font-semibold">Rules and regulations</h2>
+              <button onClick={() => setShowRules(false)} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg" aria-label="Close">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto overscroll-contain">
+              <RulesText />
+            </div>
+            <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 flex justify-end shrink-0">
+              <button onClick={() => setShowRules(false)} className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Approve teacher request */}

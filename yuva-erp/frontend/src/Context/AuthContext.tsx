@@ -110,6 +110,8 @@ interface AuthContextType {
 
   // Any signed-in user
   changeOwnPassword: (currentPassword: string, newPassword: string) => Promise<AuthResult>;
+  // A new teacher agrees to the rules and regulations of the coaching
+  acceptRules: () => Promise<AuthResult>;
   changeOwnEmail: (currentPassword: string, newEmail: string) => Promise<AuthResult>;
 }
 
@@ -398,6 +400,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     []
   );
 
+  const acceptRules = useCallback(
+    () =>
+      attempt(async () => {
+        const r = await request<{ user: AuthUser }>('POST', '/rules/accept', { agree: true });
+        setUser(r.user);
+      }),
+    []
+  );
+
   return (
     <AuthContext.Provider
       value={{
@@ -418,6 +429,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         registerStudent,
         registerParent,
         registerTeacher,
+        acceptRules,
         signIn,
         verifyLoginCode,
         resendLoginCode,

@@ -46,7 +46,8 @@ const TAB_META: Record<TabId, { title: string; subtitle: string }> = {
   leave: { title: 'Apply for Leave', subtitle: 'Ask the principal for leave' },
   reports: { title: 'Reports', subtitle: 'Fees, attendance, results and admissions' },
   expenses: { title: 'Expenses & Profit', subtitle: 'What the coaching spends and what is left' },
-  library: { title: 'Library', subtitle: 'Books to read online' }
+  library: { title: 'Library', subtitle: 'Books to read online' },
+  rules: { title: 'Rules & Regulations', subtitle: 'The rules of the coaching for the teachers' }
 };
 
 export const Navbar: React.FC<NavbarProps> = ({

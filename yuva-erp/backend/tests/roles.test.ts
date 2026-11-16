@@ -1497,14 +1497,19 @@ describe('Teacher registration details (the principal writes them when a teacher
     assert.equal(await bad('c4@x.com', { termsAccepted: undefined }), 400);
     assert.equal(await bad('d1@x.com', { alternatePhone: '98765432101' }), 400); // 11 digits
     assert.equal(await bad('d2@x.com', { country: 'Narnia' }), 400); // only a country of the list
-    assert.equal(await bad('d4@x.com', { country: 'Brazil', address: { ...good.address, pin: '01001-000' } }), 200); // every country of the world is in the list
+    const [bs] = await call('POST', '/api/users', { ...body('d4@x.com', { ...good, country: 'Brazil', idNumber: 'BR123456', address: { ...good.address, pin: '01001-000' } }), phone: '9000000004' }, admin);
+    assert.equal(bs, 200); // every country of the world is in the list
     // another country: the dial code is written before the 10 digits, and the postal code and the ID are not the Indian ones
     const [fs, fd] = await call('POST', '/api/users', { ...body('f1@x.com', { ...good, country: 'United Arab Emirates', address: { line: 'Street 4', district: 'Dubai', state: 'Dubai', pin: 'A1 2BC' }, idNumber: 'P1234567' }), phone: '5012345678' }, admin);
     assert.equal(fs, 200);
     assert.equal(fd.user.phone, '+971 5012345678');
     assert.equal(await bad('d3@x.com', { address: { ...good.address, pin: '12345' } }), 400); // India: 6 digits
+    // the contact number is needed, and one teacher is not added twice (the same number, or the same identity number)
+    assert.equal((await call('POST', '/api/users', { ...body('e1@x.com', good), phone: '' }, admin))[0], 400);
+    assert.equal((await call('POST', '/api/users', body('e2@x.com', good), admin))[0], 409); // the number of the teacher of the first test
+    assert.equal((await call('POST', '/api/users', { ...body('e3@x.com', good), phone: '9000000003' }, admin))[0], 409); // the same Aadhaar
     // the middle name, the guardian and the Aadhaar can stay empty
-    const [ok] = await call('POST', '/api/users', body('c2@x.com', { firstName: 'Anil', lastName: 'Rao', middleName: '', termsAccepted: true }), admin);
+    const [ok] = await call('POST', '/api/users', { ...body('c2@x.com', { firstName: 'Anil', lastName: 'Rao', middleName: '', termsAccepted: true }), phone: '9000000002' }, admin);
     assert.equal(ok, 200);
   });
 });
@@ -1563,5 +1568,76 @@ describe('The place of a postal code', () => {
     } finally {
       (globalThis as any).fetch = real;
     }
+  });
+});
+
+describe('Rules and regulations of the teachers', () => {
+  let admin = '';
+  const s = withServer(async (api) => {
+    admin = (await api.call('POST', '/api/auth/setup', { name: 'Pri', email: 'pri@x.com', password: PASSWORD }))[1].token;
+  });
+  const call = (...a: Parameters<Api['call']>) => s.api.call(...a);
+  const form = (email: string, phone: string) => ({
+    name: 'Rahul Kumar Sharma', email, password: 'Teach#12345', role: 'teacher', phone, subject: 'Physics', batchIds: [],
+    details: { firstName: 'Rahul', lastName: 'Sharma', termsAccepted: true, qualifications: ['M.Sc'], payType: 'monthly' },
+  });
+
+  it('1 the teacher gets the account and, with it, all the rules by email; a teacher added without the tick is not added', async () => {
+    const mail = captureMail();
+    let status = 0;
+    let user: any;
+    try {
+      [status, { user }] = await call('POST', '/api/users', form('r1@x.com', '9876543210'), admin);
+    } finally {
+      mail.stop();
+    }
+    assert.equal(status, 200);
+    assert.equal(user.mustAcceptRules, true);
+    const rules = mail.sent.find((m) => m[1].includes('Rules and regulations'))!;
+    assert.equal(rules[0], 'r1@x.com');
+    assert.ok(rules[2].includes('1. Appointment and conduct') && rules[2].includes('12. Discipline and end of the work'), 'every part of the rules is in the email');
+    assert.ok(rules[2].length > 6000, 'it is a long text (two or three pages)');
+    assert.ok(mail.sent.some((m) => m[1].includes('Your AcademiaOS account')), 'and the welcome email with the first password');
+    // without the tick of the principal: nothing is added and nothing is sent
+    const bad = captureMail();
+    try {
+      const noTick = form('r2@x.com', '9876543211');
+      (noTick.details as any).termsAccepted = false;
+      assert.equal((await call('POST', '/api/users', noTick, admin))[0], 400);
+    } finally {
+      bad.stop();
+    }
+    assert.equal(bad.sent.length, 0);
+  });
+
+  it('2 the teacher reads the rules and agrees at the first sign in; the principal is told; the page of the rules is for the principal and the teachers only', async () => {
+    const teacher = (await call('POST', '/api/auth/login', { email: 'r1@x.com', password: 'Teach#12345', portal: 'member' }))[1].token;
+    const [rs, rd] = await call('GET', '/api/rules', null, teacher);
+    assert.equal(rs, 200);
+    assert.equal(rd.mustAccept, true);
+    assert.ok(rd.rules.sections.length >= 10);
+    assert.equal((await call('GET', '/api/rules', null, admin))[0], 200);
+    // no agreement without the tick
+    assert.equal((await call('POST', '/api/rules/accept', {}, teacher))[0], 400);
+    assert.equal((await call('POST', '/api/rules/accept', { agree: true }, admin))[0], 403); // only a teacher agrees
+    const mail = captureMail();
+    let me: any;
+    try {
+      const [as, ad] = await call('POST', '/api/rules/accept', { agree: true }, teacher);
+      assert.equal(as, 200);
+      me = ad.user;
+    } finally {
+      mail.stop();
+    }
+    assert.equal(me.mustAcceptRules, undefined);
+    assert.ok(me.rulesAcceptedAt);
+    assert.deepEqual(mail.sent.map((m) => m[0]), ['pri@x.com']); // the principal is told
+    assert.ok(mail.sent[0][1].includes('agreed to the rules'));
+    // the principal sees the date of the agreement with the details of the teacher
+    const list = (await call('GET', '/api/sync', null, admin))[1].users.find((u: any) => u.email === 'r1@x.com');
+    const details = (await call('GET', `/api/users/${list.id}/details`, null, admin))[1];
+    assert.ok(details.rulesAcceptedAt && details.details.rulesAcceptedByTeacher);
+    // a teacher who agreed can read the rules again
+    assert.equal((await call('GET', '/api/rules', null, teacher))[1].mustAccept, false);
   });
 });

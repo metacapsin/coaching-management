@@ -51,7 +51,11 @@ export function render(heading: string, lines: string[], opts: RenderOptions = {
     );
   }
   if (name) body.push(`<p style="${p}">Hello ${esc(name)},</p>`);
-  for (const line of lines) body.push(`<p style="${p}">${esc(line)}</p>`);
+  for (const line of lines) {
+    if (line.startsWith('\u2022 ')) body.push(`<p style="margin:0 0 7px 16px;font-size:14px;line-height:1.55;color:#334155;">${esc(line)}</p>`); // a point of a list
+    else if (/^\d+\. /.test(line)) body.push(`<p style="margin:20px 0 8px;font-size:15px;font-weight:700;color:#0f172a;">${esc(line)}</p>`); // the title of a part
+    else body.push(`<p style="${p}">${esc(line)}</p>`);
+  }
   if (code) {
     body.push(
       '<div style="margin:18px 0;padding:16px;border-radius:10px;background:#eff6ff;border:1px solid #bfdbfe;' +

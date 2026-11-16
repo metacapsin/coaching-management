@@ -32,6 +32,7 @@ import { nextRollNumber } from './rollno.ts';
 import { monthName, sendMonthlyAttendance } from './attendanceMail.ts';
 import { cleanTeacherDetails, cleanTeacherPhone } from './teacherDetails.ts';
 import { lookupPostal } from './postal.ts';
+import { rulesAsLines, rulesFor } from './rules.ts';
 import { applyChanges, parsePhotoDataUrl, scopeInstitute } from './scope.ts';
 import { DEFAULT_ORG, PLATFORM_ORG } from './store.ts';
 import { GREEN, RED } from './emailTemplate.ts';
@@ -1051,6 +1052,17 @@ route('/api/users', ['POST'], 'admin', async (c) => {
   if (await emailTaken(c, email)) throw new HttpError(409, 'An account with this email already exists.');
   // the registration details of a teacher (personal data, qualification, the agreement): checked before anything is saved
   const details = role === 'teacher' && b.details ? cleanTeacherDetails(b.details) : null;
+  if (details) {
+    if (!String(b.phone ?? '').replace(/\D/g, '')) throw new HttpError(400, 'Please enter the primary contact number of the teacher.');
+    // one teacher is not added twice: the same contact number or the same identity number
+    cleanTeacherPhone(b.phone, details.countryCode); // (the number has exactly 10 digits)
+    const phone10 = String(b.phone).replace(/\D/g, '').slice(-10);
+    for (const other of await s.usersAll()) {
+      if (other.role !== 'teacher') continue;
+      if (last10(String(other.phone ?? '')) === phone10) throw new HttpError(409, 'A teacher with this contact number is already added.');
+      if (details.idNumber && other.details?.idNumber === details.idNumber) throw new HttpError(409, 'A teacher with this identity number is already added.');
+    }
+  }
 
   const isParent = role === 'student' && b.isParent === true;
   if (role === 'student') {
@@ -1077,7 +1089,10 @@ route('/api/users', ['POST'], 'admin', async (c) => {
     'active',
   );
   user.mustChangePassword = true; // the principal chose this password, so the person has to choose an own one
-  if (details) user.details = details; // (never in the public list of the accounts: only the principal can read it, below)
+  if (details) {
+    user.details = details; // (never in the public list of the accounts: only the principal can read it, below)
+    user.mustAcceptRules = true; // the teacher reads and agrees to the rules and regulations at the first sign in
+  }
   await addUserOrConflict(c, user);
   await s.bump();
   await s.audit(c.user, 'user-add', `${user.email} (${roleLabel(role)})`);
@@ -1087,7 +1102,49 @@ route('/api/users', ['POST'], 'admin', async (c) => {
     await notifyNewPerson(s, 'new_teacher', user.name, `${user.name} was added as a teacher.`);
   }
   await welcomeMail(c, s, user, b.password);
+  if (details) await mailRulesToTeacher(c, s, user);
   return { user: auth.publicUser(user) };
+});
+
+/** The rules and regulations for the teachers of this coaching (the page of the principal and of the teachers, and the first sign in of a new teacher). */
+/** The rules and regulations go to the new teacher by email (the whole text). The teacher agrees to them at the first sign in. */
+async function mailRulesToTeacher(c: any, s: any, user: any): Promise<void> {
+  try {
+    const coaching = await coachingName(c, s);
+    const rules = rulesFor(coaching);
+    mail(user.email, `Rules and regulations of ${coaching}: please read and agree`, rules.title, rulesAsLines(rules), {
+      details: [['Coaching', coaching], ['Teacher', user.name]],
+      button: ['Sign in and agree', c.loginLink('member')],
+      note: 'At your first sign in a page with these rules asks for your agreement. You can read the rules again at any time in the page Rules & Regulations.',
+      name: user.name,
+      from: c.user ? fromPerson(c.user, coaching) : undefined,
+    });
+  } catch {
+    /* a courtesy: the account is made all the same */
+  }
+}
+
+route('/api/rules', ['GET'], 'user', async (c) => {
+  if (c.user.role !== 'admin' && c.user.role !== 'teacher') throw new HttpError(403, 'The rules and regulations are for the principal and the teachers.');
+  const coaching = await coachingName(c, c.store);
+  return { coaching, rules: rulesFor(coaching), mustAccept: Boolean(c.user.mustAcceptRules), acceptedAt: c.user.rulesAcceptedAt ?? null };
+});
+
+/** The teacher agrees to the rules and regulations (the first sign in): the date is kept and the principal is told by email. */
+route('/api/rules/accept', ['POST'], 'user', async (c) => {
+  if (c.user.role !== 'teacher') throw new HttpError(403, 'Only a teacher agrees to the rules of the teachers.');
+  if (c.body().agree !== true) throw new HttpError(400, 'Please tick the box to agree to the rules and regulations.');
+  if (!c.user.rulesAcceptedAt) {
+    c.user.rulesAcceptedAt = nowIso();
+    if (c.user.details) c.user.details.rulesAcceptedByTeacher = c.user.rulesAcceptedAt;
+  }
+  delete c.user.mustAcceptRules;
+  await c.store.saveUser(c.user);
+  await c.store.bump();
+  await c.store.audit(c.user, 'rules-accepted', c.user.email);
+  const coaching = await coachingName(c, c.store);
+  await tellPrincipals(c, c.store, `${c.user.name} agreed to the rules and regulations`, `${c.user.name} agreed to the rules`, [`${c.user.name} read the rules and regulations of ${coaching} and agreed to follow them.`], [['Teacher', c.user.name], ['Email', c.user.email], ['Agreed on', niceDay(String(c.user.rulesAcceptedAt).slice(0, 10))]], fromPerson(c.user, coaching));
+  return { user: auth.publicUser(c.user) };
 });
 
 /** The district and the state of a PIN code or a ZIP code (the form of a new teacher fills them in). Only the principal asks. */
@@ -1102,7 +1159,7 @@ route('/api/users/<user_id>/details', ['GET'], 'admin', async (c) => {
   const target = await c.store.userById(c.req.params.user_id as string);
   if (!target || target.role !== 'teacher') throw new HttpError(404, 'Teacher not found.');
   await c.store.audit(c.user, 'teacher-details-read', target.email);
-  return { name: target.name, email: target.email, phone: target.phone ?? '', subject: target.subject ?? '', details: target.details ?? null };
+  return { name: target.name, email: target.email, phone: target.phone ?? '', subject: target.subject ?? '', createdAt: target.createdAt ?? '', rulesAcceptedAt: target.rulesAcceptedAt ?? null, details: target.details ?? null };
 });
 
 route('/api/users/<user_id>/approve', ['POST'], 'admin', async (c) => {

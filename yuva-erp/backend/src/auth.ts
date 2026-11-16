@@ -78,7 +78,7 @@ export function buildUser(data: any, status: string): any {
   return user;
 }
 
-const PUBLIC_FIELDS = ['id', 'name', 'email', 'role', 'status', 'createdAt', 'phone', 'subject', 'studentId', 'batchIds', 'resetRequestedAt', 'orgId', 'mustChangePassword', 'isParent'];
+const PUBLIC_FIELDS = ['id', 'name', 'email', 'role', 'status', 'createdAt', 'phone', 'subject', 'studentId', 'batchIds', 'resetRequestedAt', 'orgId', 'mustChangePassword', 'isParent', 'mustAcceptRules', 'rulesAcceptedAt'];
 
 /** What the browser may see about an account (never the hash). */
 export function publicUser(u: any): any {

@@ -44,6 +44,8 @@ export interface AuthUser {
   batchIds?: string[]; // teachers: batches they handle
   resetRequestedAt?: string; // set when the person asked for a new password
   mustChangePassword?: boolean; // somebody else set the password: the person must choose an own one
+  mustAcceptRules?: boolean; // a new teacher: the rules and regulations must be read and agreed to before the app opens
+  rulesAcceptedAt?: string;
   isParent?: boolean; // a parent's login (role student, linked to the child's record, read only)
 }
 

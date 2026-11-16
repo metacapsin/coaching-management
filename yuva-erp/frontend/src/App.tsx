@@ -39,6 +39,8 @@ import { LandingPage } from './components/landing/LandingPage';
 import { PayPage } from './components/pay/PayPage';
 import { ParentLoginPage } from './components/auth/ParentLoginPage';
 import { ForcePasswordChange } from './components/auth/ForcePasswordChange';
+import { RulesGate } from './components/auth/RulesGate';
+import { RulesView } from './components/views/RulesView';
 import { OrgLogo } from './components/ui/OrgLogo';
 import { Navbar } from './components/layout/Navbar';
 import { ConnectionScreen } from './components/layout/ConnectionScreen';
@@ -69,6 +71,7 @@ import {
   BarChart3,
   Wallet,
   Library,
+  ScrollText,
   CalendarOff
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -157,6 +160,7 @@ function MainApp() {
     { id: 'material', label: role === 'student' ? 'Study Material' : 'Study Material & Homework', icon: BookOpen },
     { id: 'leave', label: 'Apply for Leave', icon: CalendarOff },
     { id: 'library', label: 'Library', icon: Library },
+    { id: 'rules', label: 'Rules & Regulations', icon: ScrollText },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
     { id: 'expenses', label: 'Expenses & Profit', icon: Wallet },
     { id: 'team', label: role === 'admin' ? 'Team & Access' : 'My Account', icon: ShieldCheck },
@@ -247,6 +251,8 @@ function MainApp() {
         return <ExpensesView />;
       case 'library':
         return <LibraryView />;
+      case 'rules':
+        return <RulesView />;
       case 'team':
         return <TeamView addTeacherSignal={addTeacherSignal} />;
       case 'settings':
@@ -519,6 +525,8 @@ function AuthGate() {
   }
   // somebody else set this password: choose an own one before anything else
   if (user.mustChangePassword) return <ForcePasswordChange />;
+  // a new teacher: the rules and regulations of the coaching are read and agreed to before the app opens
+  if (user.role === 'teacher' && user.mustAcceptRules) return <RulesGate />;
   // the Super Admin signed in on the same login page: the list of coachings instead of a coaching
   if (user.role === 'super') return <SuperAdminApp />;
 

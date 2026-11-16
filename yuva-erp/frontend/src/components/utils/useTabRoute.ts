@@ -19,6 +19,7 @@ export const TAB_PATHS: Record<TabId, string> = {
   reports: '/reports',
   expenses: '/expenses',
   team: '/team',
+  rules: '/rules',
   settings: '/settings'
 };
 

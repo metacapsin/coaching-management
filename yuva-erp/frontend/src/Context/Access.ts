@@ -16,6 +16,7 @@ export type TabId =
   | 'library'
   | 'notifications'
   | 'team'
+  | 'rules'
   | 'settings';
 
 export type UserRole = 'super' | 'admin' | 'teacher' | 'student';
@@ -39,11 +40,12 @@ export const ROLE_TABS: Record<UserRole, TabId[]> = {
     'library',
     'notifications',
     'team',
+    'rules',
     'settings'
   ],
   // Teacher: own dashboard + own batches only (the server sends only their data)
   // (leave: a teacher asks for the own leave; the principal decides)
-  teacher: ['dashboard', 'attendance', 'exams', 'notices', 'material', 'leave', 'library', 'team'],
+  teacher: ['dashboard', 'attendance', 'exams', 'notices', 'material', 'leave', 'library', 'rules', 'team'],
   // Student: own portal, notices and study material of the batch
   // (leave: a student asks; the page itself says a parent only reads)
   student: ['dashboard', 'notices', 'material', 'leave', 'library', 'team']
