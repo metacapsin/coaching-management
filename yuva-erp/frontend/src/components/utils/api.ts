@@ -415,6 +415,7 @@ export interface PublicCoaching {
   city: string;
   principalName?: string;
   phone?: string;
+  email?: string;
   logoUrl?: string;
 }
 

@@ -99,6 +99,7 @@ route('/api/public/coachings', ['GET'], 'public', async (c) => {
       city: o.city ?? '',
       principalName: principal?.name ?? '',
       phone: principal?.phone ?? '',
+      email: principal?.email ?? '',
       logoUrl: logoToken ? `/api/logo/${encodeURIComponent(o.id)}/${logoToken}` : '', // (the logo is the public face of the coaching)
     });
   }

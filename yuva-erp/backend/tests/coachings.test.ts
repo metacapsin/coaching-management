@@ -582,7 +582,7 @@ describe('Coachings', () => {
     const coachings = (await call('GET', '/api/public/coachings'))[1].coachings;
     assert.deepEqual(new Set(coachings.map((c: any) => c.name)), new Set(['Alpha', 'Beta']));
     // the website list: the name, the principal's name and the contact number (and nothing private)
-    for (const c of coachings) assert.ok(typeof c.principalName === 'string' && typeof c.phone === 'string' && !('email' in c));
+    for (const c of coachings) assert.ok(typeof c.principalName === 'string' && typeof c.phone === 'string' && typeof c.email === 'string');
     const rulesOfA = (await call('GET', `/api/public/rules/${orgA}`))[1]; // anybody can read the rules of a coaching
     assert.equal(rulesOfA.coaching, 'Alpha');
     assert.ok(rulesOfA.rules.sections.length > 0);

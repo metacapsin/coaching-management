@@ -18,6 +18,7 @@ import {
   Layers,
   Building2,
   Phone,
+  Mail,
   ChevronDown,
   Check,
   Lock,
@@ -165,7 +166,7 @@ const DAY: { title: string; text: string }[] = [
 // One coaching on the website: its logo (or first letter), name and city, and its principal with the contact number.
 const CoachingCard: React.FC<{ co: PublicCoaching; showRules: boolean }> = ({ co, showRules }) => {
   const [failed, setFailed] = useState(false);
-  const principal = co.principalName || 'Principal';
+  const principal = co.principalName || 'Owner';
   const initials = principal.split(/\s+/).map(w => w.charAt(0)).join('').slice(0, 2).toUpperCase();
   return (
     <div className="lp-lift rounded-2xl border border-white/10 bg-white/[0.03] p-5 hover:border-sky-400/40">
@@ -183,8 +184,14 @@ const CoachingCard: React.FC<{ co: PublicCoaching; showRules: boolean }> = ({ co
       <div className="mt-4 rounded-xl bg-black/20 border border-white/5 p-3 flex items-center gap-3">
         <span className="w-10 h-10 rounded-full bg-slate-600/60 text-white flex items-center justify-center text-xs font-bold shrink-0">{initials}</span>
         <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-wide text-slate-400">Principal</div>
+          <div className="text-[10px] uppercase tracking-wide text-slate-400">Owner</div>
           <div className="text-sm font-semibold text-white truncate">{co.principalName || '-'}</div>
+          {co.email && (
+            <a href={`mailto:${co.email}`} className="text-[11px] text-slate-300 hover:text-sky-300 flex items-center gap-1 min-w-0">
+              <Mail className="w-3 h-3 shrink-0" />
+              <span className="truncate">{co.email}</span>
+            </a>
+          )}
           {co.phone && (
             <a href={`tel:${co.phone.replace(/[^+\d]/g, '')}`} className="text-[11px] text-slate-300 hover:text-sky-300 flex items-center gap-1">
               <Phone className="w-3 h-3 shrink-0" />
