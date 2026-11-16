@@ -12,12 +12,16 @@ export interface RulesData {
 }
 
 // The text of the rules and regulations for the teachers (the server writes it with the name of the coaching).
-export const RulesText: React.FC<{ onLoaded?: (data: RulesData) => void }> = ({ onLoaded }) => {
+// With `publicOrgId` it is the public text of that coaching (the website shows it to anybody who wants to join).
+export const RulesText: React.FC<{ onLoaded?: (data: RulesData) => void; publicOrgId?: string }> = ({ onLoaded, publicOrgId }) => {
   const [data, setData] = useState<RulesData | null>(null);
   const [error, setError] = useState('');
   useEffect(() => {
     let alive = true;
-    request<RulesData>('GET', '/rules')
+    (publicOrgId
+      ? request<RulesData>('GET', `/public/rules/${encodeURIComponent(publicOrgId)}`, undefined, { auth: false })
+      : request<RulesData>('GET', '/rules')
+    )
       .then(d => {
         if (!alive) return;
         setData(d);

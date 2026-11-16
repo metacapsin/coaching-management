@@ -28,6 +28,7 @@ import {
   Star
 } from 'lucide-react';
 import { AuthPage } from '../auth/AuthPage';
+import { listCoachings, type PublicCoaching } from '../utils/api';
 import { Carousel } from './Carousel';
 import { useLang } from '../../i18n/LangContext';
 import { SITE_INFO, SOCIAL, SCREENSHOTS, TESTIMONIALS } from '../../data/siteInfo';
@@ -206,6 +207,10 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
     document.getElementById('signin')?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
   };
   const [tab, setTab] = useState(WHY_TABS[0].id);
+  const [coachings, setCoachings] = useState<PublicCoaching[]>([]);
+  useEffect(() => {
+    listCoachings().then(setCoachings).catch(() => setCoachings([]));
+  }, []);
   const [open, setOpen] = useState<number | null>(0);
   const [scrolled, setScrolled] = useState(false);
   const [here, setHere] = useState('#top'); // the part of the page that is on the screen (it is lit in the bar of the phone)
@@ -398,6 +403,43 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
           </Reveal>
         </div>
       </section>
+
+      {/* The coachings on the platform: a teacher who wants to join one calls its principal */}
+      {coachings.length > 0 && (
+        <section id="coachings" className="scroll-mt-16 bg-[#16222d] pb-14">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-400">{'— '}{tr('Coachings on AcademiaOS')}{' —'}</p>
+            <Reveal stagger className="mt-5 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {coachings.map(co => (
+                <div key={co.id} className="lp-lift rounded-xl border border-white/10 bg-white/[0.03] p-5 hover:border-sky-400/40">
+                  <span className="w-11 h-11 rounded-full bg-sky-400/10 text-sky-400 flex items-center justify-center">
+                    <Building2 className="w-5 h-5" />
+                  </span>
+                  <h3 className="text-base font-semibold text-white mt-4">{co.name}</h3>
+                  <p className="text-sm text-sky-100/70 mt-2">
+                    {tr('Principal')}: {co.principalName || '-'}
+                  </p>
+                  <p className="text-sm text-sky-100/70 mt-1">
+                    {tr('Contact')}:{' '}
+                    {co.phone ? (
+                      <a href={`tel:${co.phone.replace(/[^+\d]/g, '')}`} className="text-sky-300 hover:underline">
+                        {co.phone}
+                      </a>
+                    ) : (
+                      '-'
+                    )}
+                  </p>
+                  {coachings.length > 1 && (
+                    <a href={`/rules/${encodeURIComponent(co.id)}`} target="_blank" rel="noreferrer" className="inline-block text-sm text-sky-300 hover:underline mt-3">
+                      {tr('Read the rules')}
+                    </a>
+                  )}
+                </div>
+              ))}
+            </Reveal>
+          </div>
+        </section>
+      )}
 
       {/* How it works */}
       <section id="how" className="scroll-mt-16 bg-[#1b2833] py-20">

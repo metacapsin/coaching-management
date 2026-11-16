@@ -23,6 +23,7 @@ import {
 } from './http.ts';
 import type { Ctx } from './http.ts';
 import { intParam } from './routes.ts';
+import { rulesFor } from './rules.ts';
 import { BackupError, DEFAULT_ORG, PLATFORM_ORG } from './store.ts';
 import { checkName, last10, newId, text, todayLocal } from './validate.ts';
 
@@ -85,10 +86,22 @@ async function newCoaching(c: Ctx, b: any, status: string): Promise<[any, any]> 
   return [org, user];
 }
 
-route('/api/public/coachings', ['GET'], 'public', async (c) => ({
-  // the coachings a student or teacher can sign up to
-  coachings: (await c.root.orgActiveList()).map((o) => ({ id: o.id, name: o.name, city: o.city ?? '' })),
-}));
+route('/api/public/coachings', ['GET'], 'public', async (c) => {
+  // the coachings on the platform, for the website: only the name, the principal's name and the contact number (a teacher who wants to join calls the principal)
+  const out: any[] = [];
+  for (const o of await c.root.orgActiveList()) {
+    const principal = (await c.root.forOrg(o.id).usersAll()).find((u) => u.role === 'admin');
+    out.push({ id: o.id, name: o.name, city: o.city ?? '', principalName: principal?.name ?? '', phone: principal?.phone ?? '' });
+  }
+  return { coachings: out };
+});
+
+/** The rules and regulations of one coaching, for anybody to read before joining it (the same text a teacher agrees to). */
+route('/api/public/rules/<org_id>', ['GET'], 'public', async (c) => {
+  const org = (await c.root.orgActiveList()).find((o) => o.id === (c.req.params.org_id as string));
+  if (!org) throw new HttpError(404, 'Coaching not found.');
+  return { coaching: org.name, rules: rulesFor(org.name) };
+});
 
 /** A coaching asks to join. The super admin has to approve it before its principal can sign in. */
 route('/api/public/register-coaching', ['POST'], 'public', async (c) => {

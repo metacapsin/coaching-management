@@ -413,6 +413,8 @@ export interface PublicCoaching {
   id: string;
   name: string;
   city: string;
+  principalName?: string;
+  phone?: string;
 }
 
 export const listCoachings = () => request<{ coachings: PublicCoaching[] }>('GET', '/public/coachings', undefined, { auth: false }).then(r => r.coachings);

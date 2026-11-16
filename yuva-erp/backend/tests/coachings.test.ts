@@ -581,6 +581,12 @@ describe('Coachings', () => {
     assert.equal((await call('POST', '/api/auth/register-student', reg))[0], 400); // two coachings: choose one
     const coachings = (await call('GET', '/api/public/coachings'))[1].coachings;
     assert.deepEqual(new Set(coachings.map((c: any) => c.name)), new Set(['Alpha', 'Beta']));
+    // the website list: the name, the principal's name and the contact number (and nothing private)
+    for (const c of coachings) assert.ok(typeof c.principalName === 'string' && typeof c.phone === 'string' && !('email' in c));
+    const rulesOfA = (await call('GET', `/api/public/rules/${orgA}`))[1]; // anybody can read the rules of a coaching
+    assert.equal(rulesOfA.coaching, 'Alpha');
+    assert.ok(rulesOfA.rules.sections.length > 0);
+    assert.equal((await call('GET', '/api/public/rules/nope'))[0], 404);
     // roll 01 with that phone is Alice of Alpha; Beta has another student with roll 01 and a different phone
     assert.equal((await call('POST', '/api/auth/register-student', { ...reg, orgId: orgB, phone: '+91 90000 99999' }))[0], 400);
     const [status, data] = await call('POST', '/api/auth/register-student', { ...reg, orgId: orgA });

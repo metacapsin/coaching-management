@@ -38,6 +38,7 @@ import { SuperAdminApp } from './components/super/SuperAdminApp';
 import { LandingPage } from './components/landing/LandingPage';
 import { PayPage } from './components/pay/PayPage';
 import { ParentLoginPage } from './components/auth/ParentLoginPage';
+import { PublicRulesPage } from './components/landing/PublicRulesPage';
 import { ForcePasswordChange } from './components/auth/ForcePasswordChange';
 import { RulesGate } from './components/auth/RulesGate';
 import { RulesView } from './components/views/RulesView';
@@ -502,7 +503,7 @@ function AuthGate() {
 
   // signed out: the address of a page of the app is no more (the website is at "/")
   useEffect(() => {
-    if (ready && !user && window.location.pathname !== '/' && window.location.pathname !== '/parent') window.history.replaceState(null, '', '/');
+    if (ready && !user && window.location.pathname !== '/' && window.location.pathname !== '/parent' && !window.location.pathname.startsWith('/rules/')) window.history.replaceState(null, '', '/');
   }, [ready, user]);
 
   if (serverError) return <ConnectionScreen error={serverError} onRetry={retryConnection} />;
@@ -510,6 +511,7 @@ function AuthGate() {
   // The website is the first page; the sign in form is in its top part
   if (!user) {
     if (window.location.pathname === '/parent') return <ParentLoginPage />;
+    if (window.location.pathname.startsWith('/rules/')) return <PublicRulesPage orgId={decodeURIComponent(window.location.pathname.slice('/rules/'.length))} />;
     return <LandingPage />;
   }
   if (fromLink && seenId === user.id) {
