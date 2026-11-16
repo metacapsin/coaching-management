@@ -2,7 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import { emailMonthlyAttendance } from '../utils/api';
 import { useAuth } from '../../Context/AuthContext';
-import { downloadCsv, formatINR, toLocalISODate } from '../utils/helpers';
+import { ExportMenu } from '../ui/ExportMenu';
+import { formatINR, toLocalISODate } from '../utils/helpers';
 import { BarChart3, Download, Printer } from 'lucide-react';
 
 type ReportId = 'fees' | 'profit' | 'attendance' | 'exams' | 'admissions' | 'batches' | 'ledger' | 'studentAtt';
@@ -311,8 +312,6 @@ export const ReportsView: React.FC = () => {
   };
   const current = tables[report];
 
-  // (in a file, the lines of a cell are joined with ;)
-  const exportCsv = () => downloadCsv(`report_${report}_${toLocalISODate()}.csv`, current.head, current.rows.map(r => r.map(c => (typeof c === 'string' ? c.replace(/\n/g, '; ') : c))));
 
   return (
     <div className="space-y-6">
@@ -327,10 +326,18 @@ export const ReportsView: React.FC = () => {
           <p className="text-xs text-slate-500 mt-1">Month-wise fees, attendance by batch, exam results and admissions. Export or print any report.</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={exportCsv} className="px-3.5 py-2 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg flex items-center gap-1.5">
-            <Download className="w-4 h-4" />
-            Export CSV
-          </button>
+          <ExportMenu
+            filename={`report_${report}`}
+            title={`${REPORTS.find(r => r.id === report)?.label ?? 'Report'} report`}
+            subtitle={profile.academicYear}
+            coaching={profile.name}
+            disabled={current.rows.length === 0}
+            build={() => ({
+              headers: current.head,
+              rows: current.rows.map(r => r.map(c => (typeof c === 'string' ? c.replace(/\n/g, '; ') : c))),
+              colorize: (_col, value) => (typeof value === 'string' ? (value.endsWith('(Loss)') || value === 'Fail' || value === 'Absent' ? 'red' : value.endsWith('(Profit)') || value === 'Pass' ? 'green' : undefined) : undefined)
+            })}
+          />
           <button onClick={() => window.print()} className="px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-1.5">
             <Printer className="w-4 h-4" />
             Print

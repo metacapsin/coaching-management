@@ -7,7 +7,9 @@ import { Pager } from '../ui/Pager';
 import { SalariesPanel } from './SalariesPanel';
 import { StaffAttendancePanel } from './StaffAttendancePanel';
 import { usePaged } from '../utils/usePaged';
-import { downloadCsv, formatDate, formatINR, toLocalISODate } from '../utils/helpers';
+import { ExportMenu, exportMoney } from '../ui/ExportMenu';
+import type { ExportData } from '../ui/ExportMenu';
+import { formatDate, formatINR, toLocalISODate } from '../utils/helpers';
 import { Wallet, Plus, Download, Pencil, Trash2, TrendingUp, TrendingDown } from 'lucide-react';
 
 const monthKey = (iso: string) => iso.slice(0, 7);
@@ -72,12 +74,15 @@ const ExpensesPanel: React.FC = () => {
 
   const periodName = period === 'all' ? 'All time' : monthLabel(period);
 
-  const exportCsv = () =>
-    downloadCsv(
-      `expenses_${period}_${toLocalISODate()}.csv`,
-      ['Date', 'What for', 'Type', 'Amount', 'Paid by', 'Notes'],
-      list.map(e => [e.date, e.title, CATEGORY_LABEL[e.category], e.amount, e.paymentMethod || '', e.notes || ''])
-    );
+  // the list on the screen as a table: for the PDF and for the Excel file
+  const exportData = (): ExportData => ({
+    headers: ['Date', 'What for', 'Type', 'Amount', 'Paid by', 'Notes'],
+    rows: list.map(e => [e.date, e.title, CATEGORY_LABEL[e.category], e.amount, e.paymentMethod || '', e.notes || '']),
+    summary: [
+      { label: 'Expenses', value: list.length },
+      { label: 'Total', value: exportMoney(profile.currencySymbol, list.reduce((n, e) => n + e.amount, 0)) }
+    ]
+  });
 
   return (
     <div className="space-y-6">
@@ -94,10 +99,7 @@ const ExpensesPanel: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={exportCsv} className="px-3.5 py-2 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg flex items-center gap-1.5">
-            <Download className="w-4 h-4" />
-            Export CSV
-          </button>
+          <ExportMenu filename={`expenses_${period}`} title="Expenses" subtitle={periodName} coaching={profile.name} build={exportData} disabled={list.length === 0} />
           <button
             onClick={() => setEditing({ expense: null })}
             className="px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm flex items-center gap-1.5"

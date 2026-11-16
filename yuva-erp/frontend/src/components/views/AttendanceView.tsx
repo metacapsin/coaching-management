@@ -5,7 +5,8 @@ import { useAuth } from '../../Context/AuthContext';
 import { canManageInstitute } from '../../Context/Access';
 import type { AttendanceStatus } from '../../types';
 import { AttendanceAbsentAlertModal } from '../modals/AttendanceAbsentAlertModal';
-import { downloadCsv, toLocalISODate } from '../utils/helpers';
+import { ExportMenu } from '../ui/ExportMenu';
+import { formatDate, toLocalISODate } from '../utils/helpers';
 import { CalendarCheck, Send, Save, Check, Download } from 'lucide-react';
 
 export const AttendanceView: React.FC = () => {
@@ -16,6 +17,7 @@ export const AttendanceView: React.FC = () => {
     markAttendance, 
     getAttendanceForBatchAndDate 
   } = useInstitute();
+  const { profile } = useInstitute();
   const { user } = useAuth();
 
   // '__all' shows every student in one list (the default); a batch can be chosen to see only its students
@@ -117,28 +119,30 @@ export const AttendanceView: React.FC = () => {
             </button>
           )}
 
-          <button
-            onClick={() =>
-              downloadCsv(
-                `attendance-${selectedDate}${showAll ? '' : `-${currentBatch?.name ?? 'batch'}`}.csv`,
-                ['Date', 'Roll no', 'Student', 'Batch', 'Status', 'Parent', 'Parent phone'],
-                batchStudents.map(st => [
-                  selectedDate,
-                  st.rollNo,
-                  st.name,
-                  batches.find(b => b.id === st.batchId)?.name || '',
-                  localRecords[st.id] || 'present',
-                  st.parentName,
-                  st.parentPhone
-                ])
-              )
-            }
+          <ExportMenu
+            filename={`attendance_${selectedDate}${showAll ? '' : `_${currentBatch?.name ?? 'batch'}`}`}
+            addDate={false}
+            title="Daily attendance"
+            subtitle={`${showAll ? 'All students' : currentBatch?.name ?? 'Batch'} - ${formatDate(selectedDate)}`}
+            coaching={profile.name}
             disabled={batchStudents.length === 0}
-            className="px-3.5 py-2 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg shadow-xs flex items-center gap-1.5 disabled:opacity-50"
-          >
-            <Download className="w-4 h-4" />
-            CSV
-          </button>
+            build={() => {
+              const marks = batchStudents.map(st => localRecords[st.id] || 'present');
+              const count = (k: string) => marks.filter(m => m === k).length;
+              return {
+                headers: ['Date', 'Roll no', 'Student', 'Batch', 'Status', 'Parent', 'Parent phone'],
+                rows: batchStudents.map(st => [selectedDate, st.rollNo, st.name, batches.find(b => b.id === st.batchId)?.name || '', localRecords[st.id] || 'present', st.parentName, st.parentPhone]),
+                summary: [
+                  { label: 'Students', value: batchStudents.length },
+                  { label: 'Present', value: count('present') },
+                  { label: 'Absent', value: count('absent') },
+                  { label: 'Late', value: count('late') },
+                  { label: 'Excused', value: count('excused') }
+                ],
+                colorize: (col, value) => (col === 4 ? (value === 'present' ? 'green' : value === 'absent' ? 'red' : 'amber') : undefined)
+              };
+            }}
+          />
 
           <button
             onClick={handleSave}

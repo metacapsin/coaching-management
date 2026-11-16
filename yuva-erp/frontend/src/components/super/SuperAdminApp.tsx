@@ -29,6 +29,7 @@ import {
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { ChangeEmailForm } from '../auth/ChangeEmailForm';
 import { ModalShell } from '../ui/ModalShell';
+import { DownloadMenu } from '../ui/ExportMenu';
 import { downloadTablePdf } from '../utils/simplePdf';
 import { downloadXlsx } from '../utils/xlsx';
 import { formatDate, formatDateTime, toLocalISODate, toWhatsAppNumber } from '../utils/helpers';
@@ -162,69 +163,6 @@ const MyPasswordModal: React.FC<{ onClose: () => void; onDone: (msg: string) => 
 };
 
 /** The logo of a coaching; its first letter when there is no logo, or when the picture cannot be loaded. */
-// One "Download list" button: it opens a small menu to choose the kind of file (PDF to read and print, Excel to sort and edit).
-const DownloadMenu: React.FC<{ disabled: boolean; onPdf: () => void; onExcel: () => void }> = ({ disabled, onPdf, onExcel }) => {
-  const [open, setOpen] = useState(false);
-  const box = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const away = (e: MouseEvent) => {
-      if (box.current && !box.current.contains(e.target as Node)) setOpen(false);
-    };
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
-    document.addEventListener('mousedown', away);
-    document.addEventListener('keydown', esc);
-    return () => {
-      document.removeEventListener('mousedown', away);
-      document.removeEventListener('keydown', esc);
-    };
-  }, [open]);
-  const choose = (action: () => void) => {
-    setOpen(false);
-    action();
-  };
-  const item = 'w-full text-left px-3 py-2 rounded-lg flex items-center gap-3 hover:bg-slate-100 focus:outline-none focus:bg-slate-100 transition-colors';
-  return (
-    <div ref={box} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen(o => !o)}
-        disabled={disabled}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        title="Download the list of the coachings (PDF or Excel)"
-        className="px-4 py-2 text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-300 rounded-lg shadow-sm flex items-center gap-1.5 cursor-pointer transition-all duration-150 enabled:hover:bg-indigo-600 enabled:hover:text-white enabled:hover:border-indigo-600 enabled:hover:shadow-md enabled:active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        <Download className="w-4 h-4" />
-        Download list
-        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-      {open && (
-        <div role="menu" className="absolute right-0 mt-2 w-64 z-30 p-1.5 bg-white border border-slate-200 rounded-xl shadow-xl">
-          <button role="menuitem" type="button" onClick={() => choose(onPdf)} className={item}>
-            <span className="p-2 rounded-lg bg-rose-50 text-rose-600">
-              <FileText className="w-4 h-4" />
-            </span>
-            <span>
-              <span className="block text-sm font-semibold text-slate-800">PDF</span>
-              <span className="block text-[11px] text-slate-500">To read, print or send</span>
-            </span>
-          </button>
-          <button role="menuitem" type="button" onClick={() => choose(onExcel)} className={item}>
-            <span className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
-              <FileSpreadsheet className="w-4 h-4" />
-            </span>
-            <span>
-              <span className="block text-sm font-semibold text-slate-800">Excel</span>
-              <span className="block text-[11px] text-slate-500">To sort, filter and edit</span>
-            </span>
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
-
 const CoachingLogo: React.FC<{ org: OrgSummary }> = ({ org }) => {
   const [failed, setFailed] = useState(false);
   if (org.logoUrl && !failed) {
@@ -464,6 +402,7 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
         </div>
         <div className="flex flex-wrap gap-2 self-start">
           <DownloadMenu
+            label="Download list"
             disabled={orgs.length === 0}
             onPdf={() =>
               downloadTablePdf(`coachings-${toLocalISODate()}.pdf`, {

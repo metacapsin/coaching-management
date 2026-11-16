@@ -6,7 +6,9 @@ import { Pager } from '../ui/Pager';
 import { usePaged } from '../utils/usePaged';
 import { EditStudentModal } from '../modals/EditstudentModal';
 import type { Student } from '../../types';
-import { csvCell, downloadTextFile, fillTemplate, formatDate, openWhatsApp, payPageLink, plural, toLocalISODate, withPayLink } from '../utils/helpers';
+import { ExportMenu, exportMoney } from '../ui/ExportMenu';
+import type { ExportData } from '../ui/ExportMenu';
+import { fillTemplate, formatDate, openWhatsApp, payPageLink, plural, toLocalISODate, withPayLink } from '../utils/helpers';
 import { useFeeNotice } from '../utils/useFeeNotice';
 import {
   Users,
@@ -102,46 +104,30 @@ export const AdmissionsView: React.FC<AdmissionsViewProps> = ({
   // New registrations that wait for the principal to confirm the admission and set the fee
   const pendingCount = students.filter(s => s.status === 'trial').length;
 
-  const handleExportCSV = () => {
-    const headers = [
-      'Roll No',
-      'Name',
-      'Grade',
-      'Status',
-      'Target Exam',
-      'Batch',
-      'Parent Name',
-      'Parent Phone',
-      'Total Fees',
-      'Discount',
-      'Paid',
-      'Balance Due'
-    ];
-    const rows = filteredStudents.map(s => {
-      const b = batches.find(item => item.id === s.batchId);
-      const net = Math.max(0, s.totalFees - s.discount);
-      const bal = Math.max(0, net - s.feePaid);
-      return [
-        csvCell(s.rollNo),
-        csvCell(s.name),
-        csvCell(s.grade),
-        csvCell(s.status === 'inactive' ? 'Archived' : s.status),
-        csvCell(s.targetExam),
-        csvCell(b?.name || ''),
-        csvCell(s.parentName),
-        csvCell(s.parentPhone),
-        s.totalFees,
-        s.discount,
-        s.feePaid,
-        bal
-      ].join(',');
-    });
-
-    // BOM so Excel reads Hindi / accented names correctly
-    downloadTextFile(
-      `student_directory_${toLocalISODate()}.csv`,
-      '\uFEFF' + [headers.map(csvCell).join(','), ...rows].join('\n')
+  // the list on the screen as a table: for the PDF and for the Excel file
+  const exportData = (): ExportData => {
+    const sum = filteredStudents.reduce(
+      (acc, s) => {
+        const net = Math.max(0, s.totalFees - s.discount);
+        return { fees: acc.fees + net, paid: acc.paid + s.feePaid, due: acc.due + Math.max(0, net - s.feePaid) };
+      },
+      { fees: 0, paid: 0, due: 0 }
     );
+    return {
+      headers: ['Roll No', 'Name', 'Grade', 'Status', 'Target Exam', 'Batch', 'Parent Name', 'Parent Phone', 'Total Fees', 'Discount', 'Paid', 'Balance Due'],
+      rows: filteredStudents.map(s => {
+        const b = batches.find(item => item.id === s.batchId);
+        const net = Math.max(0, s.totalFees - s.discount);
+        return [s.rollNo, s.name, s.grade, s.status === 'inactive' ? 'Archived' : s.status, s.targetExam, b?.name || '', s.parentName, s.parentPhone, s.totalFees, s.discount, s.feePaid, Math.max(0, net - s.feePaid)];
+      }),
+      summary: [
+        { label: 'Students', value: filteredStudents.length },
+        { label: 'Fees', value: exportMoney(profile.currencySymbol, sum.fees) },
+        { label: 'Paid', value: exportMoney(profile.currencySymbol, sum.paid) },
+        { label: 'Balance due', value: exportMoney(profile.currencySymbol, sum.due) }
+      ],
+      colorize: (col, value) => (col === 3 ? (value === 'active' ? 'green' : value === 'Archived' ? 'red' : 'amber') : col === 11 && Number(value) > 0 ? 'red' : undefined)
+    };
   };
 
   const handleWhatsAppParent = (e: React.MouseEvent, s: Student) => {
@@ -225,19 +211,13 @@ export const AdmissionsView: React.FC<AdmissionsViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleExportCSV}
-            className="px-3.5 py-2 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg transition-colors flex items-center gap-1.5"
-          >
-            <Download className="w-4 h-4" />
-            Export CSV
-          </button>
+          <ExportMenu filename="student_directory" title="Student directory" subtitle="Admissions and students" coaching={profile.name} build={exportData} disabled={filteredStudents.length === 0} />
           <button
             onClick={onOpenAdmission}
             className="px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
           >
             <UserPlus className="w-4 h-4" />
-            Enroll New Student
+            New Student
           </button>
         </div>
       </div>

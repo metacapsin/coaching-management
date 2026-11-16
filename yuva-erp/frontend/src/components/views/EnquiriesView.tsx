@@ -6,7 +6,9 @@ import { EnquiryModal, STATUS_LABEL, SOURCE_LABEL } from '../modals/EnquiryModal
 import { AdmissionModal } from '../modals/AdmissionModal';
 import { Pager } from '../ui/Pager';
 import { usePaged } from '../utils/usePaged';
-import { downloadCsv, formatDate, formatDateTime, openWhatsApp, toLocalISODate } from '../utils/helpers';
+import { ExportMenu } from '../ui/ExportMenu';
+import type { ExportData } from '../ui/ExportMenu';
+import { formatDate, formatDateTime, openWhatsApp, toLocalISODate } from '../utils/helpers';
 import {
   PhoneCall,
   Plus,
@@ -99,24 +101,17 @@ export const EnquiriesView: React.FC = () => {
     setConverting(e);
   };
 
-  const handleExport = () => {
-    downloadCsv(
-      `enquiries_${today}.csv`,
-      ['Name', 'Mobile', 'Parent', 'Class', 'Program', 'Source', 'Status', 'Follow-up', 'Notes', 'Created'],
-      filtered.map(e => [
-        e.name,
-        e.phone,
-        e.parentName || '',
-        e.grade || '',
-        courseName(e.interestedCourseId),
-        SOURCE_LABEL[e.source],
-        STATUS_LABEL[e.status],
-        e.followUpDate || '',
-        e.notes,
-        e.createdAt.slice(0, 10)
-      ])
-    );
-  };
+  // the list on the screen as a table: for the PDF and for the Excel file
+  const exportData = (): ExportData => ({
+    headers: ['Name', 'Mobile', 'Parent', 'Class', 'Program', 'Source', 'Status', 'Follow-up', 'Notes', 'Created'],
+    rows: filtered.map(e => [e.name, e.phone, e.parentName || '', e.grade || '', courseName(e.interestedCourseId), SOURCE_LABEL[e.source], STATUS_LABEL[e.status], e.followUpDate || '', e.notes, e.createdAt.slice(0, 10)]),
+    summary: [
+      { label: 'Enquiries', value: filtered.length },
+      { label: 'Enrolled', value: filtered.filter(e => e.status === 'enrolled').length },
+      { label: 'Lost', value: filtered.filter(e => e.status === 'lost').length }
+    ],
+    colorize: (col, value) => (col === 6 ? (value === STATUS_LABEL.enrolled ? 'green' : value === STATUS_LABEL.lost ? 'red' : undefined) : undefined)
+  });
 
   return (
     <div className="space-y-6">
@@ -134,13 +129,7 @@ export const EnquiriesView: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleExport}
-            className="px-3.5 py-2 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg transition-colors flex items-center gap-1.5"
-          >
-            <Download className="w-4 h-4" />
-            Export CSV
-          </button>
+          <ExportMenu filename="enquiries" title="Enquiries" subtitle="Admission leads" coaching={profile.name} build={exportData} disabled={filtered.length === 0} />
           <button
             onClick={() => setEditing({ enquiry: null })}
             className="px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors flex items-center gap-1.5"

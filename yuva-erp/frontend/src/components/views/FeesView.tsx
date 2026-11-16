@@ -7,7 +7,9 @@ import { CancelReceiptModal } from '../modals/CancelReceiptModal';
 import { Pager } from '../ui/Pager';
 import { usePaged } from '../utils/usePaged';
 import { emailFeeNotice } from '../utils/api';
-import { daysBetween, downloadCsv, fillTemplate, formatDate, openWhatsApp, payPageLink, plural, toLocalISODate, withPayLink } from '../utils/helpers';
+import { ExportMenu, exportMoney } from '../ui/ExportMenu';
+import type { ExportData } from '../ui/ExportMenu';
+import { daysBetween, fillTemplate, formatDate, openWhatsApp, payPageLink, plural, toLocalISODate, withPayLink } from '../utils/helpers';
 import {
   CreditCard,
   Search,
@@ -210,24 +212,16 @@ export const FeesView: React.FC<FeesViewProps> = ({
     openWhatsApp(item.student.parentPhone, msg);
   };
 
-  const exportTransactions = () => {
-    downloadCsv(
-      `fee_receipts_${today}.csv`,
-      ['Receipt No', 'Date', 'Roll No', 'Student', 'Batch', 'Mode', 'Reference', 'Amount', 'Status', 'Cancel reason'],
-      filteredTransactions.map(t => [
-        t.receiptNo,
-        t.date,
-        t.studentRollNo,
-        t.studentName,
-        t.batchName,
-        t.paymentMethod,
-        t.referenceNo || '',
-        t.amount,
-        t.status === 'cancelled' ? 'Cancelled' : 'Received',
-        t.cancelReason || ''
-      ])
-    );
-  };
+  // the receipts on the screen as a table: for the PDF and for the Excel file
+  const exportTransactions = (): ExportData => ({
+    headers: ['Receipt No', 'Date', 'Roll No', 'Student', 'Batch', 'Mode', 'Reference', 'Amount', 'Status', 'Cancel reason'],
+    rows: filteredTransactions.map(t => [t.receiptNo, t.date, t.studentRollNo, t.studentName, t.batchName, t.paymentMethod, t.referenceNo || '', t.amount, t.status === 'cancelled' ? 'Cancelled' : 'Received', t.cancelReason || '']),
+    summary: [
+      { label: 'Receipts', value: filteredTransactions.length },
+      { label: 'Received', value: exportMoney(profile.currencySymbol, filteredTransactions.filter(t => t.status !== 'cancelled').reduce((n, t) => n + t.amount, 0)) }
+    ],
+    colorize: (col, value) => (col === 8 ? (value === 'Cancelled' ? 'red' : 'green') : undefined)
+  });
 
   // ----- programs -----
 
@@ -393,13 +387,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
                 <option value="Cheque">Cheque</option>
                 <option value="Card">Card</option>
               </Select>
-              <button
-                onClick={exportTransactions}
-                className="px-3 py-2 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg transition-colors flex items-center gap-1.5"
-              >
-                <Download className="w-3.5 h-3.5" />
-                CSV
-              </button>
+              <ExportMenu filename="fee_receipts" title="Fee receipts" subtitle="Payment receipts" coaching={profile.name} build={exportTransactions} disabled={filteredTransactions.length === 0} compact />
             </div>
           </div>
 

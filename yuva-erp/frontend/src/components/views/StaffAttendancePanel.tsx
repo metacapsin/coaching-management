@@ -2,7 +2,9 @@ import { DateInput } from '../ui/Pickers';
 import React, { useEffect, useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { StaffStatus } from '../../types';
-import { downloadCsv, toLocalISODate } from '../utils/helpers';
+import { ExportMenu } from '../ui/ExportMenu';
+import type { ExportData } from '../ui/ExportMenu';
+import { toLocalISODate } from '../utils/helpers';
 import { CalendarCheck, Check, Download, Save } from 'lucide-react';
 
 const STATUSES: { id: StaffStatus; label: string; on: string }[] = [
@@ -45,10 +47,12 @@ export const StaffAttendancePanel: React.FC = () => {
   const monthRows = staffAttendance.filter(a => a.date.startsWith(month));
   const count = (id: string, status: StaffStatus) => monthRows.filter(r => r.records[id] === status).length;
 
-  const downloadMonth = () => {
-    const rows = people.map(p => [p.name, count(p.id, 'present'), count(p.id, 'half'), count(p.id, 'leave'), count(p.id, 'absent')]);
-    downloadCsv(`staff-attendance-${month}.csv`, ['Name', 'Present', 'Half day', 'Leave', 'Absent'], rows);
-  };
+  // the month as a table: for the PDF and for the Excel file
+  const monthData = (): ExportData => ({
+    headers: ['Name', 'Present', 'Half day', 'Leave', 'Absent'],
+    rows: people.map(p => [p.name, count(p.id, 'present'), count(p.id, 'half'), count(p.id, 'leave'), count(p.id, 'absent')]),
+    colorize: (col, value) => (col === 4 && Number(value) > 0 ? 'red' : undefined)
+  });
 
   return (
     <div className="space-y-6">
@@ -114,10 +118,7 @@ export const StaffAttendancePanel: React.FC = () => {
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
             <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
               <h3 className="text-sm font-semibold text-slate-900">{monthLabel(month)}: days of each person</h3>
-              <button onClick={downloadMonth} className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg flex items-center gap-1.5">
-                <Download className="w-3.5 h-3.5" />
-                CSV
-              </button>
+              <ExportMenu filename={`staff_attendance_${month}`} addDate={false} title="Staff attendance" subtitle={monthLabel(month)} build={monthData} disabled={people.length === 0} compact />
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left">
