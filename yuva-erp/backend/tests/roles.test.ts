@@ -1454,8 +1454,8 @@ describe('Teacher registration details (the principal writes them when a teacher
     firstName: 'Rahul', middleName: 'Kumar', lastName: 'Sharma', guardianName: 'Mohan Sharma', alternatePhone: '9876500000',
     address: { line: '12 Main Road', district: 'Kota', state: 'Rajasthan', pin: '324001' }, dateOfBirth: '1990-05-10', idNumber: '1234 5678 9012',
     qualification: 'M.Sc, B.Ed', experienceYears: '6', workHistory: 'Taught at ABC for 5 years', referenceName: 'Amit Verma',
-    availability: 'hybrid', payType: 'per_lecture', payAmount: '500', payNotes: 'Paid on the 5th of each month',
-    facultySignature: 'data:image/png;base64,iVBORw0KGgo=', managementSignature: 'data:image/png;base64,iVBORw0KGgo=', registeredOn: '2026-11-16',
+    payType: 'per_lecture', payAmount: '500', payNotes: 'Paid on the 5th of each month',
+    registeredOn: '2026-11-16',
   };
 
   it('1 a teacher is added with all the details; they stay out of the list of the accounts and only the principal reads them', async () => {
@@ -1468,29 +1468,26 @@ describe('Teacher registration details (the principal writes them when a teacher
     assert.equal(ds, 200);
     assert.equal(dd.details.idNumber, '123456789012'); // spaces are taken out
     assert.deepEqual([dd.details.firstName, dd.details.middleName, dd.details.lastName], ['Rahul', 'Kumar', 'Sharma']);
-    assert.equal(dd.details.availability, 'hybrid');
+    assert.equal(dd.details.availability, 'online'); // always online: nothing to choose
     assert.equal(dd.details.payAmount, 500);
     assert.equal(dd.details.address.pin, '324001');
-    assert.ok(dd.details.facultySignature.startsWith('data:image/png;base64,'));
     // a teacher cannot read them (not even his own), and the teacher does not see them in his own account
     const teacher = (await call('POST', '/api/auth/login', { email: 't1@x.com', password: 'Teach#12345', portal: 'member' }))[1].token;
     assert.equal((await call('GET', `/api/users/${data.user.id}/details`, null, teacher))[0], 403);
     assert.equal((await call('GET', '/api/auth/me', null, teacher))[1].user.details, undefined);
   });
 
-  it('2 what is written must be right: Aadhaar, PIN, mobile, date of birth, signature, names', async () => {
+  it('2 what is written must be right: Aadhaar, PIN, mobile, date of birth, names', async () => {
     const bad = async (email: string, change: any) => (await call('POST', '/api/users', body(email, { ...good, ...change }), admin))[0];
     assert.equal(await bad('b1@x.com', { idNumber: '12345' }), 400); // the Aadhaar has 12 digits
     assert.equal(await bad('b2@x.com', { address: { ...good.address, pin: '12' } }), 400);
     assert.equal(await bad('b3@x.com', { alternatePhone: '123' }), 400);
     assert.equal(await bad('b4@x.com', { dateOfBirth: '2015-01-01' }), 400); // too young
-    assert.equal(await bad('b5@x.com', { facultySignature: 'http://evil.example/x.png' }), 400); // only a drawn picture
     assert.equal(await bad('b6@x.com', { firstName: 'Ra@hul' }), 400); // no symbols in a name
     assert.equal(await bad('b7@x.com', { guardianName: 'Mo#han' }), 400);
-    assert.equal(await bad('b8@x.com', { availability: 'sometimes' }), 400);
     assert.equal(await bad('b9@x.com', { experienceYears: '99' }), 400);
     assert.equal(await bad('c1@x.com', { lastName: '' }), 400); // the last name is needed
-    // the middle name, the guardian, the reference, the Aadhaar and the signatures can stay empty
+    // the middle name, the guardian, the reference, and the Aadhaar can stay empty
     const [ok] = await call('POST', '/api/users', body('c2@x.com', { firstName: 'Anil', lastName: 'Rao', middleName: '' }), admin);
     assert.equal(ok, 200);
   });

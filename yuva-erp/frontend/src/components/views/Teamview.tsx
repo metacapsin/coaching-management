@@ -1,6 +1,5 @@
 import { cleanName } from '../utils/names';
 import { Select, DateInput } from '../ui/Pickers';
-import { SignaturePad } from '../ui/SignaturePad';
 import { toLocalISODate } from '../utils/helpers';
 import React, { useCallback, useEffect, useState } from 'react';
 import { request, updateOwnDetails, refreshNow, ApiError } from '../utils/api';
@@ -237,7 +236,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
   const emptyDetails = () => ({
     firstName: '', middleName: '', lastName: '', guardianName: '', alternatePhone: '', addressLine: '', district: '', state: '', pin: '', dateOfBirth: '', idNumber: '',
     qualification: '', experienceYears: '', workHistory: '', referenceName: '',
-    availability: 'offline', payType: 'monthly', payAmount: '', payNotes: '', facultySignature: '', managementSignature: '', registeredOn: toLocalISODate()
+    payType: 'monthly', payAmount: '', payNotes: '', registeredOn: toLocalISODate()
   });
   const [aDetails, setADetails] = useState(emptyDetails);
   const setD = (key: keyof ReturnType<typeof emptyDetails>, value: string) => setADetails(prev => ({ ...prev, [key]: value }));
@@ -376,12 +375,9 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
           experienceYears: aDetails.experienceYears,
           workHistory: aDetails.workHistory,
           referenceName: aDetails.referenceName,
-          availability: aDetails.availability,
           payType: aDetails.payType,
           payAmount: aDetails.payAmount,
           payNotes: aDetails.payNotes,
-          facultySignature: aDetails.facultySignature,
-          managementSignature: aDetails.managementSignature,
           registeredOn: aDetails.registeredOn
         } : undefined
       });
@@ -1026,18 +1022,6 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-blue-700 pt-1 border-b border-slate-200 pb-1.5">Agreement &amp; management terms</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Availability</label>
-                  <Select value={aDetails.availability} onChange={e => setD('availability', e.target.value)} className={`${inputClass} bg-white`}>
-                    <option value="online">Online classes</option>
-                    <option value="offline">Offline classes</option>
-                    <option value="hybrid">Hybrid (online and offline)</option>
-                  </Select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Date of Registration</label>
-                  <DateInput value={aDetails.registeredOn} onChange={e => setD('registeredOn', e.target.value)} className={`${inputClass} bg-white`} />
-                </div>
-                <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Remuneration / Honorarium</label>
                   <Select value={aDetails.payType} onChange={e => setD('payType', e.target.value)} className={`${inputClass} bg-white`}>
                     <option value="monthly">Monthly salary</option>
@@ -1055,9 +1039,9 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
                   <label className="block text-xs font-medium text-slate-700 mb-1">Payment Structure and Terms</label>
                   <textarea rows={2} value={aDetails.payNotes} onChange={e => setD('payNotes', e.target.value)} placeholder="When and how the teacher is paid, agreed with the management" className={inputClass} />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <SignaturePad label="Faculty Signature" value={aDetails.facultySignature} onChange={png => setD('facultySignature', png)} />
-              <SignaturePad label="Management / Principal Signature" value={aDetails.managementSignature} onChange={png => setD('managementSignature', png)} />
+            <div className="sm:w-1/2">
+              <label className="block text-xs font-medium text-slate-700 mb-1">Date of Registration</label>
+              <DateInput value={aDetails.registeredOn} onChange={e => setD('registeredOn', e.target.value)} className={`${inputClass} bg-white`} />
             </div>
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-blue-700 pt-1 border-b border-slate-200 pb-1.5">Login</h3>
             <div>

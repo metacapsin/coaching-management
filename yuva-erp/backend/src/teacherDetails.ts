@@ -1,23 +1,12 @@
 // The details that the principal writes down when a teacher joins (a registration form of a coaching): personal and contact data, the
-// qualification and the experience, and the agreement (how the teacher works and is paid, the two signatures, the date).
+// qualification and the experience, and the agreement (how the teacher is paid, the date of registration).
 // They are kept inside the account of the teacher, are never sent in the list of the accounts, and only the principal can read them.
 
 import { HttpError } from './errors.ts';
 import { checkName, text, todayLocal } from './validate.ts';
 
-export const AVAILABILITY = ['online', 'offline', 'hybrid'] as const;
 export const PAY_TYPES = ['monthly', 'per_lecture', 'per_hour', 'honorarium'] as const;
-const MAX_SIGNATURE_BYTES = 90_000; // a drawn signature is a small picture
-
 const isDate = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(`${v}T00:00:00Z`));
-
-/** A drawn signature: a small PNG picture as a data address. Nothing else is accepted. */
-function signature(value: unknown, label: string): string {
-  if (value === undefined || value === null || value === '') return '';
-  if (typeof value !== 'string' || !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(value)) throw new HttpError(400, `The ${label} must be drawn in the box.`);
-  if (value.length > MAX_SIGNATURE_BYTES) throw new HttpError(400, `The ${label} is too big. Please draw it again, smaller.`);
-  return value;
-}
 
 /** The details of a teacher, checked and cleaned. Everything is optional, but what is written must be right. */
 export function cleanTeacherDetails(raw: any): Record<string, any> {
@@ -72,9 +61,7 @@ export function cleanTeacherDetails(raw: any): Record<string, any> {
   out.referenceName = reference;
 
   // ---- the agreement
-  const availability = text(b.availability, 20) || 'offline';
-  if (!(AVAILABILITY as readonly string[]).includes(availability)) throw new HttpError(400, 'Choose online, offline or hybrid classes.');
-  out.availability = availability;
+  out.availability = 'online'; // (every class is online: the platform works on the website, so there is nothing to choose)
 
   const payType = text(b.payType, 20) || 'monthly';
   if (!(PAY_TYPES as readonly string[]).includes(payType)) throw new HttpError(400, 'Choose how the teacher is paid.');
@@ -87,9 +74,6 @@ export function cleanTeacherDetails(raw: any): Record<string, any> {
     out.payAmount = null;
   }
   out.payNotes = text(b.payNotes, 600);
-
-  out.facultySignature = signature(b.facultySignature, 'signature of the teacher');
-  out.managementSignature = signature(b.managementSignature, 'signature of the management');
 
   if (b.registeredOn && !isDate(b.registeredOn)) throw new HttpError(400, 'Please choose a valid date of registration.');
   out.registeredOn = b.registeredOn || todayLocal();
