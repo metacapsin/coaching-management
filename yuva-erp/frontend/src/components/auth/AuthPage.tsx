@@ -118,6 +118,77 @@ export const ForgotPassword: React.FC<{ initialEmail: string }> = ({ initialEmai
   );
 };
 
+// The second step of the Super Admin sign in: the 6 digit code that was sent to the email of the Super Admin.
+const LoginCodeStep: React.FC<{ step: { masked: string; minutes: number; email: string; remember: boolean }; onBack: () => void }> = ({ step, onBack }) => {
+  const { t } = useLang();
+  const { verifyLoginCode, resendLoginCode } = useAuth();
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
+  const [wait, setWait] = useState(30); // a new code can be asked after 30 seconds
+  useEffect(() => {
+    if (wait <= 0) return;
+    const id = setTimeout(() => setWait(w => w - 1), 1000);
+    return () => clearTimeout(id);
+  }, [wait]);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (busy || code.length !== 6) return;
+    setBusy(true);
+    setError('');
+    const r = await verifyLoginCode(step.email, code, step.remember);
+    if (!r.ok) setError(r.error);
+    setBusy(false);
+  };
+  const again = async () => {
+    setError('');
+    setInfo('');
+    const r = await resendLoginCode(step.email);
+    if (r.ok) {
+      setInfo('A new code was sent.');
+      setWait(30);
+      setCode('');
+    } else setError(r.error);
+  };
+  const inputCls = 'w-full px-3 py-3 text-center text-2xl tracking-[0.5em] font-mono border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500';
+  return (
+    <form onSubmit={submit} className="mt-5 space-y-4">
+      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900 flex items-start gap-2">
+        <ShieldCheck className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+        <span>
+          {t('A 6-digit code was sent to')} <strong>{step.masked}</strong>. {t('It works for {n} minutes.').replace('{n}', String(step.minutes))}
+        </span>
+      </div>
+      <input
+        autoFocus
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        maxLength={6}
+        value={code}
+        onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
+        placeholder="------"
+        aria-label={t('6-digit code')}
+        className={inputCls}
+      />
+      {error && <p className="text-xs text-rose-600">{t(error)}</p>}
+      {info && <p className="text-xs text-emerald-700">{t(info)}</p>}
+      <button type="submit" disabled={busy || code.length !== 6} className="w-full py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-lg">
+        {busy ? t('Checking...') : t('Verify and sign in')}
+      </button>
+      <div className="flex items-center justify-between text-xs">
+        <button type="button" onClick={onBack} className="text-slate-600 hover:underline">
+          {t('Back')}
+        </button>
+        <button type="button" onClick={() => void again()} disabled={wait > 0} className="font-medium text-blue-600 hover:underline disabled:text-slate-400 disabled:no-underline">
+          {wait > 0 ? t('Send a new code in {n}s').replace('{n}', String(wait)) : t('Send a new code')}
+        </button>
+      </div>
+    </form>
+  );
+};
+
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // "Forgot your password?" of the Super Admin. Nobody is above the Super Admin, so the new password is set right here,
@@ -268,6 +339,8 @@ const portalOfLink = (): Portal | null => {
 // `registerSignal`: each time it grows, the form opens on "Register your coaching" (the "Add coaching" button of the website)
 export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }> = ({ embedded = false, registerSignal = 0 }) => {
   const { signIn, signUp, hasSuper } = useAuth();
+  // the Super Admin: after the right password the code from the email is asked (second step)
+  const [codeStep, setCodeStep] = useState<{ masked: string; minutes: number; email: string; remember: boolean } | null>(null);
   const { t } = useLang();
 
   // Without a Super Admin the page starts on the Super Admin tab, to create it first
@@ -314,6 +387,7 @@ export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }>
     setPortal(next);
     setRegistering(false);
     setMemberSignup(false);
+    setCodeStep(null);
     resetForm();
   };
 
@@ -351,6 +425,7 @@ export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }>
         ? await signUp({ name: name.trim(), email: email.trim(), password })
         : await signIn({ email: email.trim(), password, remember, portal });
       if (!result.ok) setFormError(result.error);
+      else if (result.otp) setCodeStep({ masked: result.otp.email, minutes: result.otp.minutes, email: email.trim(), remember });
     } finally {
       setSubmitting(false);
     }
@@ -476,6 +551,14 @@ export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }>
 
           {registering ? (
             <RegisterCoachingForm onClose={() => setRegistering(false)} />
+          ) : codeStep ? (
+            <LoginCodeStep
+              step={codeStep}
+              onBack={() => {
+                setCodeStep(null);
+                setPassword('');
+              }}
+            />
           ) : memberSignup ? (
             <MemberSignup onClose={() => setMemberSignup(false)} />
           ) : (

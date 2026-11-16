@@ -23,7 +23,8 @@ export type { AuthUser, AccountStatus } from '../components/utils/api';
 
 export type Portal = 'super' | 'admin' | 'member' | 'parent';
 
-export type AuthResult = { ok: true } | { ok: false; error: string };
+// `otp`: the password was right and the server sent a 6 digit code to the email (the Super Admin signs in in two steps)
+export type AuthResult = { ok: true; otp?: { email: string; minutes: number } } | { ok: false; error: string };
 
 export interface NewAccountInput {
   name: string;
@@ -92,6 +93,9 @@ interface AuthContextType {
   }) => Promise<AuthResult>;
 
   signIn: (input: { email: string; password: string; remember: boolean; portal: Portal; orgId?: string }) => Promise<AuthResult>;
+  // the second step of the Super Admin: the code from the email (and a new code)
+  verifyLoginCode: (email: string, code: string, remember: boolean) => Promise<AuthResult>;
+  resendLoginCode: (email: string) => Promise<AuthResult>;
   signOut: () => Promise<void>;
 
   // Administrator only
@@ -297,15 +301,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // ----- Sign in / out -----
   const signIn = useCallback(
-    (input: { email: string; password: string; remember: boolean; portal: Portal; orgId?: string }) =>
-      attempt(async () => {
-        const session = await request<Session>('POST', '/auth/login', input, { auth: false });
+    async (input: { email: string; password: string; remember: boolean; portal: Portal; orgId?: string }): Promise<AuthResult> => {
+      try {
+        const session = await request<Session & { otpRequired?: boolean; email?: string; minutes?: number }>('POST', '/auth/login', input, { auth: false });
+        // the Super Admin: the password was right, the code goes to the email and has to be entered next (no session yet)
+        if (session.otpRequired) return { ok: true, otp: { email: session.email ?? '', minutes: session.minutes ?? 10 } };
         // the Super Admin enters a coaching: keep the Super Admin sign-in to come back to it
         if (input.orgId && userRef.current?.role === 'super') rememberSuperSession();
         startSession(session, input.remember);
+        return { ok: true };
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : 'Something went wrong. Please try again.' };
+      }
+    },
+    []
+  );
+
+  const verifyLoginCode = useCallback(
+    (email: string, code: string, remember: boolean) =>
+      attempt(async () => {
+        const session = await request<Session>('POST', '/auth/verify-login-code', { email, code, remember }, { auth: false });
+        startSession(session, remember);
       }),
     []
   );
+
+  const resendLoginCode = useCallback((email: string) => attempt(() => request('POST', '/auth/resend-login-code', { email }, { auth: false })), []);
 
   const signOut = useCallback(async () => {
     if (userRef.current?.role === 'super') takeSuperSession(); // a real Super Admin sign out: nothing to come back to
@@ -396,6 +417,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         registerParent,
         registerTeacher,
         signIn,
+        verifyLoginCode,
+        resendLoginCode,
         signOut,
         addUser,
         approveUser,

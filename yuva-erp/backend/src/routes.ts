@@ -175,6 +175,97 @@ route('/api/auth/setup', ['POST'], 'public', async (c) => {
   return startSession(c, user);
 });
 
+// ---------- the code of the Super Admin sign in (second step) ----------
+
+const LOGIN_CODE_MINUTES = 10;
+const LOGIN_CODE_TRIES = 5;
+const LOGIN_CODE_RESENDS = 3;
+const LOGIN_CODE_WAIT_SEC = 30;
+
+/** The second step is on whenever the server can send an email (SUPER_OTP=off turns it off, SUPER_OTP=on forces it). Without an email service
+ * the code could not arrive, so the Super Admin would be locked out. */
+function superCodeOn(): boolean {
+  const v = (process.env.SUPER_OTP || '').toLowerCase();
+  if (v === 'off') return false;
+  return v === 'on' || mailer.configured();
+}
+
+const maskEmail = (email: string): string => {
+  const [name, host] = String(email).split('@');
+  return `${name.slice(0, 2)}${'*'.repeat(Math.max(2, name.length - 2))}@${host ?? ''}`;
+};
+
+const LOGIN_CODE_FIELDS = ['loginCodeHash', 'loginCodeExpires', 'loginCodeTries', 'loginCodeSentAt', 'loginCodeResends'];
+
+/** Makes a new code for the Super Admin and emails it (a new code kills the old one). */
+async function sendLoginCode(c: any, s: any, user: any, resends = 0): Promise<void> {
+  const code = String(crypto.randomInt(1_000_000)).padStart(6, '0');
+  user.loginCodeHash = auth.sha256Hex(`${code}:login:${user.id}`);
+  user.loginCodeExpires = new Date(Date.now() + LOGIN_CODE_MINUTES * 60 * 1000).toISOString();
+  user.loginCodeTries = 0;
+  user.loginCodeSentAt = new Date().toISOString();
+  user.loginCodeResends = resends;
+  await s.saveUser(user);
+  const [sent] = mail(user.email, 'Your AcademiaOS Super Admin sign in code', 'Your sign in code', [`Use this code to finish signing in as Super Admin. It works for ${LOGIN_CODE_MINUTES} minutes.`], {
+    code,
+    details: [['Account', user.email]],
+    note: 'If you did not just sign in, somebody knows your password: sign in and change it now. Never tell this code to anybody.',
+    name: user.name,
+  });
+  if (!sent) {
+    for (const key of LOGIN_CODE_FIELDS) delete user[key];
+    await s.saveUser(user);
+    throw new HttpError(503, 'The sign in code could not be sent. Check the email settings of the server.');
+  }
+}
+
+/** The code of the second step. The same answer for every wrong input; 5 tries, then the code is dead. */
+route('/api/auth/verify-login-code', ['POST'], 'public', async (c) => {
+  const b = c.body();
+  const email = text(b.email).toLowerCase();
+  const code = text(b.code, 12);
+  const ip = c.ip();
+  const wait = c.limiters.ip.check(ip);
+  if (wait !== null) throw new HttpError(429, `Too many attempts. Please try again in ${Math.max(1, Math.ceil(wait / 60))} minute(s).`);
+  const wrong = () => new HttpError(400, 'The code is wrong or has expired. Sign in again to get a new code.');
+  const found = email ? await c.root.userByEmail(email) : null;
+  if (!found || found.role !== 'super' || !found.loginCodeHash) {
+    c.limiters.ip.fail(ip);
+    throw wrong();
+  }
+  const s = c.root.forOrg(PLATFORM_ORG);
+  const tries = parseInt(found.loginCodeTries || 0, 10);
+  const expired = !(new Date(found.loginCodeExpires || 0).getTime() >= Date.now());
+  const good = auth.safeEqual(auth.sha256Hex(`${code}:login:${found.id}`), found.loginCodeHash);
+  if (expired || tries >= LOGIN_CODE_TRIES || !good) {
+    found.loginCodeTries = tries + 1;
+    if (expired || tries + 1 >= LOGIN_CODE_TRIES) for (const key of LOGIN_CODE_FIELDS) delete found[key];
+    await s.saveUser(found);
+    c.limiters.ip.fail(ip);
+    await s.audit(found, 'login-failed', 'wrong sign in code');
+    throw wrong();
+  }
+  for (const key of LOGIN_CODE_FIELDS) delete found[key];
+  await s.saveUser(found);
+  c.limiters.ip.reset(ip);
+  await s.audit(found, 'login');
+  return startSession(c, found, b.remember !== false);
+});
+
+/** A new code (only while a code of a password that was right is waiting; not more than 3 times, and not faster than every 30 seconds). */
+route('/api/auth/resend-login-code', ['POST'], 'public', async (c) => {
+  const email = text(c.body().email).toLowerCase();
+  const found = email ? await c.root.userByEmail(email) : null;
+  const waiting = found && found.role === 'super' && found.loginCodeHash && new Date(found.loginCodeExpires || 0).getTime() >= Date.now();
+  if (!waiting) throw new HttpError(400, 'Sign in again with your password to get a code.');
+  const since = (Date.now() - Date.parse(found.loginCodeSentAt || 0)) / 1000;
+  if (since < LOGIN_CODE_WAIT_SEC) throw new HttpError(429, `Please wait ${Math.ceil(LOGIN_CODE_WAIT_SEC - since)} seconds before asking for a new code.`);
+  const resends = parseInt(found.loginCodeResends || 0, 10);
+  if (resends >= LOGIN_CODE_RESENDS) throw new HttpError(429, 'Too many new codes. Sign in again with your password.');
+  await sendLoginCode(c, c.root.forOrg(PLATFORM_ORG), found, resends + 1);
+  return { ok: true, email: maskEmail(found.email), minutes: LOGIN_CODE_MINUTES };
+});
+
 route('/api/auth/login', ['POST'], 'public', async (c) => {
   let s = c.store;
   const b = c.body();
@@ -259,6 +350,12 @@ route('/api/auth/login', ['POST'], 'public', async (c) => {
   if (auth.needsUpgrade(found)) {
     auth.setPassword(found, password);
     await s.saveUser(found);
+  }
+  // The Super Admin signs in in two steps: after the password, a 6 digit code goes to the email of the Super Admin, and only the code opens the session
+  if (found.role === 'super' && superCodeOn()) {
+    loginLimiter.reset(keyEmail);
+    await sendLoginCode(c, s, found);
+    return { otpRequired: true, email: maskEmail(found.email), minutes: LOGIN_CODE_MINUTES };
   }
   loginLimiter.reset(keyEmail);
   await s.audit(found, 'login');

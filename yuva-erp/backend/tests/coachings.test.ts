@@ -59,6 +59,62 @@ describe('Coachings', () => {
     assert.equal((await call('GET', '/api/auth/me', null, sup))[0], 200);
   });
 
+  it('01b the Super Admin signs in in two steps: the password, then the code from the email', async () => {
+    process.env.SUPER_OTP = 'on';
+    try {
+      const signIn = async () => {
+        const mail = captureMail();
+        try {
+          const [status, data] = await call('POST', '/api/auth/login', { email: 'super@x.com', password: PASSWORD, portal: 'super' });
+          return { status, data, mails: mail.sent };
+        } finally {
+          mail.stop();
+        }
+      };
+      const codeOf = (mails: any[]) => (mails[0][2].match(/\b\d{6}\b/) || [''])[0];
+      // a wrong password: no code at all
+      const mailBad = captureMail();
+      try {
+        assert.equal((await call('POST', '/api/auth/login', { email: 'super@x.com', password: 'wrong-password', portal: 'super' }))[0], 401);
+      } finally {
+        mailBad.stop();
+      }
+      assert.equal(mailBad.sent.length, 0);
+      // the right password: no session yet, the code goes to the email of the Super Admin
+      let r = await signIn();
+      assert.equal(r.status, 200);
+      assert.equal(r.data.otpRequired, true);
+      assert.equal(r.data.token, undefined);
+      assert.ok(r.data.email.includes('*') && r.data.email.endsWith('@x.com'));
+      assert.deepEqual(r.mails.map((x) => x[0]), ['super@x.com']);
+      const code = codeOf(r.mails);
+      assert.match(code, /^\d{6}$/);
+      const verify = (c: string, email = 'super@x.com') => call('POST', '/api/auth/verify-login-code', { email, code: c, remember: true });
+      // a wrong code and a code for another email do not open it
+      assert.equal((await verify(code === '000000' ? '000001' : '000000'))[0], 400);
+      assert.equal((await verify(code, 'a@x.com'))[0], 400);
+      // the right code opens the session; the same code works only once
+      const [vs, vd] = await verify(code);
+      assert.equal(vs, 200);
+      assert.equal(vd.user.role, 'super');
+      assert.equal((await call('GET', '/api/auth/me', null, vd.token))[0], 200);
+      assert.equal((await verify(code))[0], 400);
+      // a new code is not sent again at once; five wrong tries kill a code
+      r = await signIn();
+      assert.equal((await call('POST', '/api/auth/resend-login-code', { email: 'super@x.com' }))[0], 429);
+      const second = codeOf(r.mails);
+      for (let i = 0; i < 5; i++) assert.equal((await verify(second === '111111' ? '222222' : '111111'))[0], 400);
+      assert.equal((await verify(second))[0], 400, 'after five wrong tries the code is dead');
+      // nobody can ask for a code without the password
+      assert.equal((await call('POST', '/api/auth/resend-login-code', { email: 'super@x.com' }))[0], 400);
+      // the Super Admin who is a principal's account (not super) is not asked for a code, and SUPER_OTP=off turns it off
+      process.env.SUPER_OTP = 'off';
+      assert.equal((await call('POST', '/api/auth/login', { email: 'super@x.com', password: PASSWORD, portal: 'super' }))[1].user.role, 'super');
+    } finally {
+      delete process.env.SUPER_OTP;
+    }
+  });
+
   it('02 a new coaching waits for approval', async () => {
     assert.equal((await call('POST', '/api/public/register-coaching', coaching('Alpha', 'a@x.com')))[0], 200);
     assert.equal((await call('POST', '/api/public/register-coaching', coaching('Dup', 'a@x.com')))[0], 409);
