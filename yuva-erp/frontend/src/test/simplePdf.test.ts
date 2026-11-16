@@ -6,10 +6,12 @@ const asText = (bytes: Uint8Array) => Array.from(bytes, b => String.fromCharCode
 
 describe('the PDF of a table', () => {
   it('is a real PDF: header, the text, a correct table of positions and the end mark', () => {
-    const pdf = asText(buildTablePdf('Coachings', 'The list', ['Coaching', 'Students'], [['Apex (Demo)', 4], ['Improve ' + BS + ' Centre', 2]]));
+    const pdf = asText(buildTablePdf({ title: 'Coachings', subtitle: 'The list', headers: ['Coaching', 'Students'], rows: [['Apex (Demo)', 4], ['Improve ' + BS + ' Centre', 2]], summary: [{ label: 'Coachings', value: 2 }] }));
     expect(pdf.startsWith('%PDF-1.4')).toBe(true);
     expect(pdf.trimEnd().endsWith('%%EOF')).toBe(true);
     expect(pdf).toContain('(Coachings) Tj');
+    expect(pdf).toContain('(AcademiaOS) Tj'); // the name of the brand on the band
+    expect(pdf).toContain('(Page 1 of 1) Tj'); // the footer
     expect(pdf).toContain('(Apex ' + BS + '(Demo' + BS + ')) Tj'); // brackets and the backslash are escaped
     expect(pdf).toContain('(Improve ' + BS + BS + ' Centre) Tj');
     // every position of the table points at its object
@@ -25,9 +27,9 @@ describe('the PDF of a table', () => {
 
   it('goes on a new page when the list is long, and shows a letter it cannot write as ?', () => {
     const rows = Array.from({ length: 80 }, (_, i) => [`Coaching ${i}`, i]);
-    const pdf = asText(buildTablePdf('T', 'S', ['A', 'B'], rows));
-    expect(/\/Count (\d+)/.exec(pdf)![1]).toBe('3');
-    const hindi = asText(buildTablePdf('T', 'S', ['A'], [['राहुल']]));
+    const pdf = asText(buildTablePdf({ title: 'T', subtitle: 'S', headers: ['A', 'B'], rows }));
+    expect(Number(/\/Count (\d+)/.exec(pdf)![1])).toBeGreaterThan(2);
+    const hindi = asText(buildTablePdf({ title: 'T', subtitle: 'S', headers: ['A'], rows: [['राहुल']] }));
     expect(hindi).toContain('(?????) Tj');
   });
 });

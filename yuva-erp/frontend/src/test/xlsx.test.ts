@@ -5,7 +5,7 @@ const latin = (bytes: Uint8Array) => Array.from(bytes, b => String.fromCharCode(
 
 describe('the Excel file of a table', () => {
   it('is a zip with the files of a workbook, and keeps numbers, Hindi and & < >', () => {
-    const bytes = buildXlsx('Coachings', ['Coaching', 'Students'], [['Apex & <Demo>', 4], ['राहुल', 2]], [30, 10]);
+    const bytes = buildXlsx('Coachings', ['Coaching', 'Students'], [['Apex & <Demo>', 4], ['राहुल', 2]], [30, 10], { brand: 'AcademiaOS', title: 'Coachings', subtitle: 'The list' });
     // a zip: it starts with PK, and the end mark says how many files it has
     expect(bytes[0]).toBe(0x50);
     expect(bytes[1]).toBe(0x4b);
@@ -17,6 +17,8 @@ describe('the Excel file of a table', () => {
     const utf8 = new TextDecoder().decode(bytes);
     expect(utf8).toContain('Apex &amp; &lt;Demo&gt;');
     expect(utf8).toContain('राहुल');
-    expect(utf8).toContain('<c r="B2"><v>4</v></c>'); // a number stays a number
+    expect(utf8).toContain('AcademiaOS'); // the band with the brand
+    expect(utf8).toContain('<mergeCell ref="A1:B1"/>');
+    expect(utf8).toMatch(/<c r="B6"[^>]*><v>4<\/v><\/c>/); // a number stays a number
   });
 });

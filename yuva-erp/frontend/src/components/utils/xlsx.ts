@@ -75,16 +75,72 @@ const columnName = (index: number): string => {
   return name;
 };
 
-/** The bytes of an .xlsx file with one sheet: the first row is the heading (bold), numbers stay numbers. */
-export function buildXlsx(sheetName: string, headers: string[], rows: (string | number)[][], widths?: number[]): Uint8Array {
-  const cell = (value: string | number, col: number, row: number, style = 0): string => {
+export interface XlsxOptions {
+  /** the name of the brand, the title and the date: the sheet starts with a band like the emails */
+  brand?: string;
+  title?: string;
+  subtitle?: string;
+  /** a colour for a cell: 'green', 'red' or 'amber' (the text is bold and coloured), or nothing */
+  colorize?: (column: number, value: string | number) => 'green' | 'red' | 'amber' | undefined;
+}
+
+// the styles: 0 plain, 1 brand band, 2 title, 3 subtitle, 4 heading, 5 body, 6 body shaded, 7 green, 8 red, 9 amber (the body ones with a thin border)
+const STYLE = { plain: 0, brand: 1, title: 2, subtitle: 3, head: 4, body: 5, shaded: 6, green: 7, red: 8, amber: 9 } as const;
+
+/** The bytes of an .xlsx file with one sheet: a band with the brand and the title, a blue heading row, shaded rows, numbers stay numbers. */
+export function buildXlsx(sheetName: string, headers: string[], rows: (string | number)[][], widths?: number[], options: XlsxOptions = {}): Uint8Array {
+  const cell = (value: string | number, col: number, row: number, style: number): string => {
     const ref = `${columnName(col)}${row}`;
-    if (typeof value === 'number' && Number.isFinite(value)) return `<c r="${ref}"${style ? ` s="${style}"` : ''}><v>${value}</v></c>`;
-    return `<c r="${ref}" t="inlineStr"${style ? ` s="${style}"` : ''}><is><t xml:space="preserve">${xml(value)}</t></is></c>`;
+    const s = style ? ` s="${style}"` : '';
+    if (typeof value === 'number' && Number.isFinite(value)) return `<c r="${ref}"${s}><v>${value}</v></c>`;
+    return `<c r="${ref}" t="inlineStr"${s}><is><t xml:space="preserve">${xml(value)}</t></is></c>`;
   };
-  const sheetRows = [headers, ...rows].map((r, i) => `<row r="${i + 1}">${r.map((v, c) => cell(v, c, i + 1, i === 0 ? 1 : 0)).join('')}</row>`).join('');
+  const last = columnName(headers.length - 1);
+  const top: string[] = [];
+  const merges: string[] = [];
+  let next = 1;
+  if (options.brand) {
+    top.push(`<row r="${next}" ht="30" customHeight="1">${headers.map((_, c) => cell(c === 0 ? options.brand! : '', c, next, STYLE.brand)).join('')}</row>`);
+    merges.push(`A${next}:${last}${next}`);
+    next++;
+  }
+  if (options.title) {
+    top.push(`<row r="${next}" ht="26" customHeight="1">${cell(options.title, 0, next, STYLE.title)}</row>`);
+    merges.push(`A${next}:${last}${next}`);
+    next++;
+  }
+  if (options.subtitle) {
+    top.push(`<row r="${next}">${cell(options.subtitle, 0, next, STYLE.subtitle)}</row>`);
+    merges.push(`A${next}:${last}${next}`);
+    next++;
+  }
+  if (top.length) next++; // an empty row between the band and the table
+  const headRow = next;
+  const head = `<row r="${headRow}" ht="22" customHeight="1">${headers.map((h, c) => cell(h, c, headRow, STYLE.head)).join('')}</row>`;
+  const body = rows
+    .map((r, i) => {
+      const n = headRow + 1 + i;
+      return `<row r="${n}">${r
+        .map((v, c) => {
+          const color = options.colorize?.(c, v);
+          return cell(v, c, n, color ? STYLE[color] : i % 2 === 1 ? STYLE.shaded : STYLE.body);
+        })
+        .join('')}</row>`;
+    })
+    .join('');
+  const lastRow = headRow + rows.length;
   const cols = widths && widths.length ? `<cols>${widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('')}</cols>` : '';
+  const view = `<sheetViews><sheetView workbookViewId="0" showGridLines="0"><pane ySplit="${headRow}" topLeftCell="A${headRow + 1}" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>`;
+  const filter = rows.length ? `<autoFilter ref="A${headRow}:${last}${lastRow}"/>` : '';
+  const mergeXml = merges.length ? `<mergeCells count="${merges.length}">${merges.map(m => `<mergeCell ref="${m}"/>`).join('')}</mergeCells>` : '';
   const header = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+  const font = (extra: string, size: number, color?: string) => `<font>${extra}<sz val="${size}"/>${color ? `<color rgb="FF${color}"/>` : ''}<name val="Calibri"/></font>`;
+  const fill = (rgbHex: string) => `<fill><patternFill patternType="solid"><fgColor rgb="FF${rgbHex}"/><bgColor indexed="64"/></patternFill></fill>`;
+  const edge = (side: string) => `<${side} style="thin"><color rgb="FFE2E8F0"/></${side}>`;
+  const xf = (fontId: number, fillId: number, border: number, align = '') =>
+    `<xf numFmtId="0" fontId="${fontId}" fillId="${fillId}" borderId="${border}" xfId="0" applyFont="1" applyFill="1" applyBorder="1"${align ? ` applyAlignment="1">${align}</xf>` : '/>'}`;
+  const vcenter = '<alignment vertical="center"/>';
+  const styles = `${header}<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="8">${font('', 11)}${font('<b/>', 18, 'FFFFFF')}${font('<b/>', 15, '0F172A')}${font('', 10, '64748B')}${font('<b/>', 11, 'FFFFFF')}${font('<b/>', 11, '15803D')}${font('<b/>', 11, 'B91C1C')}${font('<b/>', 11, 'B45309')}</fonts><fills count="5"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>${fill('0F1B26')}${fill('1565C0')}${fill('F8FAFC')}</fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border>${edge('left')}${edge('right')}${edge('top')}${edge('bottom')}<diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="10">${xf(0, 0, 0)}${xf(1, 2, 0, vcenter)}${xf(2, 0, 0, vcenter)}${xf(3, 0, 0)}${xf(4, 3, 1, vcenter)}${xf(0, 0, 1)}${xf(0, 4, 1)}${xf(5, 0, 1)}${xf(6, 0, 1)}${xf(7, 0, 1)}</cellXfs></styleSheet>`;
   const files = [
     {
       name: '[Content_Types].xml',
@@ -102,21 +158,18 @@ export function buildXlsx(sheetName: string, headers: string[], rows: (string | 
       name: 'xl/_rels/workbook.xml.rels',
       text: `${header}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`
     },
-    {
-      name: 'xl/styles.xml',
-      text: `${header}<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs></styleSheet>`
-    },
+    { name: 'xl/styles.xml', text: styles },
     {
       name: 'xl/worksheets/sheet1.xml',
-      text: `${header}<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${cols}<sheetData>${sheetRows}</sheetData></worksheet>`
+      text: `${header}<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${view}${cols}<sheetData>${top.join('')}${head}${body}</sheetData>${filter}${mergeXml}</worksheet>`
     }
   ];
   return zipStore(files.map(f => ({ name: f.name, data: encoder.encode(f.text) })));
 }
 
 /** Saves the table as an Excel file on the computer of the person. */
-export function downloadXlsx(filename: string, sheetName: string, headers: string[], rows: (string | number)[][], widths?: number[]): void {
-  const blob = new Blob([buildXlsx(sheetName, headers, rows, widths) as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+export function downloadXlsx(filename: string, sheetName: string, headers: string[], rows: (string | number)[][], widths?: number[], options?: XlsxOptions): void {
+  const blob = new Blob([buildXlsx(sheetName, headers, rows, widths, options) as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
