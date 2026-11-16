@@ -75,7 +75,7 @@ export function cleanTeacherDetails(raw: any): Record<string, any> {
   }
   out.payNotes = text(b.payNotes, 600);
 
-  if (b.registeredOn && !isDate(b.registeredOn)) throw new HttpError(400, 'Please choose a valid date of registration.');
-  out.registeredOn = b.registeredOn || todayLocal();
+  // the date of registration is the day the teacher is added: the server writes it, it cannot be chosen or changed
+  out.registeredOn = todayLocal();
   return out;
 }

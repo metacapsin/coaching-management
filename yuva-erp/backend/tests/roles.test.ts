@@ -1455,7 +1455,7 @@ describe('Teacher registration details (the principal writes them when a teacher
     address: { line: '12 Main Road', district: 'Kota', state: 'Rajasthan', pin: '324001' }, dateOfBirth: '1990-05-10', idNumber: '1234 5678 9012',
     qualification: 'M.Sc, B.Ed', experienceYears: '6', workHistory: 'Taught at ABC for 5 years', referenceName: 'Amit Verma',
     payType: 'per_lecture', payAmount: '500', payNotes: 'Paid on the 5th of each month',
-    registeredOn: '2026-11-16',
+    registeredOn: '2000-01-01', // (ignored: the server writes the date of the day)
   };
 
   it('1 a teacher is added with all the details; they stay out of the list of the accounts and only the principal reads them', async () => {
@@ -1471,6 +1471,7 @@ describe('Teacher registration details (the principal writes them when a teacher
     assert.equal(dd.details.availability, 'online'); // always online: nothing to choose
     assert.equal(dd.details.payAmount, 500);
     assert.equal(dd.details.address.pin, '324001');
+    assert.equal(dd.details.registeredOn, new Date().toLocaleDateString('en-CA')); // the day of the registration, written by the server
     // a teacher cannot read them (not even his own), and the teacher does not see them in his own account
     const teacher = (await call('POST', '/api/auth/login', { email: 't1@x.com', password: 'Teach#12345', portal: 'member' }))[1].token;
     assert.equal((await call('GET', `/api/users/${data.user.id}/details`, null, teacher))[0], 403);

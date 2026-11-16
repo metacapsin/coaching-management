@@ -83,12 +83,13 @@ const RoleBadge: React.FC<{ role: UserRole; parent?: boolean }> = ({ role, paren
   </span>
 );
 
-const Modal: React.FC<{ title: string; subtitle?: string; onClose: () => void; children: React.ReactNode; wide?: boolean }> = ({
+const Modal: React.FC<{ title: string; subtitle?: string; onClose: () => void; children: React.ReactNode; wide?: boolean; aside?: React.ReactNode }> = ({
   title,
   subtitle,
   onClose,
   children,
-  wide = false
+  wide = false,
+  aside
 }) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
     <div className={`relative w-full ${wide ? 'max-w-2xl' : 'max-w-md'} bg-white border border-slate-200 rounded-xl shadow-2xl flex flex-col max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] overflow-hidden text-slate-900`}>
@@ -97,6 +98,7 @@ const Modal: React.FC<{ title: string; subtitle?: string; onClose: () => void; c
           <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
           {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
         </div>
+        {aside && <div className="ml-auto mr-3 shrink-0">{aside}</div>}
         <button
           onClick={onClose}
           className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
@@ -236,7 +238,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
   const emptyDetails = () => ({
     firstName: '', middleName: '', lastName: '', guardianName: '', alternatePhone: '', addressLine: '', district: '', state: '', pin: '', dateOfBirth: '', idNumber: '',
     qualification: '', experienceYears: '', workHistory: '', referenceName: '',
-    payType: 'monthly', payAmount: '', payNotes: '', registeredOn: toLocalISODate()
+    payType: 'monthly', payAmount: '', payNotes: ''
   });
   const [aDetails, setADetails] = useState(emptyDetails);
   const setD = (key: keyof ReturnType<typeof emptyDetails>, value: string) => setADetails(prev => ({ ...prev, [key]: value }));
@@ -378,7 +380,6 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
           payType: aDetails.payType,
           payAmount: aDetails.payAmount,
           payNotes: aDetails.payNotes,
-          registeredOn: aDetails.registeredOn
         } : undefined
       });
       if (!result.ok) {
@@ -922,6 +923,12 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
         <Modal
           title="Add Teacher"
           wide
+          aside={
+            <div className="text-right">
+              <div className="text-[10px] uppercase tracking-wider text-slate-400">Registration date</div>
+              <div className="text-xs font-semibold text-slate-700">{formatDate(toLocalISODate())}</div>
+            </div>
+          }
           subtitle="Create a login for a teacher. The logins of a student and of a parent are made from the student (Dossier)."
           onClose={() => setShowAdd(false)}
         >
@@ -969,6 +976,10 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
                   <label className="block text-xs font-medium text-slate-700 mb-1">Date of Birth</label>
                   <DateInput value={aDetails.dateOfBirth} onChange={e => setD('dateOfBirth', e.target.value)} max={toLocalISODate()} className={`${inputClass} bg-white`} />
                 </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Government ID (Aadhaar Number)</label>
+                  <input type="text" inputMode="numeric" maxLength={12} value={aDetails.idNumber} onChange={e => setD('idNumber', e.target.value.replace(/\D/g, ''))} placeholder="12 digits" className={`${inputClass} font-mono`} />
+                </div>
             </div>
             <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Residential Address</label>
@@ -987,10 +998,6 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
                   <label className="block text-xs font-medium text-slate-700 mb-1">PIN Code</label>
                   <input type="text" inputMode="numeric" maxLength={6} value={aDetails.pin} onChange={e => setD('pin', e.target.value.replace(/\D/g, ''))} className={inputClass} />
                 </div>
-            </div>
-            <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Government ID (Aadhaar Number)</label>
-                  <input type="text" inputMode="numeric" maxLength={12} value={aDetails.idNumber} onChange={e => setD('idNumber', e.target.value.replace(/\D/g, ''))} placeholder="12 digits" className={`${inputClass} font-mono`} />
             </div>
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-blue-700 pt-1 border-b border-slate-200 pb-1.5">Academic &amp; professional qualifications</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1038,10 +1045,6 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
             <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Payment Structure and Terms</label>
                   <textarea rows={2} value={aDetails.payNotes} onChange={e => setD('payNotes', e.target.value)} placeholder="When and how the teacher is paid, agreed with the management" className={inputClass} />
-            </div>
-            <div className="sm:w-1/2">
-              <label className="block text-xs font-medium text-slate-700 mb-1">Date of Registration</label>
-              <DateInput value={aDetails.registeredOn} onChange={e => setD('registeredOn', e.target.value)} className={`${inputClass} bg-white`} />
             </div>
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-blue-700 pt-1 border-b border-slate-200 pb-1.5">Login</h3>
             <div>
