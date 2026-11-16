@@ -430,7 +430,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
                     )}
                   </p>
                   {coachings.length > 1 && (
-                    <a href={`/rules/${encodeURIComponent(co.id)}`} target="_blank" rel="noreferrer" className="inline-block text-sm text-sky-300 hover:underline mt-3">
+                    <a href={`/rules/${encodeURIComponent(co.id)}`} className="inline-block text-sm text-sky-300 hover:underline mt-3">
                       {tr('Read the rules')}
                     </a>
                   )}
