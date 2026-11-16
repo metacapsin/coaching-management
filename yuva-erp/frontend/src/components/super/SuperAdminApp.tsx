@@ -27,7 +27,8 @@ import { ThemeToggle } from '../ui/ThemeToggle';
 import { ChangeEmailForm } from '../auth/ChangeEmailForm';
 import { ModalShell } from '../ui/ModalShell';
 import { downloadTablePdf } from '../utils/simplePdf';
-import { downloadCsv, formatDate, formatDateTime, toLocalISODate, toWhatsAppNumber } from '../utils/helpers';
+import { downloadXlsx } from '../utils/xlsx';
+import { formatDate, formatDateTime, toLocalISODate, toWhatsAppNumber } from '../utils/helpers';
 import { ApiError } from '../utils/api';
 import type { AuthUser } from '../utils/api';
 import { useAuth } from '../../Context/AuthContext';
@@ -405,13 +406,13 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
             Download list (PDF)
           </button>
           <button
-            onClick={() => downloadCsv(`coachings-${toLocalISODate()}.csv`, LIST_HEAD, listRows())}
+            onClick={() => downloadXlsx(`coachings-${toLocalISODate()}.xlsx`, 'Coachings', LIST_HEAD, listRows(), [30, 14, 12, 18, 32, 16, 10, 10, 12])}
             disabled={orgs.length === 0}
-            title="The same list as a CSV file (for Excel or Google Sheets)"
+            title="The same list as an Excel file (opens in Excel and Google Sheets)"
             className="px-4 py-2 text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-300 rounded-lg shadow-sm flex items-center gap-1.5 cursor-pointer transition-all duration-150 enabled:hover:bg-indigo-600 enabled:hover:text-white enabled:hover:border-indigo-600 enabled:hover:shadow-md enabled:active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download className="w-4 h-4" />
-            Excel (CSV)
+            Download list (Excel)
           </button>
         </div>
       </div>
