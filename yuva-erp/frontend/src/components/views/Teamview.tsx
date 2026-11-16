@@ -513,7 +513,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
             className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
           >
             <UserPlus className="w-4 h-4" />
-            Add Account
+            Add Teacher
           </button>
         )}
       </div>
@@ -885,8 +885,8 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
       {/* Add account modal */}
       {showAdd && (
         <Modal
-          title="Add Account"
-          subtitle="Create a login for a teacher, a student or a parent."
+          title="Add Teacher"
+          subtitle="Create a login for a teacher. The logins of a student and of a parent are made from the student (Dossier)."
           onClose={() => setShowAdd(false)}
         >
           <form onSubmit={handleAdd} className="space-y-4">
@@ -894,60 +894,6 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
               <div className="p-2.5 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{aError}</span>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">Role</label>
-              <Select
-                value={aRole}
-                onChange={e => {
-                  setARole(e.target.value as UserRole | 'parent');
-                  setAStudentId('');
-                }}
-                className={`${inputClass} bg-white`}
-              >
-                <option value="teacher">Teacher</option>
-                <option value="student">Student</option>
-                <option value="parent">Parent</option>
-              </Select>
-              <p className="text-[11px] text-slate-400 mt-1">
-                {aRole === 'parent'
-                  ? 'Parents sign in at "Parent login" (button below the main sign in form).'
-                  : 'Teachers, students and the principal sign in on the main sign in form.'}
-              </p>
-            </div>
-
-            {aRole === 'parent' && (
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Child (student record)</label>
-                <Select value={aStudentId} onChange={e => handlePickStudent(e.target.value)} className={`${inputClass} bg-white`}>
-                  <option value="">Select the student whose parent this is...</option>
-                  {studentsWithoutParent.map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.rollNo})
-                    </option>
-                  ))}
-                </Select>
-                <p className="text-[11px] text-slate-400 mt-1">The parent signs in and sees the attendance, fees and results of this child (read only).</p>
-              </div>
-            )}
-
-            {aRole === 'student' && (
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Student Record</label>
-                <Select
-                  value={aStudentId}
-                  onChange={e => handlePickStudent(e.target.value)}
-                  className={`${inputClass} bg-white`}
-                >
-                  <option value="">Select a student without an account...</option>
-                  {studentsWithoutAccount.map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.rollNo})
-                    </option>
-                  ))}
-                </Select>
               </div>
             )}
 
@@ -1034,7 +980,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
                 className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-lg transition-colors flex items-center gap-1.5"
               >
                 <UserPlus className="w-4 h-4" />
-                {aBusy ? 'Creating...' : 'Create Account'}
+                {aBusy ? 'Creating...' : 'Add Teacher'}
               </button>
             </div>
           </form>
