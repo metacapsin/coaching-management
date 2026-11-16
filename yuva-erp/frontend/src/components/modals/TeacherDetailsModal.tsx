@@ -102,6 +102,7 @@ export const TeacherDetailsModal: React.FC<{ teacher: AuthUser; onClose: () => v
               <Row label="Country">{d?.country}</Row>
               <Row label="Date of birth">{d?.dateOfBirth ? formatDate(d.dateOfBirth) : ''}</Row>
               <Row label="Address">{address}</Row>
+              {id && (
               <Row label={d?.idType === 'Aadhaar' ? 'Aadhaar number' : 'Government ID'}>
                 {id && (
                   <span className="inline-flex items-center gap-2">
@@ -113,9 +114,10 @@ export const TeacherDetailsModal: React.FC<{ teacher: AuthUser; onClose: () => v
                   </span>
                 )}
               </Row>
+              )}
 
               {d?.idImage && (
-                <Row label="Photo of the ID">
+                <Row label="Government ID (photo)">
                   {showId ? (
                     <img src={d.idImage} alt="Photo of the ID" className="max-h-64 w-auto rounded-md border border-slate-300 bg-white" />
                   ) : (

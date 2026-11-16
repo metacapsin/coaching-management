@@ -242,7 +242,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
   const [aPassword, setAPassword] = useState('');
   // the registration form of a teacher: personal data, qualification, agreement
   const emptyDetails = () => ({
-    country: 'India', idImage: '', firstName: '', middleName: '', lastName: '', guardianName: '', alternatePhone: '', addressLine: '', district: '', state: '', pin: '', dateOfBirth: '', idNumber: '',
+    country: 'India', idImage: '', firstName: '', middleName: '', lastName: '', guardianName: '', alternatePhone: '', addressLine: '', district: '', state: '', pin: '', dateOfBirth: '',
     workHistory: '',
     payType: 'monthly', payAmount: '', payNotes: ''
   });
@@ -430,7 +430,6 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
           alternatePhone: aDetails.alternatePhone,
           address: { line: aDetails.addressLine, district: aDetails.district, state: aDetails.state, pin: aDetails.pin },
           dateOfBirth: aDetails.dateOfBirth,
-          idNumber: aDetails.idNumber,
           idImage: aDetails.idImage,
           qualifications: aDegrees.map(d => d.trim()).filter(Boolean),
           termsAccepted: aAgree,
@@ -1049,16 +1048,11 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
                 <input type="email" value={aEmail} onChange={e => setAEmail(e.target.value)} className={inputClass} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">{aDetails.country === 'India' ? 'Government ID (Aadhaar Number)' : 'Government ID Number'}</label>
-                {aDetails.country === 'India' ? (
-                  <input type="text" inputMode="numeric" maxLength={12} value={aDetails.idNumber} onChange={e => setD('idNumber', e.target.value.replace(/\D/g, ''))} placeholder="12 digits" className={`${inputClass} font-mono`} />
-                ) : (
-                  <input type="text" maxLength={20} value={aDetails.idNumber} onChange={e => setD('idNumber', e.target.value.replace(/[^A-Za-z0-9]/g, ''))} placeholder="Passport or national ID" className={`${inputClass} font-mono`} />
-                )}
+                <label className="block text-xs font-medium text-slate-700 mb-1">{aDetails.country === 'India' ? 'Government ID (Aadhaar card photo)' : 'Government ID (passport or national ID photo)'}</label>
                 {(() => {
-                  const numberDone = true; // (the photo of the ID is uploaded directly: it does not wait for the number)
+                  const numberDone = true; // (only the photo is uploaded: there is no number to write)
                   return (
-                  <div className="mt-2">
+                  <div>
                     {aDetails.idImage ? (
                       <div className="flex items-center gap-3">
                         <img src={aDetails.idImage} alt="Photo of the ID" className="h-16 w-auto rounded-md border border-slate-300 bg-white" />

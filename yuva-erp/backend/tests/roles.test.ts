@@ -1452,7 +1452,7 @@ describe('Teacher registration details (the principal writes them when a teacher
   const body = (email: string, details: any) => ({ name: 'Rahul Kumar Sharma', email, password: 'Teach#12345', role: 'teacher', phone: '9876543210', subject: 'Physics', batchIds: [], details });
   const good = {
     firstName: 'Rahul', middleName: 'Kumar', lastName: 'Sharma', guardianName: 'Mohan Sharma', alternatePhone: '9876500000',
-    address: { line: '12 Main Road', district: 'Kota', state: 'Rajasthan', pin: '324001' }, dateOfBirth: '1990-05-10', idNumber: '1234 5678 9012',
+    address: { line: '12 Main Road', district: 'Kota', state: 'Rajasthan', pin: '324001' }, dateOfBirth: '1990-05-10',
     qualifications: ['M.Sc', 'B.Ed', 'Ph.D'], termsAccepted: true, idImage: 'data:image/png;base64,iVBORw0KGgo=', workHistory: 'Taught at ABC for 5 years',
     payType: 'per_lecture', payAmount: '500', payNotes: 'Paid on the 5th of each month',
     registeredOn: '2000-01-01', // (ignored: the server writes the date of the day)
@@ -1466,7 +1466,7 @@ describe('Teacher registration details (the principal writes them when a teacher
     assert.equal(list.details, undefined);
     const [ds, dd] = await call('GET', `/api/users/${data.user.id}/details`, null, admin);
     assert.equal(ds, 200);
-    assert.equal(dd.details.idNumber, '123456789012'); // spaces are taken out
+    assert.equal(dd.details.idNumber, undefined); // there is no identity number: only the photo of the card
     assert.deepEqual([dd.details.firstName, dd.details.middleName, dd.details.lastName], ['Rahul', 'Kumar', 'Sharma']);
     assert.equal(dd.details.availability, 'online'); // always online: nothing to choose
     assert.equal(dd.details.idImage, 'data:image/png;base64,iVBORw0KGgo='); // the photo of the ID is kept, for the principal only
@@ -1483,11 +1483,11 @@ describe('Teacher registration details (the principal writes them when a teacher
     assert.equal((await call('GET', '/api/auth/me', null, teacher))[1].user.details, undefined);
   });
 
-  it('2 what is written must be right: Aadhaar, PIN, mobile, date of birth, names', async () => {
+  it('2 what is written must be right: PIN, mobile, date of birth, names, the photo of the ID', async () => {
     assert.equal((await call('POST', '/api/users', { ...body('p1@x.com', good), phone: '98765432101' }, admin))[0], 400); // the contact number has exactly 10 digits
     assert.equal((await call('POST', '/api/users', { ...body('p2@x.com', good), phone: '98765' }, admin))[0], 400);
     const bad = async (email: string, change: any) => (await call('POST', '/api/users', body(email, { ...good, ...change }), admin))[0];
-    assert.equal(await bad('b1@x.com', { idNumber: '12345' }), 400); // the Aadhaar has 12 digits
+    assert.equal((await call('POST', '/api/users', { ...body('b1@x.com', { ...good, idNumber: '123456789012' }), phone: '9000000011' }, admin))[0], 200); // an identity number that is sent is not kept
     assert.equal(await bad('b2@x.com', { address: { ...good.address, pin: '12' } }), 400);
     assert.equal(await bad('b3@x.com', { alternatePhone: '123' }), 400);
     assert.equal(await bad('b4@x.com', { dateOfBirth: '2015-01-01' }), 400); // too young
@@ -1495,7 +1495,7 @@ describe('Teacher registration details (the principal writes them when a teacher
     // the photo of the ID: only a small picture (it can be added with or without the number)
     assert.equal(await bad('i1@x.com', { idImage: 'data:text/html;base64,PGI+' }), 400);
     assert.equal(await bad('i2@x.com', { idImage: 'data:image/png;base64,' + 'A'.repeat(710_000) }), 400);
-    const [ws, wd] = await call('POST', '/api/users', { ...body('i3@x.com', { ...good, idNumber: '', idImage: 'data:image/png;base64,iVBORw0KGgo=' }), phone: '9000000013' }, admin);
+    const [ws, wd] = await call('POST', '/api/users', { ...body('i3@x.com', { ...good, idImage: 'data:image/png;base64,iVBORw0KGgo=' }), phone: '9000000013' }, admin);
     assert.equal(ws, 200); // the photo alone, without the number
     assert.equal((await call('GET', `/api/users/${wd.user.id}/details`, null, admin))[1].details.idImage, 'data:image/png;base64,iVBORw0KGgo=');
     assert.equal(await bad('b7@x.com', { guardianName: 'Mo#han' }), 400);
@@ -1504,18 +1504,17 @@ describe('Teacher registration details (the principal writes them when a teacher
     assert.equal(await bad('c4@x.com', { termsAccepted: undefined }), 400);
     assert.equal(await bad('d1@x.com', { alternatePhone: '98765432101' }), 400); // 11 digits
     assert.equal(await bad('d2@x.com', { country: 'Narnia' }), 400); // only a country of the list
-    const [bs] = await call('POST', '/api/users', { ...body('d4@x.com', { ...good, country: 'Brazil', idNumber: 'BR123456', address: { ...good.address, pin: '01001-000' } }), phone: '9000000004' }, admin);
+    const [bs] = await call('POST', '/api/users', { ...body('d4@x.com', { ...good, country: 'Brazil', address: { ...good.address, pin: '01001-000' } }), phone: '9000000004' }, admin);
     assert.equal(bs, 200); // every country of the world is in the list
     // another country: the dial code is written before the 10 digits, and the postal code and the ID are not the Indian ones
-    const [fs, fd] = await call('POST', '/api/users', { ...body('f1@x.com', { ...good, country: 'United Arab Emirates', address: { line: 'Street 4', district: 'Dubai', state: 'Dubai', pin: 'A1 2BC' }, idNumber: 'P1234567' }), phone: '5012345678' }, admin);
+    const [fs, fd] = await call('POST', '/api/users', { ...body('f1@x.com', { ...good, country: 'United Arab Emirates', address: { line: 'Street 4', district: 'Dubai', state: 'Dubai', pin: 'A1 2BC' } }), phone: '5012345678' }, admin);
     assert.equal(fs, 200);
     assert.equal(fd.user.phone, '+971 5012345678');
     assert.equal(await bad('d3@x.com', { address: { ...good.address, pin: '12345' } }), 400); // India: 6 digits
     // the contact number is needed, and one teacher is not added twice (the same number, or the same identity number)
     assert.equal((await call('POST', '/api/users', { ...body('e1@x.com', good), phone: '' }, admin))[0], 400);
     assert.equal((await call('POST', '/api/users', body('e2@x.com', good), admin))[0], 409); // the number of the teacher of the first test
-    assert.equal((await call('POST', '/api/users', { ...body('e3@x.com', good), phone: '9000000003' }, admin))[0], 409); // the same Aadhaar
-    // the middle name, the guardian and the Aadhaar can stay empty
+    // the middle name, the guardian and the photo of the ID can stay empty
     const [ok] = await call('POST', '/api/users', { ...body('c2@x.com', { firstName: 'Anil', lastName: 'Rao', middleName: '', termsAccepted: true }), phone: '9000000002' }, admin);
     assert.equal(ok, 200);
   });

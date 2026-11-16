@@ -1054,13 +1054,12 @@ route('/api/users', ['POST'], 'admin', async (c) => {
   const details = role === 'teacher' && b.details ? cleanTeacherDetails(b.details) : null;
   if (details) {
     if (!String(b.phone ?? '').replace(/\D/g, '')) throw new HttpError(400, 'Please enter the primary contact number of the teacher.');
-    // one teacher is not added twice: the same contact number or the same identity number
+    // one teacher is not added twice: the same contact number
     cleanTeacherPhone(b.phone, details.countryCode); // (the number has exactly 10 digits)
     const phone10 = String(b.phone).replace(/\D/g, '').slice(-10);
     for (const other of await s.usersAll()) {
       if (other.role !== 'teacher') continue;
       if (last10(String(other.phone ?? '')) === phone10) throw new HttpError(409, 'A teacher with this contact number is already added.');
-      if (details.idNumber && other.details?.idNumber === details.idNumber) throw new HttpError(409, 'A teacher with this identity number is already added.');
     }
   }
 
@@ -1154,7 +1153,7 @@ route('/api/postal/<country>/<code>', ['GET'], 'admin', async (c) => {
   return place;
 });
 
-/** The registration details of a teacher: only the principal reads them (they hold the Aadhaar number and the signatures). */
+/** The registration details of a teacher: only the principal reads them (they hold the photo of the identity card). */
 route('/api/users/<user_id>/details', ['GET'], 'admin', async (c) => {
   const target = await c.store.userById(c.req.params.user_id as string);
   if (!target || target.role !== 'teacher') throw new HttpError(404, 'Teacher not found.');
