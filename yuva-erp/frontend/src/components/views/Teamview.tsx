@@ -261,13 +261,17 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
     const complete = country === 'India' ? /^\d{6}$/.test(code) : code.replace(/[\s-]/g, '').length >= 4;
     if (!complete) return;
     postalTimer.current = setTimeout(() => {
-      request<{ district: string; state: string }>('GET', `/postal/${encodeURIComponent(country)}/${encodeURIComponent(code)}`)
+      request<{ district: string; state: string; city?: string }>('GET', `/postal/${encodeURIComponent(country)}/${encodeURIComponent(code)}`)
         .then(place => {
           if (seq !== postalSeq.current) return; // a newer code was written meanwhile
-          setADetails(prev => ({ ...prev, district: place.district || prev.district, state: place.state || prev.state }));
-          setPostalNote(`District and state were filled from this ${country === 'India' ? 'PIN' : 'postal'} code.`);
+          // the town and the district: "Bijainagar, Ajmer"
+          const where = place.city && place.city.toLowerCase() !== place.district.toLowerCase() ? `${place.city}, ${place.district}` : place.district;
+          setADetails(prev => ({ ...prev, district: where || prev.district, state: place.state || prev.state }));
+          setPostalNote(`City, district and state were filled from this ${country === 'India' ? 'PIN' : 'postal'} code. You can change them.`);
         })
-        .catch(() => undefined); // not found, or the service is not there: the person writes the place by hand
+        .catch(() => {
+          if (seq === postalSeq.current) setPostalNote('The place of this code was not found. Please write the district and the state.'); // (or the server is old: it must be restarted)
+        });
     }, 450);
   };
   const [aShowPw, setAShowPw] = useState(true);
@@ -1053,7 +1057,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
                 ) : (
                   <input type="text" maxLength={10} value={aDetails.pin} onChange={e => setPostal(e.target.value.replace(/[^A-Za-z0-9 -]/g, ''))} placeholder="3 to 10 characters" className={`${inputClass} font-mono`} />
                 )}
-                {postalNote && <p className="text-[11px] text-emerald-600 mt-1">{postalNote}</p>}
+                {postalNote && <p className={`text-[11px] mt-1 ${postalNote.startsWith('The place') ? 'text-amber-600' : 'text-emerald-600'}`}>{postalNote}</p>}
               </div>
             </div>
             <div className="flex items-center gap-2 pt-1 border-b border-slate-200 pb-1.5">

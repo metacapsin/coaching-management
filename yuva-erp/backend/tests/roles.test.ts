@@ -1524,7 +1524,7 @@ describe('The place of a postal code', () => {
     const u = String(url);
     if (!u.startsWith('https://api.')) return (real as any)(url, init);
     calls.push(u);
-    if (u.includes('postalpincode.in/pincode/305624')) return { ok: true, json: async () => [{ Status: 'Success', PostOffice: [{ District: 'Ajmer', State: 'Rajasthan' }] }] };
+    if (u.includes('postalpincode.in/pincode/305624')) return { ok: true, json: async () => [{ Status: 'Success', PostOffice: [{ Name: 'Badi', Block: 'Nasirabad', District: 'Ajmer', State: 'Rajasthan' }, { Name: 'Bijainagar', Block: 'Bijainagar', District: 'Ajmer', State: 'Rajasthan' }] }] };
     if (u.includes('postalpincode.in')) return { ok: true, json: async () => [{ Status: 'Error', PostOffice: null }] };
     if (u.includes('zippopotam.us/us/90210')) return { ok: true, json: async () => ({ places: [{ 'place name': 'Beverly Hills', state: 'California' }] }) };
     return { ok: false, json: async () => ({}) };
@@ -1534,7 +1534,7 @@ describe('The place of a postal code', () => {
     (globalThis as any).fetch = stub;
     try {
       const india = await call('GET', '/api/postal/India/305624', null, admin);
-      assert.deepEqual([india[0], india[1].district, india[1].state], [200, 'Ajmer', 'Rajasthan']);
+      assert.deepEqual([india[0], india[1].district, india[1].state, india[1].city], [200, 'Ajmer', 'Rajasthan', 'Bijainagar']); // the main town of the PIN code too
       const us = await call('GET', '/api/postal/United%20States/90210', null, admin);
       assert.deepEqual([us[0], us[1].district, us[1].state], [200, 'Beverly Hills', 'California']);
       assert.equal((await call('GET', '/api/postal/India/999999', null, admin))[0], 404);

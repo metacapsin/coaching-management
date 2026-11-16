@@ -9,7 +9,7 @@ export const ISO: Record<string, string> = {
   Germany: 'DE', France: 'FR', Italy: 'IT', Japan: 'JP',
 };
 
-export interface Place { district: string; state: string }
+export interface Place { district: string; state: string; city: string }
 type FetchFn = (url: string, init?: { signal?: AbortSignal }) => Promise<{ ok: boolean; json: () => Promise<any> }>;
 
 const cache = new Map<string, Place | null>();
@@ -27,15 +27,20 @@ export async function lookupPostal(country: string, code: string, fetchFn: Fetch
     if (iso === 'IN') {
       const res = await fetchFn(`https://api.postalpincode.in/pincode/${encodeURIComponent(code)}`, { signal: AbortSignal.timeout(6000) });
       const data = res.ok ? await res.json() : null;
-      const office = Array.isArray(data) && data[0]?.Status === 'Success' ? data[0].PostOffice?.[0] : null;
-      if (office) place = { district: clean(office.District), state: clean(office.State) };
+      const offices: any[] = Array.isArray(data) && data[0]?.Status === 'Success' && Array.isArray(data[0].PostOffice) ? data[0].PostOffice : [];
+      const office = offices[0];
+      if (office) {
+        // one PIN code has several post offices; the one that has the name of its block is the main town (305624: Bijainagar)
+        const town = offices.find((o) => clean(o.Name) && clean(o.Name).toLowerCase() === clean(o.Block).toLowerCase());
+        place = { district: clean(office.District), state: clean(office.State), city: clean(town?.Name) };
+      }
     } else {
       // (the services want the first part of a code of the United Kingdom and of Canada)
       const part = iso === 'GB' ? code.split(' ')[0] : iso === 'CA' ? code.replace(/\s/g, '').slice(0, 3) : code;
       const res = await fetchFn(`https://api.zippopotam.us/${iso.toLowerCase()}/${encodeURIComponent(part)}`, { signal: AbortSignal.timeout(6000) });
       const data = res.ok ? await res.json() : null;
       const first = data?.places?.[0];
-      if (first) place = { district: clean(first['place name']), state: clean(first.state) };
+      if (first) place = { district: clean(first['place name']), state: clean(first.state), city: '' };
     }
   } catch {
     return null; // the service is not there now: nothing is kept, and the person writes the place by hand
