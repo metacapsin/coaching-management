@@ -1,7 +1,7 @@
 import { cleanName } from '../utils/names';
 import { Select, DateInput } from '../ui/Pickers';
 import { toLocalISODate } from '../utils/helpers';
-import { COUNTRIES, dialCodeOf } from '../utils/countries';
+import { DialCodePicker } from '../ui/DialCodePicker';
 import React, { useCallback, useEffect, useState } from 'react';
 import { request, updateOwnDetails, refreshNow, ApiError } from '../utils/api';
 import { ChangeEmailForm } from '../auth/ChangeEmailForm';
@@ -979,26 +979,20 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
                 <input type="text" value={aDetails.guardianName} onChange={e => setD('guardianName', cleanName(e.target.value))} className={inputClass} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Country</label>
-                <Select value={aDetails.country} onChange={e => setD('country', e.target.value)} className={`${inputClass} bg-white`}>
-                  {COUNTRIES.map(c => (
-                    <option key={c.name} value={c.name}>
-                      {c.name} ({c.code})
-                    </option>
-                  ))}
-                </Select>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Date of Birth</label>
+                <DateInput value={aDetails.dateOfBirth} onChange={e => setD('dateOfBirth', e.target.value)} max={toLocalISODate()} className={`${inputClass} bg-white`} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Primary Contact Number</label>
                 <div className="flex">
-                  <span className="px-3 flex items-center text-sm font-mono text-slate-600 bg-slate-50 border border-r-0 border-slate-300 rounded-l-lg select-none">{dialCodeOf(aDetails.country)}</span>
+                  <DialCodePicker country={aDetails.country} onChange={c => setD('country', c)} />
                   <input type="tel" inputMode="numeric" maxLength={10} value={aPhone} onChange={e => setAPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder="10 digits" className={`${inputClass} rounded-l-none font-mono`} />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Alternate Contact Number</label>
                 <div className="flex">
-                  <span className="px-3 flex items-center text-sm font-mono text-slate-600 bg-slate-50 border border-r-0 border-slate-300 rounded-l-lg select-none">{dialCodeOf(aDetails.country)}</span>
+                  <DialCodePicker country={aDetails.country} onChange={c => setD('country', c)} />
                   <input type="tel" inputMode="numeric" maxLength={10} value={aDetails.alternatePhone} onChange={e => setD('alternatePhone', e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder="10 digits" className={`${inputClass} rounded-l-none font-mono`} />
                 </div>
               </div>
@@ -1007,8 +1001,12 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
                 <input type="email" value={aEmail} onChange={e => setAEmail(e.target.value)} className={inputClass} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Date of Birth</label>
-                <DateInput value={aDetails.dateOfBirth} onChange={e => setD('dateOfBirth', e.target.value)} max={toLocalISODate()} className={`${inputClass} bg-white`} />
+                <label className="block text-xs font-medium text-slate-700 mb-1">{aDetails.country === 'India' ? 'Government ID (Aadhaar Number)' : 'Government ID Number'}</label>
+                {aDetails.country === 'India' ? (
+                  <input type="text" inputMode="numeric" maxLength={12} value={aDetails.idNumber} onChange={e => setD('idNumber', e.target.value.replace(/\D/g, ''))} placeholder="12 digits" className={`${inputClass} font-mono`} />
+                ) : (
+                  <input type="text" maxLength={20} value={aDetails.idNumber} onChange={e => setD('idNumber', e.target.value.replace(/[^A-Za-z0-9]/g, ''))} placeholder="Passport or national ID" className={`${inputClass} font-mono`} />
+                )}
               </div>
             </div>
             <div>
@@ -1032,14 +1030,6 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
                   <input type="text" maxLength={10} value={aDetails.pin} onChange={e => setD('pin', e.target.value.replace(/[^A-Za-z0-9 -]/g, ''))} placeholder="3 to 10 characters" className={`${inputClass} font-mono`} />
                 )}
               </div>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">{aDetails.country === 'India' ? 'Government ID (Aadhaar Number)' : 'Government ID Number (passport or national ID)'}</label>
-              {aDetails.country === 'India' ? (
-                <input type="text" inputMode="numeric" maxLength={12} value={aDetails.idNumber} onChange={e => setD('idNumber', e.target.value.replace(/\D/g, ''))} placeholder="12 digits" className={`${inputClass} font-mono`} />
-              ) : (
-                <input type="text" maxLength={20} value={aDetails.idNumber} onChange={e => setD('idNumber', e.target.value.replace(/[^A-Za-z0-9]/g, ''))} placeholder="4 to 20 letters or digits" className={`${inputClass} font-mono`} />
-              )}
             </div>
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-blue-700 pt-1 border-b border-slate-200 pb-1.5">Academic &amp; professional qualifications</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
