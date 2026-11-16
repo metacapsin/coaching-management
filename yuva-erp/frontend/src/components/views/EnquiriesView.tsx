@@ -3,7 +3,6 @@ import React, { useMemo, useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { Enquiry, EnquiryStatus } from '../../types';
 import { EnquiryModal, STATUS_LABEL, SOURCE_LABEL } from '../modals/EnquiryModal';
-import { AdmissionModal } from '../modals/AdmissionModal';
 import { Pager } from '../ui/Pager';
 import { usePaged } from '../utils/usePaged';
 import { ExportMenu } from '../ui/ExportMenu';
@@ -17,7 +16,6 @@ import {
   MessageSquare,
   Pencil,
   Trash2,
-  UserPlus,
   CheckCircle2,
   AlertTriangle,
   CalendarClock
@@ -35,14 +33,13 @@ const STATUS_STYLE: Record<EnquiryStatus, string> = {
 const isOpen = (e: Enquiry) => e.status !== 'enrolled' && e.status !== 'lost';
 
 export const EnquiriesView: React.FC = () => {
-  const { enquiries, courses, batches, profile, updateEnquiry, deleteEnquiry } = useInstitute();
+  const { enquiries, courses, profile, updateEnquiry, deleteEnquiry } = useInstitute();
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'due' | EnquiryStatus>('open');
   const [sourceFilter, setSourceFilter] = useState('all');
 
   const [editing, setEditing] = useState<{ enquiry: Enquiry | null } | null>(null);
-  const [converting, setConverting] = useState<Enquiry | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Enquiry | null>(null);
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -91,14 +88,6 @@ export const EnquiriesView: React.FC = () => {
       }. Please let us know a convenient time to talk about admission. - ${profile.name}`
     );
     if (e.status === 'new') updateEnquiry(e.id, { status: 'contacted' });
-  };
-
-  const startConvert = (e: Enquiry) => {
-    if (batches.length === 0) {
-      showNotice('error', 'Create a batch first (Batches & Timetable), then admit the student.');
-      return;
-    }
-    setConverting(e);
   };
 
   // the list on the screen as a table: for the PDF and for the Excel file
@@ -303,15 +292,6 @@ export const EnquiriesView: React.FC = () => {
                           >
                             <MessageSquare className="w-3.5 h-3.5" />
                           </button>
-                          {e.status !== 'enrolled' && (
-                            <button
-                              onClick={() => startConvert(e)}
-                              className="px-2 py-1 text-[11px] font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-md transition-colors flex items-center gap-1"
-                            >
-                              <UserPlus className="w-3 h-3" />
-                              Admit
-                            </button>
-                          )}
                           <button
                             onClick={() => setEditing({ enquiry: e })}
                             title="Edit"
@@ -343,25 +323,6 @@ export const EnquiriesView: React.FC = () => {
           enquiry={editing.enquiry}
           onClose={() => setEditing(null)}
           onSaved={name => showNotice('success', `${name}'s enquiry was saved.`)}
-        />
-      )}
-
-      {converting && (
-        <AdmissionModal
-          isOpen
-          prefill={{
-            name: converting.name,
-            phone: converting.phone,
-            email: converting.email,
-            parentName: converting.parentName,
-            grade: converting.grade,
-            courseId: converting.interestedCourseId
-          }}
-          onClose={() => setConverting(null)}
-          onSuccess={(name, student) => {
-            updateEnquiry(converting.id, { status: 'enrolled', convertedStudentId: student.id, followUpDate: undefined });
-            showNotice('success', `${name} was admitted (roll no. ${student.rollNo}).`);
-          }}
         />
       )}
 
