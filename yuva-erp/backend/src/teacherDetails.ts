@@ -66,14 +66,13 @@ export function cleanTeacherDetails(raw: any): Record<string, any> {
   if (id && !india && !/^[A-Za-z0-9]{4,20}$/.test(id)) throw new HttpError(400, 'The ID number must have 4 to 20 letters or digits.');
   out.idType = id ? (india ? 'Aadhaar' : 'ID') : '';
   out.idNumber = id;
-  // the photo of the ID: a small picture (the form makes it small), written after the number
+  // the photo of the ID: a small picture (the form makes it small); it can be added with or without the number
   const image = b.idImage;
   if (image !== undefined && image !== null && image !== '') {
-    if (!id) throw new HttpError(400, 'Write the identity number first, then add the photo of the ID.');
     if (typeof image !== 'string' || !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(image)) throw new HttpError(400, 'The photo of the ID must be a picture (JPG, PNG or WebP).');
     if (image.length > MAX_ID_IMAGE) throw new HttpError(400, 'The photo of the ID is too big. Please choose a smaller picture.');
   }
-  out.idImage = typeof image === 'string' && id ? image : '';
+  out.idImage = typeof image === 'string' ? image : '';
 
   // ---- qualification and work history
   // the degrees: the first is the highest one, and the teacher can have more (up to 8)

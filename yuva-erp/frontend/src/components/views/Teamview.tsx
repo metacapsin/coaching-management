@@ -1051,12 +1051,12 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">{aDetails.country === 'India' ? 'Government ID (Aadhaar Number)' : 'Government ID Number'}</label>
                 {aDetails.country === 'India' ? (
-                  <input type="text" inputMode="numeric" maxLength={12} value={aDetails.idNumber} onChange={e => setADetails(prev => ({ ...prev, idNumber: e.target.value.replace(/\D/g, ''), idImage: e.target.value.replace(/\D/g, '').length === 12 ? prev.idImage : '' }))} placeholder="12 digits" className={`${inputClass} font-mono`} />
+                  <input type="text" inputMode="numeric" maxLength={12} value={aDetails.idNumber} onChange={e => setD('idNumber', e.target.value.replace(/\D/g, ''))} placeholder="12 digits" className={`${inputClass} font-mono`} />
                 ) : (
                   <input type="text" maxLength={20} value={aDetails.idNumber} onChange={e => setD('idNumber', e.target.value.replace(/[^A-Za-z0-9]/g, ''))} placeholder="Passport or national ID" className={`${inputClass} font-mono`} />
                 )}
                 {(() => {
-                  const numberDone = aDetails.country === 'India' ? aDetails.idNumber.length === 12 : aDetails.idNumber.length >= 4;
+                  const numberDone = true; // (the photo of the ID is uploaded directly: it does not wait for the number)
                   return (
                   <div className="mt-2">
                     {aDetails.idImage ? (
@@ -1092,9 +1092,6 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
                           }}
                         />
                       </label>
-                    )}
-                    {!numberDone && !aDetails.idImage && (
-                      <p className="text-[11px] text-slate-400 mt-1">Write the {aDetails.country === 'India' ? '12-digit Aadhaar number' : 'ID number'} first, then the photo of the ID can be uploaded here.</p>
                     )}
                     {idError && <p className="text-[11px] text-rose-600 mt-1">{idError}</p>}
                   </div>

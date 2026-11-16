@@ -1492,10 +1492,12 @@ describe('Teacher registration details (the principal writes them when a teacher
     assert.equal(await bad('b3@x.com', { alternatePhone: '123' }), 400);
     assert.equal(await bad('b4@x.com', { dateOfBirth: '2015-01-01' }), 400); // too young
     assert.equal(await bad('b6@x.com', { firstName: 'Ra@hul' }), 400); // no symbols in a name
-    // the photo of the ID: only a small picture, and only after the number
+    // the photo of the ID: only a small picture (it can be added with or without the number)
     assert.equal(await bad('i1@x.com', { idImage: 'data:text/html;base64,PGI+' }), 400);
     assert.equal(await bad('i2@x.com', { idImage: 'data:image/png;base64,' + 'A'.repeat(710_000) }), 400);
-    assert.equal(await bad('i3@x.com', { idNumber: '', idImage: 'data:image/png;base64,iVBORw0KGgo=' }), 400);
+    const [ws, wd] = await call('POST', '/api/users', { ...body('i3@x.com', { ...good, idNumber: '', idImage: 'data:image/png;base64,iVBORw0KGgo=' }), phone: '9000000013' }, admin);
+    assert.equal(ws, 200); // the photo alone, without the number
+    assert.equal((await call('GET', `/api/users/${wd.user.id}/details`, null, admin))[1].details.idImage, 'data:image/png;base64,iVBORw0KGgo=');
     assert.equal(await bad('b7@x.com', { guardianName: 'Mo#han' }), 400);
     assert.equal(await bad('c1@x.com', { lastName: '' }), 400); // the last name is needed
     assert.equal(await bad('c3@x.com', { termsAccepted: false }), 400); // the teacher must agree to the terms and conditions

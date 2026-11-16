@@ -119,8 +119,15 @@ export const TeacherDetailsModal: React.FC<{ teacher: AuthUser; onClose: () => v
                   {showId ? (
                     <img src={d.idImage} alt="Photo of the ID" className="max-h-64 w-auto rounded-md border border-slate-300 bg-white" />
                   ) : (
-                    <span className="text-xs text-slate-500">Hidden. Press Show above to see it.</span>
+                    <span className="text-xs text-slate-500">Hidden.</span>
                   )}
+                  {!id && (
+                    <button type="button" onClick={() => setShowId(v => !v)} className="ml-3 text-xs text-blue-600 hover:underline inline-flex items-center gap-1">
+                      {showId ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      {showId ? 'Hide' : 'Show'}
+                    </button>
+                  )}
+                  {id && !showId && <span className="text-xs text-slate-500"> Press Show above to see it.</span>}
                 </Row>
               )}
 
