@@ -3,7 +3,7 @@ import { Select, DateInput } from '../ui/Pickers';
 import { toLocalISODate } from '../utils/helpers';
 import { DialCodePicker } from '../ui/DialCodePicker';
 import { countryForPostalCode } from '../utils/countries';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { request, updateOwnDetails, refreshNow, ApiError } from '../utils/api';
 import { ChangeEmailForm } from '../auth/ChangeEmailForm';
 import { useAuth, roleLabel } from '../../Context/AuthContext';
@@ -248,8 +248,27 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
   const [aAgree, setAAgree] = useState(false); // the teacher agrees to the rules and regulations of the coaching
   const setD = (key: keyof ReturnType<typeof emptyDetails>, value: string) => setADetails(prev => ({ ...prev, [key]: value }));
   // the postal code can show the country: a PIN code of India (6 digits) chooses India and its +91, a code of Canada, the UK, Japan or a ZIP+4 of the USA its own country
+  const postalSeq = useRef(0);
+  const postalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [postalNote, setPostalNote] = useState('');
   const setPostal = (code: string) => {
-    setADetails(prev => ({ ...prev, pin: code, country: countryForPostalCode(code, prev.country) ?? prev.country }));
+    const country = countryForPostalCode(code, aDetails.country) ?? aDetails.country;
+    setADetails(prev => ({ ...prev, pin: code, country }));
+    // and the district (city) and the state follow the code: they are filled when the code is complete (the person can still change them)
+    const seq = ++postalSeq.current;
+    if (postalTimer.current) clearTimeout(postalTimer.current);
+    setPostalNote('');
+    const complete = country === 'India' ? /^\d{6}$/.test(code) : code.replace(/[\s-]/g, '').length >= 4;
+    if (!complete) return;
+    postalTimer.current = setTimeout(() => {
+      request<{ district: string; state: string }>('GET', `/postal/${encodeURIComponent(country)}/${encodeURIComponent(code)}`)
+        .then(place => {
+          if (seq !== postalSeq.current) return; // a newer code was written meanwhile
+          setADetails(prev => ({ ...prev, district: place.district || prev.district, state: place.state || prev.state }));
+          setPostalNote(`District and state were filled from this ${country === 'India' ? 'PIN' : 'postal'} code.`);
+        })
+        .catch(() => undefined); // not found, or the service is not there: the person writes the place by hand
+    }, 450);
   };
   const [aShowPw, setAShowPw] = useState(true);
   const [aError, setAError] = useState('');
@@ -1034,25 +1053,26 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
                 ) : (
                   <input type="text" maxLength={10} value={aDetails.pin} onChange={e => setPostal(e.target.value.replace(/[^A-Za-z0-9 -]/g, ''))} placeholder="3 to 10 characters" className={`${inputClass} font-mono`} />
                 )}
+                {postalNote && <p className="text-[11px] text-emerald-600 mt-1">{postalNote}</p>}
               </div>
             </div>
-            <h3 className="text-[11px] font-bold uppercase tracking-wider text-blue-700 pt-1 border-b border-slate-200 pb-1.5">Academic &amp; professional qualifications</h3>
+            <div className="flex items-center gap-2 pt-1 border-b border-slate-200 pb-1.5">
+              <h3 className="text-[11px] font-bold uppercase tracking-wider text-blue-700">Academic &amp; professional qualifications</h3>
+              <button
+                type="button"
+                onClick={() => setADegrees(prev => (prev.length < 8 ? [...prev, ''] : prev))}
+                disabled={aDegrees.length >= 8}
+                title="Add another degree"
+                aria-label="Add another degree"
+                className="w-5 h-5 shrink-0 flex items-center justify-center text-blue-600 border border-blue-400 hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed rounded-full transition-colors"
+              >
+                <Plus className="w-3 h-3" />
+              </button>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Highest Degree / Qualification</label>
-                  <div className="flex gap-2">
-                    <input type="text" value={aDegrees[0] ?? ''} onChange={e => setADegrees(prev => prev.map((d, i) => (i === 0 ? e.target.value : d)))} placeholder="e.g. B.Sc, M.Sc, B.Ed, M.Tech" className={inputClass} />
-                    <button
-                      type="button"
-                      onClick={() => setADegrees(prev => (prev.length < 8 ? [...prev, ''] : prev))}
-                      disabled={aDegrees.length >= 8}
-                      title="Add another degree"
-                      aria-label="Add another degree"
-                      className="shrink-0 w-10 flex items-center justify-center text-blue-600 border border-blue-300 hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition-colors"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
+                  <input type="text" value={aDegrees[0] ?? ''} onChange={e => setADegrees(prev => prev.map((d, i) => (i === 0 ? e.target.value : d)))} placeholder="e.g. B.Sc, M.Sc, B.Ed, M.Tech" className={inputClass} />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Subject / Course Joining For</label>

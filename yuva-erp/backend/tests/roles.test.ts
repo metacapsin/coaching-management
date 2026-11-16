@@ -1507,3 +1507,48 @@ describe('Teacher registration details (the principal writes them when a teacher
     assert.equal(ok, 200);
   });
 });
+
+describe('The place of a postal code', () => {
+  let admin = '';
+  let teacher = '';
+  const s = withServer(async (api) => {
+    admin = (await api.call('POST', '/api/auth/setup', { name: 'Pri', email: 'pri@x.com', password: PASSWORD }))[1].token;
+    await api.call('POST', '/api/users', { name: 'Tina Teacher', email: 'tina@x.com', password: 'Teach#12345', role: 'teacher', phone: '', subject: 'Physics', batchIds: [] }, admin);
+    teacher = (await api.call('POST', '/api/auth/login', { email: 'tina@x.com', password: 'Teach#12345', portal: 'member' }))[1].token;
+  });
+  const call = (...a: Parameters<Api['call']>) => s.api.call(...a);
+  const real = globalThis.fetch;
+  const calls: string[] = [];
+  // (the test itself calls the server with fetch: only the two public services are answered here)
+  const stub = async (url: any, init?: any) => {
+    const u = String(url);
+    if (!u.startsWith('https://api.')) return (real as any)(url, init);
+    calls.push(u);
+    if (u.includes('postalpincode.in/pincode/305624')) return { ok: true, json: async () => [{ Status: 'Success', PostOffice: [{ District: 'Ajmer', State: 'Rajasthan' }] }] };
+    if (u.includes('postalpincode.in')) return { ok: true, json: async () => [{ Status: 'Error', PostOffice: null }] };
+    if (u.includes('zippopotam.us/us/90210')) return { ok: true, json: async () => ({ places: [{ 'place name': 'Beverly Hills', state: 'California' }] }) };
+    return { ok: false, json: async () => ({}) };
+  };
+
+  it('a PIN code gives the district and the state, a ZIP code the city and the state; an unknown code is not found; only the principal asks', async () => {
+    (globalThis as any).fetch = stub;
+    try {
+      const india = await call('GET', '/api/postal/India/305624', null, admin);
+      assert.deepEqual([india[0], india[1].district, india[1].state], [200, 'Ajmer', 'Rajasthan']);
+      const us = await call('GET', '/api/postal/United%20States/90210', null, admin);
+      assert.deepEqual([us[0], us[1].district, us[1].state], [200, 'Beverly Hills', 'California']);
+      assert.equal((await call('GET', '/api/postal/India/999999', null, admin))[0], 404);
+      assert.equal((await call('GET', '/api/postal/Narnia/12345', null, admin))[0], 404); // only a country of the list
+      assert.equal((await call('GET', '/api/postal/India/12%2F34', null, admin))[0], 404); // nothing odd goes to the service
+      assert.equal((await call('GET', '/api/postal/India/305624', null, teacher))[0], 403);
+      assert.equal((await call('GET', '/api/postal/India/305624', null, null))[0], 401);
+      // the same code is asked of the service once
+      const before = calls.length;
+      await call('GET', '/api/postal/India/305624', null, admin);
+      assert.equal(calls.length, before);
+      assert.ok(calls.every((u) => u.startsWith('https://api.postalpincode.in/') || u.startsWith('https://api.zippopotam.us/')));
+    } finally {
+      (globalThis as any).fetch = real;
+    }
+  });
+});

@@ -31,6 +31,7 @@ import {
 import { nextRollNumber } from './rollno.ts';
 import { monthName, sendMonthlyAttendance } from './attendanceMail.ts';
 import { cleanTeacherDetails, cleanTeacherPhone } from './teacherDetails.ts';
+import { lookupPostal } from './postal.ts';
 import { applyChanges, parsePhotoDataUrl, scopeInstitute } from './scope.ts';
 import { DEFAULT_ORG, PLATFORM_ORG } from './store.ts';
 import { GREEN, RED } from './emailTemplate.ts';
@@ -1087,6 +1088,13 @@ route('/api/users', ['POST'], 'admin', async (c) => {
   }
   await welcomeMail(c, s, user, b.password);
   return { user: auth.publicUser(user) };
+});
+
+/** The district and the state of a PIN code or a ZIP code (the form of a new teacher fills them in). Only the principal asks. */
+route('/api/postal/<country>/<code>', ['GET'], 'admin', async (c) => {
+  const place = await lookupPostal(String(c.req.params.country), String(c.req.params.code));
+  if (!place) throw new HttpError(404, 'This postal code was not found.');
+  return place;
 });
 
 /** The registration details of a teacher: only the principal reads them (they hold the Aadhaar number and the signatures). */
