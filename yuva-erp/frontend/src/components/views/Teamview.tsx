@@ -2,6 +2,7 @@ import { cleanName } from '../utils/names';
 import { Select, DateInput } from '../ui/Pickers';
 import { toLocalISODate } from '../utils/helpers';
 import { DialCodePicker } from '../ui/DialCodePicker';
+import { countryForPostalCode } from '../utils/countries';
 import React, { useCallback, useEffect, useState } from 'react';
 import { request, updateOwnDetails, refreshNow, ApiError } from '../utils/api';
 import { ChangeEmailForm } from '../auth/ChangeEmailForm';
@@ -246,6 +247,10 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
   const [aDegrees, setADegrees] = useState<string[]>(['']); // the highest degree, and the other degrees (the + button adds one)
   const [aAgree, setAAgree] = useState(false); // the teacher agrees to the rules and regulations of the coaching
   const setD = (key: keyof ReturnType<typeof emptyDetails>, value: string) => setADetails(prev => ({ ...prev, [key]: value }));
+  // the postal code can show the country: a PIN code of India (6 digits) chooses India and its +91, a code of Canada, the UK, Japan or a ZIP+4 of the USA its own country
+  const setPostal = (code: string) => {
+    setADetails(prev => ({ ...prev, pin: code, country: countryForPostalCode(code, prev.country) ?? prev.country }));
+  };
   const [aShowPw, setAShowPw] = useState(true);
   const [aError, setAError] = useState('');
   const [aBusy, setABusy] = useState(false);
@@ -1025,9 +1030,9 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">{aDetails.country === 'India' ? 'PIN Code' : 'Postal / ZIP Code'}</label>
                 {aDetails.country === 'India' ? (
-                  <input type="text" inputMode="numeric" maxLength={6} value={aDetails.pin} onChange={e => setD('pin', e.target.value.replace(/\D/g, ''))} placeholder="6 digits" className={`${inputClass} font-mono`} />
+                  <input type="text" inputMode="numeric" maxLength={6} value={aDetails.pin} onChange={e => setPostal(e.target.value.replace(/\D/g, ''))} placeholder="6 digits" className={`${inputClass} font-mono`} />
                 ) : (
-                  <input type="text" maxLength={10} value={aDetails.pin} onChange={e => setD('pin', e.target.value.replace(/[^A-Za-z0-9 -]/g, ''))} placeholder="3 to 10 characters" className={`${inputClass} font-mono`} />
+                  <input type="text" maxLength={10} value={aDetails.pin} onChange={e => setPostal(e.target.value.replace(/[^A-Za-z0-9 -]/g, ''))} placeholder="3 to 10 characters" className={`${inputClass} font-mono`} />
                 )}
               </div>
             </div>
