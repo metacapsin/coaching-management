@@ -2,7 +2,7 @@ import { Select } from '../ui/Pickers';
 import React, { useMemo, useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { Enquiry, EnquiryStatus } from '../../types';
-import { EnquiryModal, STATUS_LABEL, SOURCE_LABEL } from '../modals/EnquiryModal';
+import { EnquiryModal, STATUS_LABEL, STATUS_CHOICES, SOURCE_LABEL, statusOf } from '../modals/EnquiryModal';
 import { Pager } from '../ui/Pager';
 import { usePaged } from '../utils/usePaged';
 import { ExportMenu } from '../ui/ExportMenu';
@@ -30,7 +30,7 @@ const STATUS_STYLE: Record<EnquiryStatus, string> = {
   lost: 'bg-slate-200 text-slate-600'
 };
 
-const isOpen = (e: Enquiry) => e.status !== 'enrolled' && e.status !== 'lost';
+const isOpen = (e: Enquiry) => e.status !== 'enrolled';
 
 export const EnquiriesView: React.FC = () => {
   const { enquiries, courses, profile, updateEnquiry, deleteEnquiry } = useInstitute();
@@ -87,19 +87,18 @@ export const EnquiriesView: React.FC = () => {
         course ? ` (${course})` : ''
       }. Please let us know a convenient time to talk about admission. - ${profile.name}`
     );
-    if (e.status === 'new') updateEnquiry(e.id, { status: 'contacted' });
   };
 
   // the list on the screen as a table: for the PDF and for the Excel file
   const exportData = (): ExportData => ({
     headers: ['Name', 'Mobile', 'Parent', 'Class', 'Program', 'Source', 'Status', 'Follow-up', 'Notes', 'Created'],
-    rows: filtered.map(e => [e.name, e.phone, e.parentName || '', e.grade || '', courseName(e.interestedCourseId), SOURCE_LABEL[e.source], STATUS_LABEL[e.status], e.followUpDate || '', e.notes, e.createdAt.slice(0, 10)]),
+    rows: filtered.map(e => [e.name, e.phone, e.parentName || '', e.grade || '', courseName(e.interestedCourseId), SOURCE_LABEL[e.source], STATUS_LABEL[statusOf(e.status)], e.followUpDate || '', e.notes, e.createdAt.slice(0, 10)]),
     summary: [
       { label: 'Enquiries', value: filtered.length },
       { label: 'Enrolled', value: filtered.filter(e => e.status === 'enrolled').length },
-      { label: 'Lost', value: filtered.filter(e => e.status === 'lost').length }
+      { label: 'New', value: filtered.filter(e => e.status !== 'enrolled').length }
     ],
-    colorize: (col, value) => (col === 6 ? (value === STATUS_LABEL.enrolled ? 'green' : value === STATUS_LABEL.lost ? 'red' : undefined) : undefined)
+    colorize: (col, value) => (col === 6 ? (value === STATUS_LABEL.enrolled ? 'green' : undefined) : undefined)
   });
 
   return (
@@ -188,14 +187,10 @@ export const EnquiriesView: React.FC = () => {
           onChange={e => setStatusFilter(e.target.value as typeof statusFilter)}
           className="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
         >
-          <option value="open">Open ones (not admitted, not lost)</option>
-          <option value="all">All statuses</option>
+          <option value="open">New (not admitted yet)</option>
+          <option value="enrolled">Enrolled</option>
+          <option value="all">All</option>
           <option value="due">Follow-up due ({dueCount})</option>
-          {(Object.keys(STATUS_LABEL) as EnquiryStatus[]).map(s => (
-            <option key={s} value={s}>
-              {STATUS_LABEL[s]}
-            </option>
-          ))}
         </Select>
         <Select
           value={sourceFilter}
@@ -256,12 +251,12 @@ export const EnquiriesView: React.FC = () => {
                       </td>
                       <td className="p-3.5">
                         <Select
-                          value={e.status}
+                          value={statusOf(e.status)}
                           onChange={ev => updateEnquiry(e.id, { status: ev.target.value as EnquiryStatus })}
-                          className={`px-2 py-1 text-[11px] font-semibold rounded-md border-0 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer ${STATUS_STYLE[e.status]}`}
+                          className={`px-2 py-1 text-[11px] font-semibold rounded-md border-0 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer ${STATUS_STYLE[statusOf(e.status)]}`}
                           aria-label={`Status of ${e.name}`}
                         >
-                          {(Object.keys(STATUS_LABEL) as EnquiryStatus[]).map(s => (
+                          {STATUS_CHOICES.map(s => (
                             <option key={s} value={s}>
                               {STATUS_LABEL[s]}
                             </option>

@@ -22,6 +22,10 @@ export const STATUS_LABEL: Record<EnquiryStatus, string> = {
   lost: 'Lost'
 };
 
+// An enquiry is New until the student joins, then Enrolled: these two are the only choices. (An older enquiry with another status counts as New.)
+export const STATUS_CHOICES: EnquiryStatus[] = ['new', 'enrolled'];
+export const statusOf = (status: EnquiryStatus): EnquiryStatus => (status === 'enrolled' ? 'enrolled' : 'new');
+
 export const SOURCE_LABEL: Record<EnquirySource, string> = {
   'walk-in': 'Walk-in',
   phone: 'Phone call',
@@ -50,7 +54,7 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ enquiry, onClose, on
     grade: enquiry?.grade ?? 'Class 12',
     interestedCourseId: enquiry?.interestedCourseId ?? '',
     source: enquiry?.source ?? ('walk-in' as EnquirySource),
-    status: enquiry?.status ?? ('new' as EnquiryStatus),
+    status: statusOf(enquiry?.status ?? 'new'),
     followUpDate: enquiry?.followUpDate ?? '',
     notes: enquiry?.notes ?? ''
   });
@@ -198,7 +202,7 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ enquiry, onClose, on
               onChange={e => setForm({ ...form, status: e.target.value as EnquiryStatus })}
               className={`${inputClass(false)} bg-white`}
             >
-              {(Object.keys(STATUS_LABEL) as EnquiryStatus[]).map(s => (
+              {STATUS_CHOICES.map(s => (
                 <option key={s} value={s}>
                   {STATUS_LABEL[s]}
                 </option>
