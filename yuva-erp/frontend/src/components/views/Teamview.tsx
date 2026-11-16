@@ -91,9 +91,9 @@ const Modal: React.FC<{ title: string; subtitle?: string; onClose: () => void; c
   children,
   wide = false
 }) => (
-  <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-    <div className={`relative w-full ${wide ? 'max-w-2xl' : 'max-w-md'} bg-white border border-slate-200 rounded-xl shadow-2xl my-8 overflow-hidden text-slate-900`}>
-      <div className="px-6 py-4 border-b border-slate-200 flex items-start justify-between bg-slate-50">
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
+    <div className={`relative w-full ${wide ? 'max-w-2xl' : 'max-w-md'} bg-white border border-slate-200 rounded-xl shadow-2xl flex flex-col max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] overflow-hidden text-slate-900`}>
+      <div className="px-6 py-4 border-b border-slate-200 flex items-start justify-between bg-slate-50 shrink-0">
         <div>
           <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
           {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
@@ -105,7 +105,8 @@ const Modal: React.FC<{ title: string; subtitle?: string; onClose: () => void; c
           <X className="w-5 h-5" />
         </button>
       </div>
-      <div className="p-6">{children}</div>
+      {/* the form scrolls inside the window: the heading stays on top, and the window is never taller than the screen */}
+      <div className="p-6 overflow-y-auto overscroll-contain">{children}</div>
     </div>
   </div>
 );
