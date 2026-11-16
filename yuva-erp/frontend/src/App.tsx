@@ -146,7 +146,7 @@ function MainApp() {
 
   const navItems: { id: TabId; label: string; icon: LucideIcon; badge?: number; fresh?: boolean }[] = [
     { id: 'dashboard', label: dashboardLabel, icon: LayoutDashboard },
-    { id: 'students', label: 'Admissions & Students', icon: Users, badge: students.length },
+    { id: 'students', label: 'Admissions & Students', icon: Users },
     { id: 'enquiries', label: 'Enquiries', icon: PhoneCall },
     { id: 'attendance', label: 'Daily Attendance', icon: CalendarCheck },
     { id: 'fees', label: 'Fees & Invoicing', icon: CreditCard },
