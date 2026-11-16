@@ -2,7 +2,7 @@ import { Select } from '../ui/Pickers';
 import React, { useMemo, useState } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { Enquiry, EnquiryStatus } from '../../types';
-import { EnquiryModal, STATUS_LABEL, STATUS_CHOICES, SOURCE_LABEL, statusOf } from '../modals/EnquiryModal';
+import { EnquiryModal, STATUS_LABEL, SOURCE_LABEL, statusOf } from '../modals/EnquiryModal';
 import { Pager } from '../ui/Pager';
 import { usePaged } from '../utils/usePaged';
 import { ExportMenu } from '../ui/ExportMenu';
@@ -14,7 +14,6 @@ import {
   Search,
   Download,
   MessageSquare,
-  Pencil,
   Trash2,
   CheckCircle2,
   AlertTriangle,
@@ -250,18 +249,12 @@ export const EnquiriesView: React.FC = () => {
                         <div className="text-[11px] text-slate-400">{formatDateTime(e.createdAt)}</div>
                       </td>
                       <td className="p-3.5">
-                        <Select
-                          value={statusOf(e.status)}
-                          onChange={ev => updateEnquiry(e.id, { status: ev.target.value as EnquiryStatus })}
-                          className={`px-2 py-1 text-[11px] font-semibold rounded-md border-0 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer ${STATUS_STYLE[statusOf(e.status)]}`}
-                          aria-label={`Status of ${e.name}`}
+                        <span
+                          title={statusOf(e.status) === 'enrolled' ? 'The student joined and signed in' : 'New until the student joins and signs in a few times: then it becomes Enrolled by itself'}
+                          className={`inline-block px-2.5 py-1 text-[11px] font-semibold rounded-md ${STATUS_STYLE[statusOf(e.status)]}`}
                         >
-                          {STATUS_CHOICES.map(s => (
-                            <option key={s} value={s}>
-                              {STATUS_LABEL[s]}
-                            </option>
-                          ))}
-                        </Select>
+                          {STATUS_LABEL[statusOf(e.status)]}
+                        </span>
                       </td>
                       <td className="p-3.5">
                         {e.followUpDate && isOpen(e) ? (
@@ -286,13 +279,6 @@ export const EnquiriesView: React.FC = () => {
                             className="p-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors"
                           >
                             <MessageSquare className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => setEditing({ enquiry: e })}
-                            title="Edit"
-                            className="p-1.5 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => setDeleteTarget(e)}

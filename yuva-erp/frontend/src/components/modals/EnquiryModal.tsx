@@ -196,20 +196,6 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({ enquiry, onClose, on
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Status</label>
-            <Select
-              value={form.status}
-              onChange={e => setForm({ ...form, status: e.target.value as EnquiryStatus })}
-              className={`${inputClass(false)} bg-white`}
-            >
-              {STATUS_CHOICES.map(s => (
-                <option key={s} value={s}>
-                  {STATUS_LABEL[s]}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Next follow-up date</label>
             <DateInput clearable
               value={form.followUpDate}

@@ -270,6 +270,28 @@ route('/api/auth/resend-login-code', ['POST'], 'public', async (c) => {
   return { ok: true, email: maskEmail(found.email), minutes: LOGIN_CODE_MINUTES };
 });
 
+// An enquiry is New when it is written. When the student joined (the admission has the same phone number as the enquiry) and the student or the parent
+// signed in ENROLL_AFTER_LOGINS times, the enquiry becomes Enrolled by itself (nobody has to change it).
+export const ENROLL_AFTER_LOGINS = 2;
+async function countLoginAndEnroll(s: any, user: any): Promise<void> {
+  try {
+    user.loginCount = (parseInt(user.loginCount || 0, 10) || 0) + 1;
+    await s.saveUser(user);
+    if (!user.studentId) return;
+    const total = (await s.usersAll()).filter((u: any) => u.studentId === user.studentId).reduce((n: number, u: any) => n + (parseInt(u.loginCount || 0, 10) || 0), 0);
+    if (total < ENROLL_AFTER_LOGINS) return;
+    const student = await s.getItem('students', user.studentId);
+    if (!student) return;
+    const phones = new Set([last10(String(student.phone ?? '')), last10(String(student.parentPhone ?? ''))].filter((p) => p.length === 10));
+    const waiting = (await s.find('enquiries')).filter((e: any) => e.status !== 'enrolled' && phones.has(last10(String(e.phone ?? ''))));
+    if (!waiting.length) return;
+    await s.applyList('enquiries', waiting.map(({ followUpDate: _gone, ...rest }: any) => ({ ...rest, status: 'enrolled', convertedStudentId: student.id })), []);
+    await s.bump();
+  } catch {
+    /* a courtesy: the sign in goes on */
+  }
+}
+
 route('/api/auth/login', ['POST'], 'public', async (c) => {
   let s = c.store;
   const b = c.body();
@@ -363,6 +385,7 @@ route('/api/auth/login', ['POST'], 'public', async (c) => {
   }
   loginLimiter.reset(keyEmail);
   await s.audit(found, 'login');
+  if (found.role === 'student') await countLoginAndEnroll(s, found); // (the enquiry of the student becomes Enrolled after a few sign ins)
   return startSession(c, found, remember);
 });
 

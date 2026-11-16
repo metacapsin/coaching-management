@@ -1647,3 +1647,28 @@ describe('Rules and regulations of the teachers', () => {
     assert.equal((await call('GET', '/api/rules', null, teacher))[1].mustAccept, false);
   });
 });
+
+describe('An enquiry becomes Enrolled by itself', () => {
+  let admin = '';
+  const s = withServer(async (api) => {
+    admin = (await api.call('POST', '/api/auth/setup', { name: 'Pri', email: 'pri@x.com', password: PASSWORD }))[1].token;
+    const enquiry = (id: string, phone: string, extra: any = {}) => ({ id, name: 'Enq ' + id, phone, email: '', source: 'call', status: 'new', notes: '', createdAt: '2026-11-01T10:00:00', followUpDate: '2026-11-20', ...extra });
+    await api.call('PUT', '/api/institute', { changes: { batches: { upsert: BATCHES }, students: { upsert: STUDENTS }, enquiries: { upsert: [enquiry('q1', '98000 00001'), enquiry('q2', '9999999999'), enquiry('q3', '+91 98000 00002', { status: 'lost' })] } } }, admin);
+    await api.call('POST', '/api/users', { name: 'Alice Verma', email: 'alice@x.com', password: 'Alice#12345', role: 'student', studentId: 's1' }, admin);
+  });
+  const call = (...a: Parameters<Api['call']>) => s.api.call(...a);
+  const status = async (id: string) => (await call('GET', '/api/sync', null, admin))[1].institute.enquiries.find((e: any) => e.id === id);
+
+  it('1 it stays New after the first sign in of the student, and becomes Enrolled (linked to the student) at the second; other enquiries do not change', async () => {
+    const signIn = () => call('POST', '/api/auth/login', { email: 'alice@x.com', password: 'Alice#12345', portal: 'member' });
+    assert.equal((await signIn())[0], 200);
+    assert.equal((await status('q1')).status, 'new');
+    assert.equal((await signIn())[0], 200);
+    const q1 = await status('q1');
+    assert.equal(q1.status, 'enrolled');
+    assert.equal(q1.convertedStudentId, 's1');
+    assert.equal(q1.followUpDate, undefined); // no follow-up for somebody who joined
+    assert.equal((await status('q2')).status, 'new'); // another phone number: no change
+    assert.equal((await status('q3')).status, 'lost'); // the enquiry of another student (not signed in)
+  });
+});
