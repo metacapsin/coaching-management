@@ -1453,7 +1453,7 @@ describe('Teacher registration details (the principal writes them when a teacher
   const good = {
     firstName: 'Rahul', middleName: 'Kumar', lastName: 'Sharma', guardianName: 'Mohan Sharma', alternatePhone: '9876500000',
     address: { line: '12 Main Road', district: 'Kota', state: 'Rajasthan', pin: '324001' }, dateOfBirth: '1990-05-10', idNumber: '1234 5678 9012',
-    qualifications: ['M.Sc', 'B.Ed', 'Ph.D'], termsAccepted: true, workHistory: 'Taught at ABC for 5 years',
+    qualifications: ['M.Sc', 'B.Ed', 'Ph.D'], termsAccepted: true, idImage: 'data:image/png;base64,iVBORw0KGgo=', workHistory: 'Taught at ABC for 5 years',
     payType: 'per_lecture', payAmount: '500', payNotes: 'Paid on the 5th of each month',
     registeredOn: '2000-01-01', // (ignored: the server writes the date of the day)
   };
@@ -1469,6 +1469,7 @@ describe('Teacher registration details (the principal writes them when a teacher
     assert.equal(dd.details.idNumber, '123456789012'); // spaces are taken out
     assert.deepEqual([dd.details.firstName, dd.details.middleName, dd.details.lastName], ['Rahul', 'Kumar', 'Sharma']);
     assert.equal(dd.details.availability, 'online'); // always online: nothing to choose
+    assert.equal(dd.details.idImage, 'data:image/png;base64,iVBORw0KGgo='); // the photo of the ID is kept, for the principal only
     assert.equal(dd.details.payAmount, 500);
     assert.deepEqual(dd.details.qualifications, ['M.Sc', 'B.Ed', 'Ph.D']); // more than one degree
     assert.equal(dd.details.qualification, 'M.Sc'); // the first is the highest
@@ -1491,6 +1492,10 @@ describe('Teacher registration details (the principal writes them when a teacher
     assert.equal(await bad('b3@x.com', { alternatePhone: '123' }), 400);
     assert.equal(await bad('b4@x.com', { dateOfBirth: '2015-01-01' }), 400); // too young
     assert.equal(await bad('b6@x.com', { firstName: 'Ra@hul' }), 400); // no symbols in a name
+    // the photo of the ID: only a small picture, and only after the number
+    assert.equal(await bad('i1@x.com', { idImage: 'data:text/html;base64,PGI+' }), 400);
+    assert.equal(await bad('i2@x.com', { idImage: 'data:image/png;base64,' + 'A'.repeat(710_000) }), 400);
+    assert.equal(await bad('i3@x.com', { idNumber: '', idImage: 'data:image/png;base64,iVBORw0KGgo=' }), 400);
     assert.equal(await bad('b7@x.com', { guardianName: 'Mo#han' }), 400);
     assert.equal(await bad('c1@x.com', { lastName: '' }), 400); // the last name is needed
     assert.equal(await bad('c3@x.com', { termsAccepted: false }), 400); // the teacher must agree to the terms and conditions

@@ -12,6 +12,7 @@ interface Details {
   createdAt: string;
   rulesAcceptedAt: string | null;
   details: null | {
+    idImage?: string;
     firstName?: string; middleName?: string; lastName?: string; guardianName?: string; alternatePhone?: string; country?: string; countryCode?: string;
     address?: { line?: string; district?: string; state?: string; pin?: string }; dateOfBirth?: string; idType?: string; idNumber?: string;
     qualifications?: string[]; qualification?: string; workHistory?: string; payType?: string; payAmount?: number | null; payNotes?: string;
@@ -112,6 +113,16 @@ export const TeacherDetailsModal: React.FC<{ teacher: AuthUser; onClose: () => v
                   </span>
                 )}
               </Row>
+
+              {d?.idImage && (
+                <Row label="Photo of the ID">
+                  {showId ? (
+                    <img src={d.idImage} alt="Photo of the ID" className="max-h-64 w-auto rounded-md border border-slate-300 bg-white" />
+                  ) : (
+                    <span className="text-xs text-slate-500">Hidden. Press Show above to see it.</span>
+                  )}
+                </Row>
+              )}
 
               <h3 className="text-[11px] font-bold uppercase tracking-wider text-blue-700 pt-4 pb-1.5 border-b border-slate-200">Academic &amp; professional</h3>
               <Row label="Degrees">{degrees.join(', ')}</Row>

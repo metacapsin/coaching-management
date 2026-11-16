@@ -4,6 +4,7 @@ import { toLocalISODate } from '../utils/helpers';
 import { DialCodePicker } from '../ui/DialCodePicker';
 import { RulesText } from './RulesView';
 import { TeacherDetailsModal } from '../modals/TeacherDetailsModal';
+import { smallImage } from '../utils/smallImage';
 import { countryForPostalCode } from '../utils/countries';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { request, updateOwnDetails, refreshNow, ApiError } from '../utils/api';
@@ -241,13 +242,14 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
   const [aPassword, setAPassword] = useState('');
   // the registration form of a teacher: personal data, qualification, agreement
   const emptyDetails = () => ({
-    country: 'India', firstName: '', middleName: '', lastName: '', guardianName: '', alternatePhone: '', addressLine: '', district: '', state: '', pin: '', dateOfBirth: '', idNumber: '',
+    country: 'India', idImage: '', firstName: '', middleName: '', lastName: '', guardianName: '', alternatePhone: '', addressLine: '', district: '', state: '', pin: '', dateOfBirth: '', idNumber: '',
     workHistory: '',
     payType: 'monthly', payAmount: '', payNotes: ''
   });
   const [aDetails, setADetails] = useState(emptyDetails);
   const [aDegrees, setADegrees] = useState<string[]>(['']); // the highest degree, and the other degrees (the + button adds one)
   const [detailsOf, setDetailsOf] = useState<AuthUser | null>(null); // the registration details of a teacher
+  const [idError, setIdError] = useState(''); // the photo of the ID could not be used
   const [showRules, setShowRules] = useState(false); // the rules and regulations are read in a window
   const [aAgree, setAAgree] = useState(false); // the teacher agrees to the rules and regulations of the coaching
   const setD = (key: keyof ReturnType<typeof emptyDetails>, value: string) => setADetails(prev => ({ ...prev, [key]: value }));
@@ -429,6 +431,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
           address: { line: aDetails.addressLine, district: aDetails.district, state: aDetails.state, pin: aDetails.pin },
           dateOfBirth: aDetails.dateOfBirth,
           idNumber: aDetails.idNumber,
+          idImage: aDetails.idImage,
           qualifications: aDegrees.map(d => d.trim()).filter(Boolean),
           termsAccepted: aAgree,
           workHistory: aDetails.workHistory,
@@ -1048,9 +1051,43 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">{aDetails.country === 'India' ? 'Government ID (Aadhaar Number)' : 'Government ID Number'}</label>
                 {aDetails.country === 'India' ? (
-                  <input type="text" inputMode="numeric" maxLength={12} value={aDetails.idNumber} onChange={e => setD('idNumber', e.target.value.replace(/\D/g, ''))} placeholder="12 digits" className={`${inputClass} font-mono`} />
+                  <input type="text" inputMode="numeric" maxLength={12} value={aDetails.idNumber} onChange={e => setADetails(prev => ({ ...prev, idNumber: e.target.value.replace(/\D/g, ''), idImage: e.target.value.replace(/\D/g, '').length === 12 ? prev.idImage : '' }))} placeholder="12 digits" className={`${inputClass} font-mono`} />
                 ) : (
                   <input type="text" maxLength={20} value={aDetails.idNumber} onChange={e => setD('idNumber', e.target.value.replace(/[^A-Za-z0-9]/g, ''))} placeholder="Passport or national ID" className={`${inputClass} font-mono`} />
+                )}
+                {(aDetails.country === 'India' ? aDetails.idNumber.length === 12 : aDetails.idNumber.length >= 4) && (
+                  <div className="mt-2">
+                    {aDetails.idImage ? (
+                      <div className="flex items-center gap-3">
+                        <img src={aDetails.idImage} alt="Photo of the ID" className="h-16 w-auto rounded-md border border-slate-300 bg-white" />
+                        <button type="button" onClick={() => { setD('idImage', ''); setIdError(''); }} className="text-xs text-rose-600 hover:underline">
+                          Remove the photo
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 border border-blue-300 hover:bg-blue-50 rounded-lg cursor-pointer transition-colors">
+                        <Plus className="w-3.5 h-3.5" />
+                        Upload the photo of the ID
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="sr-only"
+                          onChange={async e => {
+                            const file = e.target.files?.[0];
+                            e.target.value = '';
+                            if (!file) return;
+                            setIdError('');
+                            try {
+                              setD('idImage', await smallImage(file));
+                            } catch (err) {
+                              setIdError(err instanceof Error ? err.message : 'The picture could not be used.');
+                            }
+                          }}
+                        />
+                      </label>
+                    )}
+                    {idError && <p className="text-[11px] text-rose-600 mt-1">{idError}</p>}
+                  </div>
                 )}
               </div>
             </div>

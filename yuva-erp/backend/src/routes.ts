@@ -1040,7 +1040,7 @@ const batchIdsOf = (value: any): string[] => (Array.isArray(value) ? value.filte
 
 route('/api/users', ['POST'], 'admin', async (c) => {
   const s = c.store;
-  const b = c.body();
+  const b = c.body(1024 * 1024); // (the photo of the identity card of a teacher is in it)
   const email = text(b.email).toLowerCase();
   const role = b.role;
   // one coaching has one principal: nobody can add another one
