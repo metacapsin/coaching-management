@@ -212,8 +212,8 @@ const MyDetails: React.FC<{ onDone: (type: 'success' | 'error', text: string) =>
   );
 };
 
-// addTeacherSignal: each time it grows, the Add Account window opens for a new teacher (from the Dashboard / top bar)
-export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSignal = 0 }) => {
+// addTeacherSignal: each time it grows, the Add Teacher window opens for a new teacher (from the Dashboard / top bar). handledSignal keeps the last press that was answered.
+export const TeamView: React.FC<{ addTeacherSignal?: number; handledSignal?: React.MutableRefObject<number> }> = ({ addTeacherSignal = 0, handledSignal }) => {
   const {
     user,
     users,
@@ -365,7 +365,9 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
   };
 
   useEffect(() => {
-    if (addTeacherSignal > 0 && isAdmin) {
+    // the form opens only for a NEW press of an Add Teacher button; opening the page from the menu never opens it (an old press is already answered)
+    if (addTeacherSignal > (handledSignal?.current ?? 0) && isAdmin) {
+      if (handledSignal) handledSignal.current = addTeacherSignal;
       openAdd();
       setARole('teacher');
     }

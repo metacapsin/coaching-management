@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { InstituteProvider, useInstitute } from './Context/InstituteContext';
 import { AuthProvider, useAuth, roleLabel, accountLabel } from './Context/AuthContext';
 import { canAccessTab, canManageInstitute } from './Context/Access';
@@ -109,6 +109,8 @@ function MainApp() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   // each press on an "Add Teacher" button opens the Add Account window in Team & Access
   const [addTeacherSignal, setAddTeacherSignal] = useState(0);
+  // the last press of an Add Teacher button that the Team page already answered (the Team page opens the form once for each press, not again each time it is opened)
+  const handledTeacherSignal = useRef(0);
   const openAddTeacher = () => {
     setActiveTab('team');
     setAddTeacherSignal(n => n + 1);
@@ -254,7 +256,7 @@ function MainApp() {
       case 'rules':
         return <RulesView />;
       case 'team':
-        return <TeamView addTeacherSignal={addTeacherSignal} />;
+        return <TeamView addTeacherSignal={addTeacherSignal} handledSignal={handledTeacherSignal} />;
       case 'settings':
         return <SettingsView />;
       default:
