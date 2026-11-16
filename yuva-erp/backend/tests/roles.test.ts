@@ -1453,7 +1453,7 @@ describe('Teacher registration details (the principal writes them when a teacher
   const good = {
     firstName: 'Rahul', middleName: 'Kumar', lastName: 'Sharma', guardianName: 'Mohan Sharma', alternatePhone: '9876500000',
     address: { line: '12 Main Road', district: 'Kota', state: 'Rajasthan', pin: '324001' }, dateOfBirth: '1990-05-10', idNumber: '1234 5678 9012',
-    qualification: 'M.Sc, B.Ed', experienceYears: '6', workHistory: 'Taught at ABC for 5 years', referenceName: 'Amit Verma',
+    qualification: 'M.Sc, B.Ed', workHistory: 'Taught at ABC for 5 years',
     payType: 'per_lecture', payAmount: '500', payNotes: 'Paid on the 5th of each month',
     registeredOn: '2000-01-01', // (ignored: the server writes the date of the day)
   };
@@ -1486,9 +1486,8 @@ describe('Teacher registration details (the principal writes them when a teacher
     assert.equal(await bad('b4@x.com', { dateOfBirth: '2015-01-01' }), 400); // too young
     assert.equal(await bad('b6@x.com', { firstName: 'Ra@hul' }), 400); // no symbols in a name
     assert.equal(await bad('b7@x.com', { guardianName: 'Mo#han' }), 400);
-    assert.equal(await bad('b9@x.com', { experienceYears: '99' }), 400);
     assert.equal(await bad('c1@x.com', { lastName: '' }), 400); // the last name is needed
-    // the middle name, the guardian, the reference, and the Aadhaar can stay empty
+    // the middle name, the guardian and the Aadhaar can stay empty
     const [ok] = await call('POST', '/api/users', body('c2@x.com', { firstName: 'Anil', lastName: 'Rao', middleName: '' }), admin);
     assert.equal(ok, 200);
   });

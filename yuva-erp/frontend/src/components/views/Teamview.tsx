@@ -237,7 +237,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
   // the registration form of a teacher: personal data, qualification, agreement
   const emptyDetails = () => ({
     firstName: '', middleName: '', lastName: '', guardianName: '', alternatePhone: '', addressLine: '', district: '', state: '', pin: '', dateOfBirth: '', idNumber: '',
-    qualification: '', experienceYears: '', workHistory: '', referenceName: '',
+    qualification: '', workHistory: '',
     payType: 'monthly', payAmount: '', payNotes: ''
   });
   const [aDetails, setADetails] = useState(emptyDetails);
@@ -374,9 +374,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
           dateOfBirth: aDetails.dateOfBirth,
           idNumber: aDetails.idNumber,
           qualification: aDetails.qualification,
-          experienceYears: aDetails.experienceYears,
           workHistory: aDetails.workHistory,
-          referenceName: aDetails.referenceName,
           payType: aDetails.payType,
           payAmount: aDetails.payAmount,
           payNotes: aDetails.payNotes,
@@ -1008,14 +1006,6 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Subject / Course Joining For</label>
                   <input type="text" value={aSubject} onChange={e => setASubject(e.target.value)} placeholder="e.g. Mathematics, Physics" className={inputClass} />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Years of Teaching Experience</label>
-                  <input type="number" min={0} max={60} step="0.5" value={aDetails.experienceYears} onChange={e => setD('experienceYears', e.target.value)} className={inputClass} />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Reference Name <span className="text-slate-400 font-normal">(if referred by someone)</span></label>
-                  <input type="text" value={aDetails.referenceName} onChange={e => setD('referenceName', cleanName(e.target.value))} className={inputClass} />
                 </div>
             </div>
             <div>

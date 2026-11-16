@@ -1,5 +1,5 @@
 // The details that the principal writes down when a teacher joins (a registration form of a coaching): personal and contact data, the
-// qualification and the experience, and the agreement (how the teacher is paid, the date of registration).
+// qualification and the work history, and the agreement (how the teacher is paid, the date of registration).
 // They are kept inside the account of the teacher, are never sent in the list of the accounts, and only the principal can read them.
 
 import { HttpError } from './errors.ts';
@@ -46,19 +46,9 @@ export function cleanTeacherDetails(raw: any): Record<string, any> {
   out.idType = id ? 'Aadhaar' : '';
   out.idNumber = id;
 
-  // ---- qualification and experience
+  // ---- qualification and work history
   out.qualification = text(b.qualification, 150);
-  if (b.experienceYears !== undefined && b.experienceYears !== '' && b.experienceYears !== null) {
-    const years = Number(b.experienceYears);
-    if (!Number.isFinite(years) || years < 0 || years > 60) throw new HttpError(400, 'The years of experience must be a number between 0 and 60.');
-    out.experienceYears = Math.round(years * 10) / 10;
-  } else {
-    out.experienceYears = null;
-  }
   out.workHistory = text(b.workHistory, 1200);
-  const reference = text(b.referenceName, 120);
-  if (reference) checkName(reference, 'reference name');
-  out.referenceName = reference;
 
   // ---- the agreement
   out.availability = 'online'; // (every class is online: the platform works on the website, so there is nothing to choose)
