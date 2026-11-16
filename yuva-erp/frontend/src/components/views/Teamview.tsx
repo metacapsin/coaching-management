@@ -249,11 +249,15 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
   const setD = (key: keyof ReturnType<typeof emptyDetails>, value: string) => setADetails(prev => ({ ...prev, [key]: value }));
   // the postal code can show the country: a PIN code of India (6 digits) chooses India and its +91, a code of Canada, the UK, Japan or a ZIP+4 of the USA its own country
   const postalSeq = useRef(0);
+  const placeFilled = useRef(false); // the district and the state were filled by the code (not written by the person)
   const postalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [postalNote, setPostalNote] = useState('');
   const setPostal = (code: string) => {
     const country = countryForPostalCode(code, aDetails.country) ?? aDetails.country;
-    setADetails(prev => ({ ...prev, pin: code, country }));
+    // a place that came from the old code goes away with it (what the person wrote himself stays)
+    const clearPlace = placeFilled.current;
+    if (clearPlace) placeFilled.current = false;
+    setADetails(prev => ({ ...prev, pin: code, country, ...(clearPlace ? { district: '', state: '' } : {}) }));
     // and the district (city) and the state follow the code: they are filled when the code is complete (the person can still change them)
     const seq = ++postalSeq.current;
     if (postalTimer.current) clearTimeout(postalTimer.current);
@@ -266,6 +270,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
           if (seq !== postalSeq.current) return; // a newer code was written meanwhile
           // the town and the district: "Bijainagar, Ajmer"
           const where = place.city && place.city.toLowerCase() !== place.district.toLowerCase() ? `${place.city}, ${place.district}` : place.district;
+          placeFilled.current = true;
           setADetails(prev => ({ ...prev, district: where || prev.district, state: place.state || prev.state }));
           setPostalNote(`City, district and state were filled from this ${country === 'India' ? 'PIN' : 'postal'} code. You can change them.`);
         })
@@ -1044,11 +1049,11 @@ export const TeamView: React.FC<{ addTeacherSignal?: number }> = ({ addTeacherSi
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">District / City</label>
-                <input type="text" value={aDetails.district} onChange={e => setD('district', e.target.value)} className={inputClass} />
+                <input type="text" value={aDetails.district} onChange={e => { placeFilled.current = false; setD('district', e.target.value); }} className={inputClass} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">State / Region</label>
-                <input type="text" value={aDetails.state} onChange={e => setD('state', e.target.value)} className={inputClass} />
+                <input type="text" value={aDetails.state} onChange={e => { placeFilled.current = false; setD('state', e.target.value); }} className={inputClass} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">{aDetails.country === 'India' ? 'PIN Code' : 'Postal / ZIP Code'}</label>

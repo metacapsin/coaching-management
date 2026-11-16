@@ -6,13 +6,8 @@ import { HttpError } from './errors.ts';
 import { checkName, text, todayLocal } from './validate.ts';
 
 export const PAY_TYPES = ['monthly', 'per_lecture', 'per_hour', 'honorarium'] as const;
-// The countries of the form and their dial codes. India is the first and the usual one.
-export const COUNTRIES: Record<string, string> = {
-  India: '+91', Nepal: '+977', Bangladesh: '+880', 'Sri Lanka': '+94', Pakistan: '+92', Bhutan: '+975', Maldives: '+960',
-  'United Arab Emirates': '+971', 'Saudi Arabia': '+966', Qatar: '+974', Kuwait: '+965', Oman: '+968', Bahrain: '+973',
-  'United States': '+1', Canada: '+1', 'United Kingdom': '+44', Australia: '+61', 'New Zealand': '+64', Singapore: '+65', Malaysia: '+60',
-  Germany: '+49', France: '+33', Italy: '+39', Japan: '+81',
-};
+export { COUNTRIES } from './countryData.ts';
+import { COUNTRIES } from './countryData.ts';
 
 /** A contact number: exactly 10 digits. For India it is kept as the 10 digits; for another country the dial code is written before them. */
 export function cleanTeacherPhone(raw: unknown, countryCode: string): string {

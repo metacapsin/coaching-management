@@ -1497,6 +1497,7 @@ describe('Teacher registration details (the principal writes them when a teacher
     assert.equal(await bad('c4@x.com', { termsAccepted: undefined }), 400);
     assert.equal(await bad('d1@x.com', { alternatePhone: '98765432101' }), 400); // 11 digits
     assert.equal(await bad('d2@x.com', { country: 'Narnia' }), 400); // only a country of the list
+    assert.equal(await bad('d4@x.com', { country: 'Brazil', address: { ...good.address, pin: '01001-000' } }), 200); // every country of the world is in the list
     // another country: the dial code is written before the 10 digits, and the postal code and the ID are not the Indian ones
     const [fs, fd] = await call('POST', '/api/users', { ...body('f1@x.com', { ...good, country: 'United Arab Emirates', address: { line: 'Street 4', district: 'Dubai', state: 'Dubai', pin: 'A1 2BC' }, idNumber: 'P1234567' }), phone: '5012345678' }, admin);
     assert.equal(fs, 200);
@@ -1522,10 +1523,14 @@ describe('The place of a postal code', () => {
   // (the test itself calls the server with fetch: only the two public services are answered here)
   const stub = async (url: any, init?: any) => {
     const u = String(url);
-    if (!u.startsWith('https://api.')) return (real as any)(url, init);
+    if (!u.startsWith('https://api.') && !u.startsWith('https://nominatim.')) return (real as any)(url, init);
     calls.push(u);
     if (u.includes('postalpincode.in/pincode/305624')) return { ok: true, json: async () => [{ Status: 'Success', PostOffice: [{ Name: 'Badi', Block: 'Nasirabad', District: 'Ajmer', State: 'Rajasthan' }, { Name: 'Bijainagar', Block: 'Bijainagar', District: 'Ajmer', State: 'Rajasthan' }] }] };
     if (u.includes('postalpincode.in')) return { ok: true, json: async () => [{ Status: 'Error', PostOffice: null }] };
+    if (u.includes('postcodes.io/postcodes/SW1A1AA')) return { ok: true, json: async () => ({ status: 200, result: { admin_district: 'Westminster', region: 'London', country: 'England' } }) };
+    if (u.includes('zippopotam.us/np/')) return { ok: true, json: async () => ({}) }; // (this service has no data for Nepal: the map data answers)
+    if (u.includes('nominatim.openstreetmap.org') && u.includes('postalcode=44600') && u.includes('country=np')) return { ok: true, json: async () => [{ address: { city: 'Kathmandu', county: 'Kathmandu District', state: 'Bagmati Province' } }] };
+    if (u.includes('nominatim.openstreetmap.org')) return { ok: true, json: async () => [] };
     if (u.includes('zippopotam.us/us/90210')) return { ok: true, json: async () => ({ places: [{ 'place name': 'Beverly Hills', state: 'California' }] }) };
     return { ok: false, json: async () => ({}) };
   };
@@ -1537,7 +1542,15 @@ describe('The place of a postal code', () => {
       assert.deepEqual([india[0], india[1].district, india[1].state, india[1].city], [200, 'Ajmer', 'Rajasthan', 'Bijainagar']); // the main town of the PIN code too
       const us = await call('GET', '/api/postal/United%20States/90210', null, admin);
       assert.deepEqual([us[0], us[1].district, us[1].state], [200, 'Beverly Hills', 'California']);
-      assert.equal((await call('GET', '/api/postal/India/999999', null, admin))[0], 404);
+      const nepal = await call('GET', '/api/postal/Nepal/44600', null, admin); // a country that the first service does not know: the map data
+    assert.deepEqual([nepal[0], nepal[1].city, nepal[1].district, nepal[1].state], [200, 'Kathmandu', 'Kathmandu District', 'Bagmati Province']);
+    const uk = await call('GET', '/api/postal/United%20Kingdom/SW1A%201AA', null, admin);
+    assert.deepEqual([uk[0], uk[1].district, uk[1].state], [200, 'Westminster', 'London']);
+    const sg = await call('GET', '/api/postal/Singapore/238823', null, admin); // a city-state: no service has data, it is its own district and state
+    assert.deepEqual([sg[0], sg[1].district, sg[1].state], [200, 'Singapore', 'Singapore']);
+    const brazil = await call('GET', '/api/postal/Brazil/01001000', null, admin); // every country of the world is in the list
+    assert.equal(brazil[0], 404); // (not in this test's answers, but not an error of the country)
+    assert.equal((await call('GET', '/api/postal/India/999999', null, admin))[0], 404);
       assert.equal((await call('GET', '/api/postal/Narnia/12345', null, admin))[0], 404); // only a country of the list
       assert.equal((await call('GET', '/api/postal/India/12%2F34', null, admin))[0], 404); // nothing odd goes to the service
       assert.equal((await call('GET', '/api/postal/India/305624', null, teacher))[0], 403);
@@ -1546,7 +1559,7 @@ describe('The place of a postal code', () => {
       const before = calls.length;
       await call('GET', '/api/postal/India/305624', null, admin);
       assert.equal(calls.length, before);
-      assert.ok(calls.every((u) => u.startsWith('https://api.postalpincode.in/') || u.startsWith('https://api.zippopotam.us/')));
+      assert.ok(calls.every((u) => u.startsWith('https://api.postalpincode.in/') || u.startsWith('https://api.zippopotam.us/') || u.startsWith('https://api.postcodes.io/') || u.startsWith('https://nominatim.openstreetmap.org/')));
     } finally {
       (globalThis as any).fetch = real;
     }
