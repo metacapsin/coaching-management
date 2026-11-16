@@ -6,6 +6,22 @@ import { HttpError } from './errors.ts';
 import { checkName, text, todayLocal } from './validate.ts';
 
 export const PAY_TYPES = ['monthly', 'per_lecture', 'per_hour', 'honorarium'] as const;
+// The countries of the form and their dial codes. India is the first and the usual one.
+export const COUNTRIES: Record<string, string> = {
+  India: '+91', Nepal: '+977', Bangladesh: '+880', 'Sri Lanka': '+94', Pakistan: '+92', Bhutan: '+975', Maldives: '+960',
+  'United Arab Emirates': '+971', 'Saudi Arabia': '+966', Qatar: '+974', Kuwait: '+965', Oman: '+968', Bahrain: '+973',
+  'United States': '+1', Canada: '+1', 'United Kingdom': '+44', Australia: '+61', 'New Zealand': '+64', Singapore: '+65', Malaysia: '+60',
+  Germany: '+49', France: '+33', Italy: '+39', Japan: '+81',
+};
+
+/** A contact number: exactly 10 digits. For India it is kept as the 10 digits; for another country the dial code is written before them. */
+export function cleanTeacherPhone(raw: unknown, countryCode: string): string {
+  const digits = String(raw ?? '').replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.length !== 10) throw new HttpError(400, 'The contact number must have exactly 10 digits.');
+  return countryCode === '+91' ? digits : `${countryCode} ${digits}`;
+}
+
 const isDate = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(`${v}T00:00:00Z`));
 
 /** The details of a teacher, checked and cleaned. Everything is optional, but what is written must be right. */
@@ -25,13 +41,21 @@ export function cleanTeacherDetails(raw: any): Record<string, any> {
   if (guardian) checkName(guardian, 'guardian name');
   out.guardianName = guardian;
 
+  const country = text(b.country, 60) || 'India';
+  if (!Object.prototype.hasOwnProperty.call(COUNTRIES, country)) throw new HttpError(400, 'Choose the country from the list.');
+  const india = country === 'India';
+  out.country = country;
+  out.countryCode = COUNTRIES[country];
+
   const alt = String(b.alternatePhone ?? '').replace(/\D/g, '');
-  if (alt && alt.replace(/^91/, '').length !== 10 && alt.length !== 10) throw new HttpError(400, 'The alternate contact number must have 10 digits.');
-  out.alternatePhone = alt ? alt.slice(-10) : '';
+  if (alt && alt.length !== 10) throw new HttpError(400, 'The alternate contact number must have exactly 10 digits.');
+  out.alternatePhone = alt;
 
   const address = b.address && typeof b.address === 'object' ? b.address : {};
-  const pin = String(address.pin ?? '').replace(/\s/g, '');
-  if (pin && !/^\d{6}$/.test(pin)) throw new HttpError(400, 'The PIN code must have 6 digits.');
+  const pin = String(address.pin ?? '').trim();
+  // India: a PIN code of 6 digits. Another country: a postal code of 3 to 10 letters or digits.
+  if (pin && india && !/^\d{6}$/.test(pin)) throw new HttpError(400, 'The PIN code must have 6 digits.');
+  if (pin && !india && !/^[A-Za-z0-9][A-Za-z0-9 -]{1,8}[A-Za-z0-9]$/.test(pin)) throw new HttpError(400, 'The postal code must have 3 to 10 letters or digits.');
   out.address = { line: text(address.line, 200), district: text(address.district, 80), state: text(address.state, 80), pin };
 
   if (b.dateOfBirth) {
@@ -42,8 +66,9 @@ export function cleanTeacherDetails(raw: any): Record<string, any> {
   out.dateOfBirth = b.dateOfBirth || '';
 
   const id = String(b.idNumber ?? '').replace(/\s|-/g, '');
-  if (id && !/^\d{12}$/.test(id)) throw new HttpError(400, 'The Aadhaar number must have 12 digits.');
-  out.idType = id ? 'Aadhaar' : '';
+  if (id && india && !/^\d{12}$/.test(id)) throw new HttpError(400, 'The Aadhaar number must have 12 digits.');
+  if (id && !india && !/^[A-Za-z0-9]{4,20}$/.test(id)) throw new HttpError(400, 'The ID number must have 4 to 20 letters or digits.');
+  out.idType = id ? (india ? 'Aadhaar' : 'ID') : '';
   out.idNumber = id;
 
   // ---- qualification and work history

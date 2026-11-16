@@ -30,7 +30,7 @@ import {
 } from './http.ts';
 import { nextRollNumber } from './rollno.ts';
 import { monthName, sendMonthlyAttendance } from './attendanceMail.ts';
-import { cleanTeacherDetails } from './teacherDetails.ts';
+import { cleanTeacherDetails, cleanTeacherPhone } from './teacherDetails.ts';
 import { applyChanges, parsePhotoDataUrl, scopeInstitute } from './scope.ts';
 import { DEFAULT_ORG, PLATFORM_ORG } from './store.ts';
 import { GREEN, RED } from './emailTemplate.ts';
@@ -1067,7 +1067,7 @@ route('/api/users', ['POST'], 'admin', async (c) => {
       email,
       password: b.password,
       role,
-      phone: text(b.phone, 30),
+      phone: details ? cleanTeacherPhone(b.phone, details.countryCode) : text(b.phone, 30),
       subject: text(b.subject),
       batchIds: batchIdsOf(b.batchIds),
       studentId: role === 'student' ? b.studentId : null,

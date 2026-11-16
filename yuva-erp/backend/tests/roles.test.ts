@@ -1483,6 +1483,8 @@ describe('Teacher registration details (the principal writes them when a teacher
   });
 
   it('2 what is written must be right: Aadhaar, PIN, mobile, date of birth, names', async () => {
+    assert.equal((await call('POST', '/api/users', { ...body('p1@x.com', good), phone: '98765432101' }, admin))[0], 400); // the contact number has exactly 10 digits
+    assert.equal((await call('POST', '/api/users', { ...body('p2@x.com', good), phone: '98765' }, admin))[0], 400);
     const bad = async (email: string, change: any) => (await call('POST', '/api/users', body(email, { ...good, ...change }), admin))[0];
     assert.equal(await bad('b1@x.com', { idNumber: '12345' }), 400); // the Aadhaar has 12 digits
     assert.equal(await bad('b2@x.com', { address: { ...good.address, pin: '12' } }), 400);
@@ -1493,6 +1495,13 @@ describe('Teacher registration details (the principal writes them when a teacher
     assert.equal(await bad('c1@x.com', { lastName: '' }), 400); // the last name is needed
     assert.equal(await bad('c3@x.com', { termsAccepted: false }), 400); // the teacher must agree to the terms and conditions
     assert.equal(await bad('c4@x.com', { termsAccepted: undefined }), 400);
+    assert.equal(await bad('d1@x.com', { alternatePhone: '98765432101' }), 400); // 11 digits
+    assert.equal(await bad('d2@x.com', { country: 'Narnia' }), 400); // only a country of the list
+    // another country: the dial code is written before the 10 digits, and the postal code and the ID are not the Indian ones
+    const [fs, fd] = await call('POST', '/api/users', { ...body('f1@x.com', { ...good, country: 'United Arab Emirates', address: { line: 'Street 4', district: 'Dubai', state: 'Dubai', pin: 'A1 2BC' }, idNumber: 'P1234567' }), phone: '5012345678' }, admin);
+    assert.equal(fs, 200);
+    assert.equal(fd.user.phone, '+971 5012345678');
+    assert.equal(await bad('d3@x.com', { address: { ...good.address, pin: '12345' } }), 400); // India: 6 digits
     // the middle name, the guardian and the Aadhaar can stay empty
     const [ok] = await call('POST', '/api/users', body('c2@x.com', { firstName: 'Anil', lastName: 'Rao', middleName: '', termsAccepted: true }), admin);
     assert.equal(ok, 200);
