@@ -1177,8 +1177,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <NoticesCard onNavigate={onNavigate} />
         </div>
 
-        {/* Right 1 Col: Recent Admissions, Receipts, Upcoming Tests */}
-        <div className="space-y-6">
+        {/* Right 1 Col: Recent Admissions, Receipts, Upcoming Tests (the last card grows to the bottom of the left column) */}
+        <div className="flex flex-col gap-6">
           {/* Recent Admissions */}
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
             <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
@@ -1307,7 +1307,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           )}
 
           {/* Upcoming Tests */}
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs flex-1 flex flex-col">
             <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
               <div className="flex items-center gap-2">
                 <Award className="w-4 h-4 text-amber-600" />
@@ -1322,7 +1322,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             {upcomingExams.length === 0 ? (
-              <div className="py-8 text-center text-xs text-slate-400">
+              <div className="flex-1 min-h-32 flex items-center justify-center py-8 text-center text-xs text-slate-400">
                 No upcoming tests scheduled.
               </div>
             ) : (
