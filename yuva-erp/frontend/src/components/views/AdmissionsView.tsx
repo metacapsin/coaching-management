@@ -102,7 +102,9 @@ export const AdmissionsView: React.FC<AdmissionsViewProps> = ({
       return matchesSearch && matchesBatch && matchesFee && matchesStatus;
     });
   }, [students, searchQuery, selectedBatch, feeFilter, statusFilter]);
-  const paged = usePaged(filteredStudents, 20, `${searchQuery}|${selectedBatch}|${feeFilter}|${statusFilter}`);
+  // one letter (A to Z) shows ALL the students of that letter at once (no pages), so the principal checks the whole list in one look
+  const oneLetterSearch = /^\p{L}$/u.test(searchQuery.trim());
+  const paged = usePaged(filteredStudents, oneLetterSearch ? 100000 : 20, `${searchQuery}|${selectedBatch}|${feeFilter}|${statusFilter}`);
 
   const archivedCount = students.filter(s => s.status === 'inactive').length;
   // New registrations that wait for the principal to confirm the admission and set the fee
