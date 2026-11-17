@@ -10,7 +10,7 @@ import { nextRollNumber } from '../utils/rollNo';
 import { X, UserPlus, Check, ImagePlus, Trash2 } from 'lucide-react';
 import { StudentLoginCard, generatePassword } from './StudentLoginCard';
 import { PasswordInput } from '../ui/PasswordInput';
-import { AdmissionDocuments, needsDocuments, noDocuments, pickedDocuments, uploadAdmissionDocuments } from './AdmissionDocuments';
+import { AdmissionDocuments, noDocuments, pickedDocuments, uploadAdmissionDocuments } from './AdmissionDocuments';
 import { flushPending, sendStudentRules } from '../utils/api';
 
 // Details that are already known (for example from an enquiry)
@@ -324,7 +324,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
         setRulesResult('failed');
       })();
     }
-    const picked = needsDocuments(formData.grade) ? pickedDocuments(docs) : [];
+    const picked = pickedDocuments(docs, formData.grade);
     if (picked.length) {
       setDocsResult('saving');
       void uploadAdmissionDocuments(newStudent.id, picked).then(setDocsResult);
@@ -524,8 +524,8 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
                 />
               </div>
 
-              {/* a student who has passed the 10th class brings the documents */}
-              {needsDocuments(formData.grade) && <AdmissionDocuments value={docs} onChange={setDocs} />}
+              {/* the Aadhaar card of every student; a student who has passed the 10th class brings the other documents too */}
+              <AdmissionDocuments value={docs} onChange={setDocs} grade={formData.grade} />
             </div>
           </div>
 

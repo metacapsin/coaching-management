@@ -30,10 +30,14 @@ export interface AdmissionDocumentsValue {
 
 export const noDocuments = (): AdmissionDocumentsValue => ({ fixed: {}, others: [] });
 
-export const pickedDocuments = (v: AdmissionDocumentsValue): PickedDocument[] => [
-  ...Object.values(v.fixed),
-  ...v.others.filter(o => o.doc).map(o => ({ ...(o.doc as PickedDocument), label: o.label.trim() || 'Other document' }))
-];
+// Every student gives the Aadhaar card (a proof of identity, at any class). A student who has passed the 10th class brings the other documents too.
+export const pickedDocuments = (v: AdmissionDocumentsValue, grade: string): PickedDocument[] => {
+  const all = needsDocuments(grade);
+  return [
+    ...Object.values(v.fixed).filter(d => all || d.kind === 'aadhaar'),
+    ...(all ? v.others.filter(o => o.doc).map(o => ({ ...(o.doc as PickedDocument), label: o.label.trim() || 'Other document' })) : [])
+  ];
+};
 
 // Sends the chosen documents once the student is saved on the server (the record may need a moment to arrive there).
 export async function uploadAdmissionDocuments(studentId: string, docs: PickedDocument[]): Promise<{ saved: number; failed: string[] }> {
@@ -91,8 +95,10 @@ const Picked: React.FC<{ name: string }> = ({ name }) => (
 );
 
 // The form part: one row for each document and a way to add another one.
-export const AdmissionDocuments: React.FC<{ value: AdmissionDocumentsValue; onChange: (v: AdmissionDocumentsValue) => void }> = ({ value, onChange }) => {
+export const AdmissionDocuments: React.FC<{ value: AdmissionDocumentsValue; onChange: (v: AdmissionDocumentsValue) => void; grade: string }> = ({ value, onChange, grade }) => {
   const [error, setError] = useState('');
+  const all = needsDocuments(grade); // (Class 9 and 10: only the Aadhaar card)
+  const rows = all ? DOCUMENT_ROWS : DOCUMENT_ROWS.filter(r => r.kind === 'aadhaar');
 
   const pick = async (file: File, make: (image: string) => AdmissionDocumentsValue) => {
     try {
@@ -111,13 +117,14 @@ export const AdmissionDocuments: React.FC<{ value: AdmissionDocumentsValue; onCh
         <div>
           <p className="text-xs font-semibold text-slate-800">Documents of the student</p>
           <p className="text-[11px] text-slate-500">
-            A student who has passed the 10th class brings these. Add a photo or a scan of each one (all are optional; they can be added later too). Only the
-            principal can see them.
+            {all
+              ? 'A student who has passed the 10th class brings these. Add a photo or a scan of each one (all are optional; they can be added later too). Only the principal can see them.'
+              : 'Every student gives the Aadhaar card as a proof. Add a photo or a scan of it (optional; it can be added later too). Only the principal can see it.'}
           </p>
         </div>
       </div>
       <div className="mt-3 space-y-2">
-        {DOCUMENT_ROWS.map(row => {
+        {rows.map(row => {
           const doc = value.fixed[row.kind];
           return (
             <div key={row.kind} className="flex items-center justify-between gap-3 text-xs">
@@ -150,7 +157,7 @@ export const AdmissionDocuments: React.FC<{ value: AdmissionDocumentsValue; onCh
           );
         })}
 
-        {value.others.map(o => (
+        {all && value.others.map(o => (
           <div key={o.id} className="flex items-center justify-between gap-3 text-xs">
             <input
               value={o.label}
@@ -184,6 +191,7 @@ export const AdmissionDocuments: React.FC<{ value: AdmissionDocumentsValue; onCh
           </div>
         ))}
       </div>
+      {all && (
       <button
         type="button"
         onClick={() => onChange({ ...value, others: [...value.others, { id: Date.now(), label: '' }] })}
@@ -192,6 +200,7 @@ export const AdmissionDocuments: React.FC<{ value: AdmissionDocumentsValue; onCh
         <Plus className="w-3.5 h-3.5" />
         Add another document
       </button>
+      )}
       {error && <p className="text-xs text-rose-600 mt-2">{error}</p>}
     </div>
   );
