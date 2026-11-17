@@ -35,7 +35,7 @@ export const pickedDocuments = (v: AdmissionDocumentsValue, grade: string): Pick
   const all = needsDocuments(grade);
   return [
     ...Object.values(v.fixed).filter(d => all || d.kind === 'aadhaar'),
-    ...(all ? v.others.filter(o => o.doc).map(o => ({ ...(o.doc as PickedDocument), label: o.label.trim() || 'Other document' })) : [])
+    ...v.others.filter(o => o.doc).map(o => ({ ...(o.doc as PickedDocument), label: o.label.trim() || 'Other document' })) // (any class can add other documents, for example the leaving certificate of the old school)
   ];
 };
 
@@ -97,7 +97,7 @@ const Picked: React.FC<{ name: string }> = ({ name }) => (
 // The form part: one row for each document and a way to add another one.
 export const AdmissionDocuments: React.FC<{ value: AdmissionDocumentsValue; onChange: (v: AdmissionDocumentsValue) => void; grade: string }> = ({ value, onChange, grade }) => {
   const [error, setError] = useState('');
-  const all = needsDocuments(grade); // (Class 9 and 10: only the Aadhaar card)
+  const all = needsDocuments(grade); // (Class 9 and 10: the Aadhaar card and any other document that the student has)
   const rows = all ? DOCUMENT_ROWS : DOCUMENT_ROWS.filter(r => r.kind === 'aadhaar');
 
   const pick = async (file: File, make: (image: string) => AdmissionDocumentsValue) => {
@@ -119,7 +119,7 @@ export const AdmissionDocuments: React.FC<{ value: AdmissionDocumentsValue; onCh
           <p className="text-[11px] text-slate-500">
             {all
               ? 'A student who has passed the 10th class brings these. Add a photo or a scan of each one (all are optional; they can be added later too). Only the principal can see them.'
-              : 'Every student gives the Aadhaar card as a proof. Add a photo or a scan of it (optional; it can be added later too). Only the principal can see it.'}
+              : 'Every student gives the Aadhaar card as a proof. A student from another school can add the transfer or leaving certificate, or any other document, with Add another document. Everything is optional and can be added later too. Only the principal can see them.'}
           </p>
         </div>
       </div>
@@ -157,7 +157,7 @@ export const AdmissionDocuments: React.FC<{ value: AdmissionDocumentsValue; onCh
           );
         })}
 
-        {all && value.others.map(o => (
+        {value.others.map(o => (
           <div key={o.id} className="flex items-center justify-between gap-3 text-xs">
             <input
               value={o.label}
@@ -191,7 +191,6 @@ export const AdmissionDocuments: React.FC<{ value: AdmissionDocumentsValue; onCh
           </div>
         ))}
       </div>
-      {all && (
       <button
         type="button"
         onClick={() => onChange({ ...value, others: [...value.others, { id: Date.now(), label: '' }] })}
@@ -200,7 +199,6 @@ export const AdmissionDocuments: React.FC<{ value: AdmissionDocumentsValue; onCh
         <Plus className="w-3.5 h-3.5" />
         Add another document
       </button>
-      )}
       {error && <p className="text-xs text-rose-600 mt-2">{error}</p>}
     </div>
   );
