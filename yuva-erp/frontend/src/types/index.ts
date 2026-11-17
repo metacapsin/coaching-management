@@ -12,6 +12,9 @@ export interface Student {
   id: string;
   rollNo: string;
   name: string;
+  firstName?: string; // the name is written in three parts in the admission form (the name above is the three together)
+  middleName?: string;
+  lastName?: string;
   email: string;
   phone: string;
   parentName: string;

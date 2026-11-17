@@ -419,6 +419,20 @@ export interface PublicCoaching {
   logoUrl?: string;
 }
 
+// ---------- documents of a student (Aadhaar card, TC, character certificate...): only the principal adds and reads them ----------
+
+export interface StudentDocument {
+  kind: string;
+  label: string;
+  url: string;
+}
+
+export const listStudentDocuments = (studentId: string) =>
+  request<{ documents: StudentDocument[] }>('GET', `/students/${encodeURIComponent(studentId)}/documents`).then(r => r.documents);
+
+export const addStudentDocument = (studentId: string, kind: string, image: string, label?: string) =>
+  request<{ documents: StudentDocument[] }>('POST', `/students/${encodeURIComponent(studentId)}/documents`, { kind, image, label }).then(r => r.documents);
+
 export const listCoachings = () => request<{ coachings: PublicCoaching[] }>('GET', '/public/coachings', undefined, { auth: false }).then(r => r.coachings);
 
 export interface CoachingRequest {

@@ -9,6 +9,8 @@ import { normalizePhone, toLocalISODate } from '../utils/helpers';
 import { nextRollNumber } from '../utils/rollNo';
 import { X, UserPlus, Check, ImagePlus, Trash2 } from 'lucide-react';
 import { StudentLoginCard, generatePassword } from './StudentLoginCard';
+import { PasswordInput } from '../ui/PasswordInput';
+import { AdmissionDocuments, needsDocuments, noDocuments, pickedDocuments, uploadAdmissionDocuments } from './AdmissionDocuments';
 
 // Details that are already known (for example from an enquiry)
 export interface AdmissionPrefill {
@@ -38,13 +40,22 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
   const [makeLogin, setMakeLogin] = useState(true);
   const [loginPassword, setLoginPassword] = useState(generatePassword);
   const [loginAuto, setLoginAuto] = useState<{ email: string; password: string } | null>(null);
+  // The parent's login is made together with the admission too (the principal types its password; it can be switched off)
+  const [makeParentLogin, setMakeParentLogin] = useState(true);
+  const [parentPassword, setParentPassword] = useState(generatePassword);
+  const [parentAuto, setParentAuto] = useState<{ email: string; password: string } | null>(null);
+  // The documents of a student who has passed the 10th class
+  const [docs, setDocs] = useState(noDocuments);
+  const [docsResult, setDocsResult] = useState<'saving' | { saved: number; failed: string[] } | null>(null);
   // A program or a batch can be written in right here when the institute has none yet
   const [newProgram, setNewProgram] = useState<{ name: string; fee: string } | null>(null);
   const [newBatch, setNewBatch] = useState<{ name: string; seats: string } | null>(null);
   const [quickError, setQuickError] = useState('');
 
   const [formData, setFormData] = useState({
-    name: prefill?.name ?? '',
+    firstName: (prefill?.name ?? '').trim().split(/\s+/).slice(0, 1).join(''),
+    middleName: '',
+    lastName: (prefill?.name ?? '').trim().split(/\s+/).slice(1).join(' '),
     email: prefill?.email ?? '',
     phone: prefill?.phone ?? '',
     parentName: prefill?.parentName ?? '',
@@ -94,7 +105,14 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
           </div>
           <div className="p-6 space-y-4">
             <StudentLoginCard student={created} auto={loginAuto ?? undefined} />
-            <StudentLoginCard student={created} parent />
+            <StudentLoginCard student={created} auto={parentAuto ?? undefined} parent />
+            {docsResult === 'saving' && <p className="text-xs text-slate-500">Saving the documents...</p>}
+            {docsResult && docsResult !== 'saving' && (
+              <p className={`text-xs ${docsResult.failed.length ? 'text-rose-600' : 'text-emerald-700'}`}>
+                {docsResult.saved > 0 && `${docsResult.saved} document${docsResult.saved === 1 ? '' : 's'} saved. `}
+                {docsResult.failed.length > 0 && `Could not save: ${docsResult.failed.join(', ')}. Add them again from the Details window of the student.`}
+              </p>
+            )}
             <div className="flex justify-end">
               <button onClick={onClose} className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg">
                 Done
@@ -193,7 +211,8 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
 
   const validate = () => {
     const errs: Record<string, string> = {};
-    if (!formData.name.trim()) errs.name = 'Student name is required';
+    if (!formData.firstName.trim()) errs.firstName = 'First name is required';
+    if (!formData.lastName.trim()) errs.lastName = 'Last name is required';
     if (!formData.phone.trim()) errs.phone = 'Student phone is required';
     if (!formData.parentName.trim()) errs.parentName = 'Parent name is required';
     if (!formData.parentPhone.trim()) errs.parentPhone = 'Parent phone is required';
@@ -205,6 +224,12 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) errs.email = 'Enter the email the student will sign in with';
       else if (students.some(st => st.email.toLowerCase() === formData.email.trim().toLowerCase())) errs.email = 'Another student already uses this email';
       if (loginPassword.length < 8) errs.loginPassword = 'The password needs at least 8 characters';
+    }
+    if (makeParentLogin) {
+      const pe = formData.parentEmail.trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(pe)) errs.parentEmail = 'Enter the email the parent will sign in with';
+      else if (pe === formData.email.trim().toLowerCase()) errs.parentEmail = 'The parent needs an email of its own (not the student email)';
+      if (parentPassword.length < 8) errs.parentPassword = 'The password needs at least 8 characters';
     }
     if (formData.discount < 0 || formData.discount > formData.totalFees) {
       errs.discount = 'Concession must be between 0 and the total fee';
@@ -234,9 +259,13 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
         }
       : undefined;
 
+    const fullName = [formData.firstName, formData.middleName, formData.lastName].map(p => p.trim()).filter(Boolean).join(' ');
     const newStudent = addStudent({
-      name: formData.name.trim(),
-      email: formData.email.trim() || `${formData.name.toLowerCase().replace(/\s+/g, '.')}@example.com`,
+      name: fullName,
+      firstName: formData.firstName.trim(),
+      middleName: formData.middleName.trim() || undefined,
+      lastName: formData.lastName.trim(),
+      email: formData.email.trim() || `${fullName.toLowerCase().replace(/\s+/g, '.')}@example.com`,
       phone: normalizePhone(formData.phone),
       parentName: formData.parentName.trim(),
       parentPhone: normalizePhone(formData.parentPhone),
@@ -258,6 +287,12 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
 
     if (onSuccess) onSuccess(newStudent.name, newStudent);
     setLoginAuto(makeLogin ? { email: formData.email.trim(), password: loginPassword } : null);
+    setParentAuto(makeParentLogin ? { email: formData.parentEmail.trim(), password: parentPassword } : null);
+    const picked = needsDocuments(formData.grade) ? pickedDocuments(docs) : [];
+    if (picked.length) {
+      setDocsResult('saving');
+      void uploadAdmissionDocuments(newStudent.id, picked).then(setDocsResult);
+    }
     setCreated(newStudent); // the last screen makes the login (or offers it) and shows the password
   };
 
@@ -359,20 +394,29 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
-                  Full Name <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Aryan Gupta"
-                  value={formData.name}
-                  onChange={e => setFormData({ ...formData, name: cleanName(e.target.value) })}
-                  className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.name ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300'
-                  }`}
-                />
-                {errors.name && <p className="text-xs text-rose-600 mt-1">{errors.name}</p>}
+              {/* the name in three parts */}
+              <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {([
+                  ['firstName', 'First Name', 'e.g. Aryan', true],
+                  ['middleName', 'Middle Name', 'optional', false],
+                  ['lastName', 'Last Name', 'e.g. Gupta', true]
+                ] as const).map(([key, label, placeholder, required]) => (
+                  <div key={key}>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                      {label} {required && <span className="text-rose-500">*</span>}
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={placeholder}
+                      value={formData[key]}
+                      onChange={e => setFormData({ ...formData, [key]: cleanName(e.target.value) })}
+                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        errors[key] ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300'
+                      }`}
+                    />
+                    {errors[key] && <p className="text-xs text-rose-600 mt-1">{errors[key]}</p>}
+                  </div>
+                ))}
               </div>
 
               <div>
@@ -411,7 +455,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
                 {makeLogin && (
                   <div className="mt-2 max-w-sm">
                     <div className="flex gap-2">
-                      <input value={loginPassword} onChange={e => setLoginPassword(e.target.value)} className="w-full px-3 py-2 text-sm font-mono border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
+                      <PasswordInput value={loginPassword} onChange={e => setLoginPassword(e.target.value)} autoComplete="new-password" className="w-full px-3 py-2 text-sm font-mono border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
                       <button type="button" onClick={() => setLoginPassword(generatePassword())} className="px-2.5 text-[11px] font-medium text-blue-600 hover:bg-blue-100 rounded-lg">New</button>
                     </div>
                     {errors.loginPassword && <p className="text-xs text-rose-600 mt-1">{errors.loginPassword}</p>}
@@ -434,6 +478,18 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
                   <option value="Dropper / Repeater">Dropper / Gap Year Special</option>
                 </Select>
               </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Date of birth (optional)</label>
+                <DateInput clearable
+                  value={formData.dateOfBirth}
+                  onChange={e => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* a student who has passed the 10th class brings the documents */}
+              {needsDocuments(formData.grade) && <AdmissionDocuments value={docs} onChange={setDocs} />}
             </div>
           </div>
 
@@ -479,12 +535,53 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Student's date of birth (optional)</label>
-                <DateInput clearable
-                  value={formData.dateOfBirth}
-                  onChange={e => setFormData({ ...formData, dateOfBirth: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Parent Email {makeParentLogin && <span className="text-rose-500">*</span>}
+                </label>
+                <input
+                  type="email"
+                  placeholder="parent@example.com"
+                  value={formData.parentEmail}
+                  onChange={e => setFormData({ ...formData, parentEmail: e.target.value })}
+                  className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    errors.parentEmail ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300'
+                  }`}
                 />
+                {errors.parentEmail && <p className="text-xs text-rose-600 mt-1">{errors.parentEmail}</p>}
+              </div>
+
+              {/* the password sits beside the parent's email */}
+              {makeParentLogin ? (
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Parent Password <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <PasswordInput
+                      value={parentPassword}
+                      onChange={e => setParentPassword(e.target.value)}
+                      autoComplete="new-password"
+                      placeholder="At least 8 characters"
+                      className={`w-full px-3 py-2 text-sm font-mono border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        errors.parentPassword ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300'
+                      }`}
+                    />
+                    <button type="button" onClick={() => setParentPassword(generatePassword())} className="px-2.5 text-[11px] font-medium text-blue-600 hover:bg-blue-100 rounded-lg">New</button>
+                  </div>
+                  {errors.parentPassword && <p className="text-xs text-rose-600 mt-1">{errors.parentPassword}</p>}
+                </div>
+              ) : (
+                <div />
+              )}
+
+              <div className="md:col-span-2 -mt-1">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={makeParentLogin} onChange={e => setMakeParentLogin(e.target.checked)} className="rounded border-slate-300 text-blue-600 w-4 h-4" />
+                  <span className="text-xs font-medium text-slate-800">Create the parent's login now (parent email + this password)</span>
+                </label>
+                {makeParentLogin && (
+                  <p className="text-[11px] text-slate-500 mt-1 ml-6">The parent chooses an own password at the first sign in. The password is shown once after the admission.</p>
+                )}
               </div>
 
               <div className="md:col-span-2">
@@ -503,9 +600,9 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
           {/* Section 3: Course & Batch Allocation */}
           <div className="pt-2 border-t border-slate-100">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
-              3. Course, Batch & Target Goal
+              3. Course & Batch
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Selected Program</label>
                 <Select
@@ -560,19 +657,8 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
                 </Select>
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Target Exam / Goal</label>
-                <input
-                  type="text"
-                  placeholder="e.g. JEE Advanced 2026, NEET UG"
-                  value={formData.targetExam}
-                  onChange={e => setFormData({ ...formData, targetExam: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
               {newProgram && (
-                <div className="md:col-span-3 p-3.5 rounded-lg bg-blue-50/60 border border-blue-100 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                <div className="md:col-span-2 p-3.5 rounded-lg bg-blue-50/60 border border-blue-100 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                   <div className="sm:col-span-1">
                     <label className="block text-xs font-medium text-slate-700 mb-1">New program name</label>
                     <input
@@ -605,7 +691,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
               )}
 
               {newBatch && (
-                <div className="md:col-span-3 p-3.5 rounded-lg bg-blue-50/60 border border-blue-100 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                <div className="md:col-span-2 p-3.5 rounded-lg bg-blue-50/60 border border-blue-100 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                   <div>
                     <label className="block text-xs font-medium text-slate-700 mb-1">New batch name</label>
                     <input
@@ -636,7 +722,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
                   </div>
                 </div>
               )}
-              {quickError && <p className="md:col-span-3 text-xs text-rose-600">{quickError}</p>}
+              {quickError && <p className="md:col-span-2 text-xs text-rose-600">{quickError}</p>}
             </div>
           </div>
 

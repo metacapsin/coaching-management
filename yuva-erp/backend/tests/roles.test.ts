@@ -1672,3 +1672,49 @@ describe('An enquiry becomes Enrolled by itself', () => {
     assert.equal((await status('q3')).status, 'lost'); // the enquiry of another student (not signed in)
   });
 });
+
+describe('Documents of a student (Aadhaar card, TC...): only the principal', () => {
+  let admin = '';
+  let teacher = '';
+  let student = '';
+  const PNG = 'data:image/png;base64,iVBORw0KGgo=';
+  const s = withServer(async (api) => {
+    admin = (await api.call('POST', '/api/auth/setup', { name: 'P', email: 'p@x.com', password: PASSWORD }))[1].token;
+    await api.call('PUT', '/api/institute', { changes: { batches: { upsert: BATCHES }, students: { upsert: STUDENTS } } }, admin);
+    await api.call('POST', '/api/users', { name: 'Alice', email: 'alice@x.com', password: PASSWORD, role: 'student', studentId: 's1' }, admin);
+    await api.call('POST', '/api/users', { name: 'T', email: 't@x.com', password: PASSWORD, role: 'teacher', batchIds: ['b1'] }, admin);
+    student = await tokenOf(api, 'alice@x.com', 'member');
+    teacher = await tokenOf(api, 't@x.com', 'member');
+  });
+  const call = (...a: Parameters<Api['call']>) => s.api.call(...a);
+
+  it('1 the principal adds and reads them; a teacher, a student and a stranger cannot', async () => {
+    assert.equal((await call('POST', '/api/students/s1/documents', { kind: 'aadhaar', image: PNG }, admin))[0], 200);
+    assert.equal((await call('POST', '/api/students/s1/documents', { kind: 'tc', image: PNG }, admin))[0], 200);
+    assert.equal((await call('POST', '/api/students/s1/documents', { kind: 'other', label: 'Caste certificate', image: PNG }, admin))[0], 200);
+    const docs = (await call('GET', '/api/students/s1/documents', null, admin))[1].documents;
+    assert.deepEqual(docs.map((d: any) => d.label).sort(), ['Aadhaar card', 'Caste certificate', 'Transfer certificate (TC)']);
+    assert.equal((await call('POST', '/api/students/s1/documents', { kind: 'aadhaar', image: PNG }, admin))[0], 200); // a new Aadhaar replaces the old one
+    assert.equal((await call('GET', '/api/students/s1/documents', null, admin))[1].documents.length, 3);
+    for (const who of [teacher, student, '']) {
+      assert.notEqual((await call('GET', '/api/students/s1/documents', null, who))[0], 200);
+      assert.notEqual((await call('POST', '/api/students/s1/documents', { kind: 'tc', image: PNG }, who))[0], 200);
+    }
+    // the documents are not in the list of the student that everybody gets
+    const mine = (await call('GET', '/api/sync', null, student))[1].institute.students[0];
+    assert.ok(!JSON.stringify(mine).includes('doc-'));
+  });
+
+  it('2 wrong requests are refused', async () => {
+    assert.equal((await call('POST', '/api/students/s1/documents', { kind: 'passport', image: PNG }, admin))[0], 400); // an unknown kind
+    assert.equal((await call('POST', '/api/students/s1/documents', { kind: 'tc', image: 'data:text/html;base64,PGI+' }, admin))[0], 400); // not a picture
+    assert.equal((await call('POST', '/api/students/s1/documents', { kind: 'tc' }, admin))[0], 400);
+    assert.equal((await call('POST', '/api/students/nobody/documents', { kind: 'tc', image: PNG }, admin))[0], 404);
+  });
+
+  it('3 the documents go when the student is removed', async () => {
+    await call('PUT', '/api/institute', { changes: { students: { remove: ['s1'] } } }, admin);
+    await call('PUT', '/api/institute', { changes: { students: { upsert: STUDENTS } } }, admin);
+    assert.equal((await call('GET', '/api/students/s1/documents', null, admin))[1].documents.length, 0);
+  });
+});

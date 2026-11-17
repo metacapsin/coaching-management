@@ -1184,6 +1184,39 @@ route('/api/users/<user_id>/details', ['GET'], 'admin', async (c) => {
   return { name: target.name, email: target.email, phone: target.phone ?? '', subject: target.subject ?? '', createdAt: target.createdAt ?? '', rulesAcceptedAt: target.rulesAcceptedAt ?? null, details: target.details ?? null };
 });
 
+// ---------- documents of a student (Aadhaar card, TC, character certificate...): only the principal adds and reads them ----------
+
+const DOCUMENT_KINDS: Record<string, string> = {
+  aadhaar: 'Aadhaar card',
+  tc: 'Transfer certificate (TC)',
+  character: 'Character certificate',
+  migration: 'Migration certificate',
+  marksheet: '10th marksheet',
+  other: 'Other document',
+};
+
+route('/api/students/<student_id>/documents', ['GET'], 'admin', async (c) => {
+  const id = c.req.params.student_id as string;
+  if (!(await c.store.getItem('students', id))) throw new HttpError(404, 'Student not found.');
+  return { documents: await c.store.listDocuments(id) };
+});
+
+route('/api/students/<student_id>/documents', ['POST'], 'admin', async (c) => {
+  const id = c.req.params.student_id as string;
+  if (!(await c.store.getItem('students', id))) throw new HttpError(404, 'Student not found.');
+  const b = c.body(3 * 1024 * 1024);
+  const kind = String(b.kind ?? '');
+  if (!DOCUMENT_KINDS[kind]) throw new HttpError(400, 'Choose which document it is.');
+  if (typeof b.image !== 'string') throw new HttpError(400, 'Add the picture of the document.');
+  const { contentType, data } = parsePhotoDataUrl(b.image); // (only a small JPG, PNG or WebP picture)
+  // "other" can be added many times; each of the others is one document (a new one replaces the old one)
+  const name = kind === 'other' ? `other-${newId('d')}` : kind;
+  const label = kind === 'other' ? text(b.label, 60) || DOCUMENT_KINDS.other : DOCUMENT_KINDS[kind];
+  await c.store.savePhoto(`doc-${id}-${name}`, contentType, data, { kind, label });
+  await c.store.audit(c.user, 'student-document', `${label}`);
+  return { documents: await c.store.listDocuments(id) };
+});
+
 route('/api/users/<user_id>/approve', ['POST'], 'admin', async (c) => {
   const s = c.store;
   const target = await s.userById(c.req.params.user_id);

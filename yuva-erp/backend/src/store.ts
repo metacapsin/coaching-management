@@ -66,6 +66,8 @@ export class BackupError extends Error {}
 const bytesOf = (value: any): Buffer => (Buffer.isBuffer(value) ? value : Buffer.from(value?.buffer ?? value));
 
 /** The data of ONE coaching (`org`). `forOrg` gives the store of another coaching. */
+const escapeRegex = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, (ch) => '\\' + ch);
+
 export class Store {
   db: Db;
   org: string;
@@ -460,10 +462,18 @@ export class Store {
   // ---------- photos ----------
 
   /** Stores a student photo. Returns the token that makes the photo address (a new photo = a new address). */
-  async savePhoto(studentId: string, contentType: string, data: Buffer): Promise<string> {
+  async savePhoto(studentId: string, contentType: string, data: Buffer, extra: Record<string, any> = {}): Promise<string> {
     const token = crypto.randomBytes(12).toString('base64url');
-    await this.photos.replaceOne({ _id: studentId }, { _id: studentId, contentType, data, token }, { upsert: true });
+    await this.photos.replaceOne({ _id: studentId }, { _id: studentId, contentType, data, token, ...extra }, { upsert: true });
     return token;
+  }
+
+  /** The documents of a student (Aadhaar card, TC...): kept apart like the photos, under the ids "doc-<student id>-<kind>".
+   * Only the list (kind, label, address) is returned here, never the bytes. */
+  async listDocuments(studentId: string): Promise<{ kind: string; label: string; url: string }[]> {
+    const prefix = `doc-${studentId}-`;
+    const rows = await this.photos.find({ _id: { $regex: '^' + escapeRegex(prefix) } }, { projection: { data: 0 } }).toArray();
+    return rows.map((d: any) => ({ kind: String(d.kind ?? ''), label: String(d.label ?? ''), url: this.photoUrl(d._id, d.token) }));
   }
 
   /** Address of a student photo. The address says which coaching it belongs to. */
@@ -479,7 +489,9 @@ export class Store {
   }
 
   async deletePhotos(studentIds: string[]): Promise<void> {
-    if (studentIds.length) await this.photos.deleteMany({ _id: { $in: studentIds } });
+    if (!studentIds.length) return;
+    await this.photos.deleteMany({ _id: { $in: studentIds } });
+    for (const id of studentIds) await this.photos.deleteMany({ _id: { $regex: '^' + escapeRegex(`doc-${id}-`) } }); // (the documents of a removed student go too)
   }
 
   // ---------- backups ----------

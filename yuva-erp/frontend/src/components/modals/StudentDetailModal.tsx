@@ -6,6 +6,8 @@ import { X, MessageSquare, CreditCard, Printer, IdCard, UserPlus, CalendarX, Awa
 import { formatDate } from '../utils/helpers';
 import { PrintableIdCardModal } from './PrintableIdCardModal';
 import { StudentLoginCard } from './StudentLoginCard';
+import { StudentDocumentsList } from './AdmissionDocuments';
+import { useAuth } from '../../Context/AuthContext';
 
 interface StudentDetailModalProps {
   student: Student | null;
@@ -32,6 +34,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     profile, 
     sendNotification 
   } = useInstitute();
+  const { isAdmin } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'fees' | 'attendance' | 'exams' | 'timeline'>('overview');
   const [showIdCard, setShowIdCard] = useState(false);
@@ -330,6 +333,14 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                   </div>
                 </div>
               </div>
+
+              {/* the documents (Aadhaar card, TC...) are for the principal only */}
+              {isAdmin && (
+                <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-2">
+                  <h3 className="font-semibold text-slate-900 uppercase tracking-wider text-[11px] border-b border-slate-100 pb-2">Documents</h3>
+                  <StudentDocumentsList studentId={student.id} />
+                </div>
+              )}
 
               {student.notes && (
                 <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-lg text-xs">
