@@ -530,7 +530,7 @@ function AuthGate() {
   // somebody else set this password: choose an own one before anything else
   if (user.mustChangePassword) return <ForcePasswordChange />;
   // a new teacher: the rules and regulations of the coaching are read and agreed to before the app opens
-  if (user.role === 'teacher' && user.mustAcceptRules) return <RulesGate />;
+  if ((user.role === 'teacher' || user.role === 'student') && user.mustAcceptRules) return <RulesGate />;
   // the Super Admin signed in on the same login page: the list of coachings instead of a coaching
   if (user.role === 'super') return <SuperAdminApp />;
 

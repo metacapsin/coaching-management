@@ -24,7 +24,7 @@ const inputCls = 'w-full px-3 py-2 text-sm border border-slate-300 rounded-lg fo
 // "Teacher / Student" tab and chooses an own password at the first sign in.
 // `auto`: the login is made at once with these values (used right after the admission form)
 // `parent`: the login of the student's parent instead (it sees the child's data, read only)
-export const StudentLoginCard: React.FC<{ student: Student; auto?: { email: string; password: string }; parent?: boolean }> = ({ student, auto, parent = false }) => {
+export const StudentLoginCard: React.FC<{ student: Student; auto?: { email: string; password: string; rules?: boolean }; parent?: boolean }> = ({ student, auto, parent = false }) => {
   const who = parent ? 'parent' : 'student';
   const { users, addUser, isAdmin } = useAuth();
   const existing = users.find(u => u.studentId === student.id && !!u.isParent === parent);
@@ -56,7 +56,7 @@ export const StudentLoginCard: React.FC<{ student: Student; auto?: { email: stri
     setBusy(true);
     // The student record has to be on the server before the account can point to it: send it first and,
     // if the server does not have it yet, wait a little and try again
-    const input = () => ({ name: parent ? student.parentName || `Parent of ${student.name}` : student.name, email: email.trim(), password, role: 'student' as const, phone: parent ? student.parentPhone : student.phone, studentId: student.id, isParent: parent || undefined });
+    const input = () => ({ name: parent ? student.parentName || `Parent of ${student.name}` : student.name, email: email.trim(), password, role: 'student' as const, phone: parent ? student.parentPhone : student.phone, studentId: student.id, isParent: parent || undefined, acceptRules: auto?.rules || undefined });
     let result = await addUser(input());
     for (let i = 0; i < 6 && !result.ok && /student record does not exist/i.test(result.error); i++) {
       await flushPending();

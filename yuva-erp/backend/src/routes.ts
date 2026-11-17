@@ -33,6 +33,7 @@ import { monthName, sendMonthlyAttendance } from './attendanceMail.ts';
 import { cleanTeacherDetails, cleanTeacherPhone } from './teacherDetails.ts';
 import { lookupPostal } from './postal.ts';
 import { rulesAsLines, rulesFor } from './rules.ts';
+import { studentRulesFor } from './studentRules.ts';
 import { applyChanges, parsePhotoDataUrl, scopeInstitute } from './scope.ts';
 import { DEFAULT_ORG, PLATFORM_ORG } from './store.ts';
 import { GREEN, RED } from './emailTemplate.ts';
@@ -1115,6 +1116,7 @@ route('/api/users', ['POST'], 'admin', async (c) => {
     user.details = details; // (never in the public list of the accounts: only the principal can read it, below)
     user.mustAcceptRules = true; // the teacher reads and agrees to the rules and regulations at the first sign in
   }
+  if (role === 'student' && b.acceptRules === true) user.mustAcceptRules = true; // (the admission form: the student or the parent reads and agrees to the rules at the first sign in)
   await addUserOrConflict(c, user);
   await s.bump();
   await s.audit(c.user, 'user-add', `${user.email} (${roleLabel(role)})`);
@@ -1147,14 +1149,21 @@ async function mailRulesToTeacher(c: any, s: any, user: any): Promise<void> {
 }
 
 route('/api/rules', ['GET'], 'user', async (c) => {
-  if (c.user.role !== 'admin' && c.user.role !== 'teacher') throw new HttpError(403, 'The rules and regulations are for the principal and the teachers.');
   const coaching = await coachingName(c, c.store);
-  return { coaching, rules: rulesFor(coaching), mustAccept: Boolean(c.user.mustAcceptRules), acceptedAt: c.user.rulesAcceptedAt ?? null };
+  // a student and a parent read the rules for students and parents; a teacher the rules for the teachers; the principal reads both (?for=student)
+  const forStudents = c.user.role === 'student' || (c.user.role === 'admin' && c.query('for') === 'student');
+  return {
+    coaching,
+    audience: forStudents ? 'student' : 'teacher',
+    rules: forStudents ? studentRulesFor(coaching) : rulesFor(coaching),
+    mustAccept: Boolean(c.user.mustAcceptRules),
+    acceptedAt: c.user.rulesAcceptedAt ?? null,
+  };
 });
 
 /** The teacher agrees to the rules and regulations (the first sign in): the date is kept and the principal is told by email. */
 route('/api/rules/accept', ['POST'], 'user', async (c) => {
-  if (c.user.role !== 'teacher') throw new HttpError(403, 'Only a teacher agrees to the rules of the teachers.');
+  if (c.user.role !== 'teacher' && c.user.role !== 'student') throw new HttpError(403, 'Only a teacher, a student or a parent agrees to the rules.');
   if (c.body().agree !== true) throw new HttpError(400, 'Please tick the box to agree to the rules and regulations.');
   if (!c.user.rulesAcceptedAt) {
     c.user.rulesAcceptedAt = nowIso();
@@ -1164,6 +1173,7 @@ route('/api/rules/accept', ['POST'], 'user', async (c) => {
   await c.store.saveUser(c.user);
   await c.store.bump();
   await c.store.audit(c.user, 'rules-accepted', c.user.email);
+  if (c.user.role === 'student') return { user: auth.publicUser(c.user) }; // (the principal is not mailed for every student: the date is kept and is in the activity log)
   const coaching = await coachingName(c, c.store);
   await tellPrincipals(c, c.store, `${c.user.name} agreed to the rules and regulations`, `${c.user.name} agreed to the rules`, [`${c.user.name} read the rules and regulations of ${coaching} and agreed to follow them.`], [['Teacher', c.user.name], ['Email', c.user.email], ['Agreed on', niceDay(String(c.user.rulesAcceptedAt).slice(0, 10))]], fromPerson(c.user, coaching));
   return { user: auth.publicUser(c.user) };
@@ -1182,6 +1192,33 @@ route('/api/users/<user_id>/details', ['GET'], 'admin', async (c) => {
   if (!target || target.role !== 'teacher') throw new HttpError(404, 'Teacher not found.');
   await c.store.audit(c.user, 'teacher-details-read', target.email);
   return { name: target.name, email: target.email, phone: target.phone ?? '', subject: target.subject ?? '', createdAt: target.createdAt ?? '', rulesAcceptedAt: target.rulesAcceptedAt ?? null, details: target.details ?? null };
+});
+
+/** The rules and regulations for students and parents go by email to the student and to the parent of one student (the admission form has a box for it). */
+route('/api/students/<student_id>/send-rules', ['POST'], 'admin', async (c) => {
+  const s = c.store;
+  const student = await s.getItem('students', c.req.params.student_id as string);
+  if (!student) throw new HttpError(404, 'Student not found.');
+  const coaching = await coachingName(c, s);
+  const rules = studentRulesFor(coaching);
+  const sent: string[] = [];
+  const targets: [string, string, string][] = [
+    [text(student.email, 150).toLowerCase(), student.name, 'Student'],
+    [text(student.parentEmail, 150).toLowerCase(), student.parentName || `Parent of ${student.name}`, 'Parent'],
+  ];
+  for (const [to, name, who] of targets) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to) || to.endsWith('@example.com') || sent.includes(to)) continue; // (an invented address is not mailed)
+    mail(to, `Rules and regulations of ${coaching}: please read`, rules.title, rulesAsLines(rules), {
+      details: [['Coaching', coaching], ['Student', student.name], [who, name]],
+      button: ['Sign in and read', c.loginLink('member')],
+      note: 'At the first sign in a page with these rules asks for your agreement. You can read the rules again at any time in the page Rules & Regulations.',
+      name,
+      from: fromPerson(c.user, coaching),
+    });
+    sent.push(to);
+  }
+  await s.audit(c.user, 'student-rules-mailed', `${student.name} (${sent.length})`);
+  return { sent };
 });
 
 // ---------- documents of a student (Aadhaar card, TC, character certificate...): only the principal adds and reads them ----------

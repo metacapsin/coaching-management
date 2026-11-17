@@ -11,6 +11,7 @@ import { X, UserPlus, Check, ImagePlus, Trash2 } from 'lucide-react';
 import { StudentLoginCard, generatePassword } from './StudentLoginCard';
 import { PasswordInput } from '../ui/PasswordInput';
 import { AdmissionDocuments, needsDocuments, noDocuments, pickedDocuments, uploadAdmissionDocuments } from './AdmissionDocuments';
+import { flushPending, sendStudentRules } from '../utils/api';
 
 // Details that are already known (for example from an enquiry)
 export interface AdmissionPrefill {
@@ -39,14 +40,17 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
   // The student's login is made together with the admission (the principal can switch it off)
   const [makeLogin, setMakeLogin] = useState(true);
   const [loginPassword, setLoginPassword] = useState(generatePassword);
-  const [loginAuto, setLoginAuto] = useState<{ email: string; password: string } | null>(null);
+  const [loginAuto, setLoginAuto] = useState<{ email: string; password: string; rules?: boolean } | null>(null);
   // The parent's login is made together with the admission too (the principal types its password; it can be switched off)
   const [makeParentLogin, setMakeParentLogin] = useState(true);
   const [parentPassword, setParentPassword] = useState(generatePassword);
-  const [parentAuto, setParentAuto] = useState<{ email: string; password: string } | null>(null);
+  const [parentAuto, setParentAuto] = useState<{ email: string; password: string; rules?: boolean } | null>(null);
   // The documents of a student who has passed the 10th class
   const [docs, setDocs] = useState(noDocuments);
   const [docsResult, setDocsResult] = useState<'saving' | { saved: number; failed: string[] } | null>(null);
+  // The rules and regulations of the coaching go to the student and the parent by email; both read and agree to them at the first sign in
+  const [sendRules, setSendRules] = useState(true);
+  const [rulesResult, setRulesResult] = useState<'sending' | { sent: string[] } | 'failed' | null>(null);
   // A program or a batch can be written in right here when the institute has none yet
   const [newProgram, setNewProgram] = useState<{ name: string; fee: string } | null>(null);
   const [newBatch, setNewBatch] = useState<{ name: string; seats: string } | null>(null);
@@ -106,6 +110,13 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
           <div className="p-6 space-y-4">
             <StudentLoginCard student={created} auto={loginAuto ?? undefined} />
             <StudentLoginCard student={created} auto={parentAuto ?? undefined} parent />
+            {rulesResult === 'sending' && <p className="text-xs text-slate-500">Sending the rules and regulations...</p>}
+            {rulesResult === 'failed' && <p className="text-xs text-rose-600">The rules could not be emailed. Send them again from the Details window of the student.</p>}
+            {rulesResult && typeof rulesResult === 'object' && (
+              <p className="text-xs text-emerald-700">
+                {rulesResult.sent.length ? `The rules and regulations were emailed to ${rulesResult.sent.join(' and ')}.` : 'No email was sent: the student and the parent have no real email address.'}
+              </p>
+            )}
             {docsResult === 'saving' && <p className="text-xs text-slate-500">Saving the documents...</p>}
             {docsResult && docsResult !== 'saving' && (
               <p className={`text-xs ${docsResult.failed.length ? 'text-rose-600' : 'text-emerald-700'}`}>
@@ -286,8 +297,26 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
     }, initialPayment);
 
     if (onSuccess) onSuccess(newStudent.name, newStudent);
-    setLoginAuto(makeLogin ? { email: formData.email.trim(), password: loginPassword } : null);
-    setParentAuto(makeParentLogin ? { email: formData.parentEmail.trim(), password: parentPassword } : null);
+    setLoginAuto(makeLogin ? { email: formData.email.trim(), password: loginPassword, rules: sendRules } : null);
+    setParentAuto(makeParentLogin ? { email: formData.parentEmail.trim(), password: parentPassword, rules: sendRules } : null);
+    if (sendRules) {
+      setRulesResult('sending');
+      void (async () => {
+        // the record of the student has to be on the server first: try a few times
+        for (let i = 0; i < 6; i++) {
+          try {
+            const r = await sendStudentRules(newStudent.id);
+            setRulesResult({ sent: r.sent });
+            return;
+          } catch (err) {
+            if (!/not found/i.test(err instanceof Error ? err.message : '')) break;
+            await flushPending();
+            await new Promise(r => setTimeout(r, 500));
+          }
+        }
+        setRulesResult('failed');
+      })();
+    }
     const picked = needsDocuments(formData.grade) ? pickedDocuments(docs) : [];
     if (picked.length) {
       setDocsResult('saving');
@@ -856,6 +885,19 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
               </ul>
             </div>
           )}
+
+          {/* The rules and regulations of the coaching go to the student and the parent by email */}
+          <div className="p-3 rounded-lg bg-blue-50/60 border border-blue-100">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input type="checkbox" checked={sendRules} onChange={e => setSendRules(e.target.checked)} className="mt-0.5 rounded border-slate-300 text-blue-600 w-4 h-4 shrink-0" />
+              <span>
+                <span className="text-xs font-medium text-slate-800">Email the rules and regulations of this coaching to the student and the parent</span>
+                <span className="block text-[11px] text-slate-500 mt-0.5">
+                  Both get the rules by email. At the first sign in the student and the parent read them on a page and agree before the app opens. (These are the rules for students and parents, not the rules of the teachers.)
+                </span>
+              </span>
+            </label>
+          </div>
 
           {/* Footer Actions */}
           <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">

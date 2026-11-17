@@ -36,6 +36,7 @@ export interface NewAccountInput {
   batchIds?: string[];
   studentId?: string;
   isParent?: boolean;
+  acceptRules?: boolean; // a student or a parent: the rules and regulations are read and agreed to at the first sign in
   // the registration details of a teacher (personal data, qualification, agreement)
   details?: Record<string, unknown>;
 }

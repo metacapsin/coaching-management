@@ -427,6 +427,10 @@ export interface StudentDocument {
   url: string;
 }
 
+// The rules and regulations for students and parents go by email to the student and to the parent.
+export const sendStudentRules = (studentId: string) =>
+  request<{ sent: string[] }>('POST', `/students/${encodeURIComponent(studentId)}/send-rules`, {});
+
 export const listStudentDocuments = (studentId: string) =>
   request<{ documents: StudentDocument[] }>('GET', `/students/${encodeURIComponent(studentId)}/documents`).then(r => r.documents);
 

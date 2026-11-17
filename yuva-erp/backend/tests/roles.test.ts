@@ -1718,3 +1718,61 @@ describe('Documents of a student (Aadhaar card, TC...): only the principal', () 
     assert.equal((await call('GET', '/api/students/s1/documents', null, admin))[1].documents.length, 0);
   });
 });
+
+describe('Rules and regulations of the students and parents', () => {
+  let admin = '';
+  const s = withServer(async (api) => {
+    admin = (await api.call('POST', '/api/auth/setup', { name: 'P', email: 'p@x.com', password: PASSWORD }))[1].token;
+    const kid = { ...STUDENTS[0], email: 'alice@x.com', parentName: 'Alice Father', parentEmail: 'dad@x.com' };
+    await api.call('PUT', '/api/institute', { changes: { batches: { upsert: BATCHES }, students: { upsert: [kid, { ...STUDENTS[1], email: 'made.up@example.com' }] } } }, admin);
+  });
+  const call = (...a: Parameters<Api['call']>) => s.api.call(...a);
+
+  it('1 the rules go to the student and the parent by email, and they are not the rules of the teachers', async () => {
+    const mail = captureMail();
+    try {
+      const [status, data] = await call('POST', '/api/students/s1/send-rules', {}, admin);
+      assert.equal(status, 200);
+      assert.deepEqual(data.sent.sort(), ['alice@x.com', 'dad@x.com']);
+      const rules = mail.sent.filter((m) => /Rules and regulations of/.test(m[1]));
+      assert.deepEqual(rules.map((m) => m[0]).sort(), ['alice@x.com', 'dad@x.com']);
+      assert.ok(rules[0][2].includes('Students and Parents'));
+      assert.ok(!rules[0][2].includes('every teacher who works')); // not the text of the teachers
+      // an invented address (the admission form fills one when no email is written) is not mailed
+      assert.deepEqual((await call('POST', '/api/students/s2/send-rules', {}, admin))[1].sent, []);
+    } finally {
+      mail.stop();
+    }
+    assert.equal((await call('POST', '/api/students/nobody/send-rules', {}, admin))[0], 404);
+  });
+
+  it('2 a student and a parent read and agree to them at the first sign in', async () => {
+    for (const [email, studentId, isParent] of [['alice@x.com', 's1', false], ['dad@x.com', 's1', true]] as const) {
+      assert.equal((await call('POST', '/api/users', { name: 'X', email, password: PASSWORD, role: 'student', studentId, isParent, acceptRules: true }, admin))[0], 200);
+      const portal = isParent ? 'parent' : 'member';
+      const [, login] = await call('POST', '/api/auth/login', { email, password: PASSWORD, portal });
+      assert.equal(login.user.mustAcceptRules, true);
+      const token = login.token;
+      const [rs, rd] = await call('GET', '/api/rules', null, token);
+      assert.equal(rs, 200);
+      assert.equal(rd.audience, 'student');
+      assert.ok(rd.rules.title.includes('Students and Parents'));
+      assert.equal(rd.mustAccept, true);
+      assert.equal((await call('POST', '/api/rules/accept', {}, token))[0], 400); // the box has to be ticked
+      const [as, ad] = await call('POST', '/api/rules/accept', { agree: true }, token);
+      assert.equal(as, 200);
+      assert.ok(!ad.user.mustAcceptRules);
+      assert.equal((await call('POST', '/api/auth/login', { email, password: PASSWORD, portal }))[1].user.mustAcceptRules, undefined); // not asked again
+    }
+  });
+
+  it('3 a login made without the box has no gate; the principal reads both kinds of rules; the teacher rules are unchanged', async () => {
+    await call('POST', '/api/users', { name: 'Bob', email: 'bob@x.com', password: PASSWORD, role: 'student', studentId: 's2' }, admin);
+    assert.equal((await call('POST', '/api/auth/login', { email: 'bob@x.com', password: PASSWORD, portal: 'member' }))[1].user.mustAcceptRules, undefined);
+    assert.ok((await call('GET', '/api/rules', null, admin))[1].rules.title.includes('Teachers'));
+    assert.ok((await call('GET', '/api/rules?for=student', null, admin))[1].rules.title.includes('Students and Parents'));
+    // only the principal sends the rules
+    const bob = (await call('POST', '/api/auth/login', { email: 'bob@x.com', password: PASSWORD, portal: 'member' }))[1].token;
+    assert.notEqual((await call('POST', '/api/students/s1/send-rules', {}, bob))[0], 200);
+  });
+});

@@ -4,8 +4,9 @@ import { useAuth } from '../../Context/AuthContext';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { RulesText } from '../views/RulesView';
 
-// Shown instead of the app to a new teacher, before anything else: the rules and regulations of the coaching. The teacher reads them, ticks the box
-// and presses "I agree" (the principal is told by email). They were sent by email too when the principal added the teacher.
+// Shown instead of the app to a new teacher, student or parent, before anything else: the rules and regulations of the coaching (the server sends the
+// rules that fit the person). The person reads them, ticks the box and presses "I agree" (for a teacher the principal is told by email). They were
+// sent by email too when the principal added the person.
 export const RulesGate: React.FC = () => {
   const { user, acceptRules, signOut } = useAuth();
   const [agree, setAgree] = useState(false);
