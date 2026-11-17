@@ -169,8 +169,12 @@ const CoachingCard: React.FC<{ co: PublicCoaching; showRules: boolean }> = ({ co
   const principal = co.principalName || 'Owner';
   const initials = principal.split(/\s+/).map(w => w.charAt(0)).join('').slice(0, 2).toUpperCase();
   return (
-    <div className="lp-lift rounded-2xl border border-white/10 bg-white/[0.03] p-5 hover:border-sky-400/40">
-      <div className="flex items-center gap-3 min-w-0">
+    <div className="lp-lift relative rounded-2xl border border-white/10 bg-white/[0.03] p-5 hover:border-sky-400/40">
+      {/* the sample coaching of the platform (id "default") is marked in the corner */}
+      {co.id === 'default' && (
+        <span className="absolute top-3 right-3 text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-400/15 text-amber-300 border border-amber-400/30">Dummy coaching</span>
+      )}
+      <div className={`flex items-center gap-3 min-w-0 ${co.id === 'default' ? 'pt-4' : ''}`}>
         {co.logoUrl && !failed ? (
           <img src={co.logoUrl} alt="" onError={() => setFailed(true)} className="w-11 h-11 rounded-xl object-contain bg-white shrink-0" />
         ) : (
