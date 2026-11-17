@@ -1173,8 +1173,28 @@ route('/api/rules/accept', ['POST'], 'user', async (c) => {
   await c.store.saveUser(c.user);
   await c.store.bump();
   await c.store.audit(c.user, 'rules-accepted', c.user.email);
-  if (c.user.role === 'student') return { user: auth.publicUser(c.user) }; // (the principal is not mailed for every student: the date is kept and is in the activity log)
   const coaching = await coachingName(c, c.store);
+  if (c.user.role === 'student') {
+    // a student or a parent agreed: the principal is told by email (like for a teacher)
+    const isParent = Boolean(c.user.isParent);
+    const kid = c.user.studentId ? await c.store.getItem('students', c.user.studentId) : null;
+    const who = isParent ? `${c.user.name} (parent of ${kid?.name ?? 'the student'})` : c.user.name;
+    await tellPrincipals(
+      c,
+      c.store,
+      `${who} agreed to the rules and regulations`,
+      `${isParent ? 'A parent' : 'A student'} agreed to the rules`,
+      [`${who} read the rules and regulations of ${coaching} for students and parents and agreed to follow them.`],
+      [
+        [isParent ? 'Parent' : 'Student', c.user.name],
+        ...(isParent && kid ? ([['Student', kid.name]] as [string, string][]) : []),
+        ['Email', c.user.email],
+        ['Agreed on', niceDay(String(c.user.rulesAcceptedAt).slice(0, 10))],
+      ],
+      fromPerson(c.user, coaching),
+    );
+    return { user: auth.publicUser(c.user) };
+  }
   await tellPrincipals(c, c.store, `${c.user.name} agreed to the rules and regulations`, `${c.user.name} agreed to the rules`, [`${c.user.name} read the rules and regulations of ${coaching} and agreed to follow them.`], [['Teacher', c.user.name], ['Email', c.user.email], ['Agreed on', niceDay(String(c.user.rulesAcceptedAt).slice(0, 10))]], fromPerson(c.user, coaching));
   return { user: auth.publicUser(c.user) };
 });

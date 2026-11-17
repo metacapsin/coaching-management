@@ -1759,8 +1759,20 @@ describe('Rules and regulations of the students and parents', () => {
       assert.ok(rd.rules.title.includes('Students and Parents'));
       assert.equal(rd.mustAccept, true);
       assert.equal((await call('POST', '/api/rules/accept', {}, token))[0], 400); // the box has to be ticked
-      const [as, ad] = await call('POST', '/api/rules/accept', { agree: true }, token);
-      assert.equal(as, 200);
+      const mail = captureMail();
+      let ad: any;
+      try {
+        const [as, d] = await call('POST', '/api/rules/accept', { agree: true }, token);
+        assert.equal(as, 200);
+        ad = d;
+        // the principal is told by email that the student (or the parent) agreed
+        await new Promise((r) => setTimeout(r, 300));
+        const told = mail.sent.filter((m) => m[0] === 'p@x.com' && /agreed to the rules/.test(m[1]));
+        assert.equal(told.length, 1);
+        assert.ok(told[0][1].includes(isParent ? 'parent of' : 'X'));
+      } finally {
+        mail.stop();
+      }
       assert.ok(!ad.user.mustAcceptRules);
       assert.equal((await call('POST', '/api/auth/login', { email, password: PASSWORD, portal }))[1].user.mustAcceptRules, undefined); // not asked again
     }
