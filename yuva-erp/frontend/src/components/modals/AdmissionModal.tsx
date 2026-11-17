@@ -30,6 +30,13 @@ interface AdmissionModalProps {
   prefill?: AdmissionPrefill;
 }
 
+// A mobile number has 10 digits: letters and spaces are dropped, a pasted "+91 ..." or "0..." loses its prefix, and nothing more than 10 digits is kept.
+const tenDigits = (value: string): string => {
+  let d = value.replace(/\D/g, '');
+  if (d.length > 10) d = d.startsWith('91') ? d.slice(2) : d.replace(/^0+/, '');
+  return d.slice(0, 10);
+};
+
 export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose, onSuccess, prefill }) => {
   useEscape(onClose);
   const { batches, courses, students, addStudent, addCourse, addBatch, profile } = useInstitute();
@@ -61,9 +68,9 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
     middleName: '',
     lastName: (prefill?.name ?? '').trim().split(/\s+/).slice(1).join(' '),
     email: prefill?.email ?? '',
-    phone: prefill?.phone ?? '',
+    phone: tenDigits(prefill?.phone ?? ''),
     parentName: prefill?.parentName ?? '',
-    parentPhone: prefill?.phone ?? '',
+    parentPhone: tenDigits(prefill?.phone ?? ''),
     parentEmail: '',
     grade: prefill?.grade ?? 'Class 12',
     courseId: startCourse?.id || '',
@@ -229,8 +236,8 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
     if (!formData.parentPhone.trim()) errs.parentPhone = 'Parent phone is required';
     if (!formData.batchId) errs.batchId = 'Batch assignment is required';
     if (formData.totalFees <= 0) errs.totalFees = 'Total fee must be positive';
-    if (formData.phone.replace(/\D/g, '').length < 10) errs.phone = 'Enter a valid 10-digit mobile number';
-    if (formData.parentPhone.replace(/\D/g, '').length < 10) errs.parentPhone = 'Enter a valid 10-digit mobile number';
+    if (formData.phone.length !== 10) errs.phone = 'Enter a valid 10-digit mobile number';
+    if (formData.parentPhone.length !== 10) errs.parentPhone = 'Enter a valid 10-digit mobile number';
     if (makeLogin) {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) errs.email = 'Enter the email the student will sign in with';
       else if (students.some(st => st.email.toLowerCase() === formData.email.trim().toLowerCase())) errs.email = 'Another student already uses this email';
@@ -454,9 +461,9 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
                 </label>
                 <input
                   type="text"
-                  placeholder="+91 98765 43210"
+                  placeholder="10-digit mobile number" inputMode="numeric"
                   value={formData.phone}
-                  onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                  onChange={e => setFormData({ ...formData, phone: tenDigits(e.target.value) })}
                   className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                     errors.phone ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300'
                   }`}
@@ -553,9 +560,9 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
                 </label>
                 <input
                   type="text"
-                  placeholder="+91 98111 22334"
+                  placeholder="10-digit mobile number" inputMode="numeric"
                   value={formData.parentPhone}
-                  onChange={e => setFormData({ ...formData, parentPhone: e.target.value })}
+                  onChange={e => setFormData({ ...formData, parentPhone: tenDigits(e.target.value) })}
                   className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                     errors.parentPhone ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300'
                   }`}
