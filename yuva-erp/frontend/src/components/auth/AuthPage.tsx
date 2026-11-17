@@ -88,7 +88,7 @@ export const ForgotPassword: React.FC<{ initialEmail: string }> = ({ initialEmai
             {t('If this email has an account, a 6-digit code was sent to it (it works for 15 minutes). The principal also got your request.')}
           </p>
           <input inputMode="numeric" maxLength={6} value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))} placeholder={t('6-digit code')} className={inputCls} />
-          <input type="password" autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t('At least 8 characters, letters and numbers')} className={inputCls} />
+          <PasswordInput autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t('At least 8 characters, letters and numbers')} className={inputCls} />
           {error && <p className="text-xs text-rose-600">{t(error)}</p>}
           <div className="flex gap-2 justify-end">
             <button type="button" onClick={() => setOpen(false)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">

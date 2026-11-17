@@ -1,7 +1,7 @@
 import { cleanName } from '../utils/names';
 import { Select } from '../ui/Pickers';
 import React, { useEffect, useState } from 'react';
-import { Building2, CheckCircle2, Loader2 } from 'lucide-react';
+import { Building2, CheckCircle2, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { ApiError, listCoachings, registerCoaching, setPublicOrg } from '../utils/api';
 import type { PublicCoaching } from '../utils/api';
 import { useLang } from '../../i18n/LangContext';
@@ -80,6 +80,7 @@ export const RegisterCoachingForm: React.FC<{ onClose: () => void }> = ({ onClos
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
+  const [shown, setShown] = useState<Record<string, boolean>>({}); // (which password boxes show the letters: the eye icon)
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: ['coachingName', 'adminName', 'name'].includes(k as string) ? cleanName(e.target.value) : e.target.value });
 
   const submit = async (e: React.FormEvent) => {
@@ -125,12 +126,36 @@ export const RegisterCoachingForm: React.FC<{ onClose: () => void }> = ({ onClos
       </div>
     );
 
-  const field = (label: string, key: keyof typeof f, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
-    <div>
-      <label className="block text-xs font-medium text-slate-700 mb-1">{t(label)}</label>
-      <input value={f[key]} onChange={set(key)} className={fieldCls} {...props} placeholder={props.placeholder ? t(props.placeholder) : undefined} />
-    </div>
-  );
+  const field = (label: string, key: keyof typeof f, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => {
+    const isPassword = props.type === 'password';
+    const visible = Boolean(shown[key]);
+    return (
+      <div>
+        <label className="block text-xs font-medium text-slate-700 mb-1">{t(label)}</label>
+        <div className="relative">
+          <input
+            value={f[key]}
+            onChange={set(key)}
+            className={isPassword ? `${fieldCls} pr-10` : fieldCls}
+            {...props}
+            type={isPassword && visible ? 'text' : props.type}
+            placeholder={props.placeholder ? t(props.placeholder) : undefined}
+          />
+          {isPassword && (
+            <button
+              type="button"
+              onClick={() => setShown(prev => ({ ...prev, [key]: !prev[key] }))}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-700 rounded"
+              title={visible ? t('Hide password') : t('Show password')}
+              aria-label={visible ? t('Hide password') : t('Show password')}
+            >
+              {visible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <form onSubmit={submit} className="mt-4 space-y-3">

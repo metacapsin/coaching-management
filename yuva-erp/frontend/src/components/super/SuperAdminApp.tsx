@@ -103,7 +103,7 @@ const DeleteModal: React.FC<{ org: OrgSummary; onClose: () => void; onDone: (msg
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-700 mb-1">Your own password (the one you sign in with)</label>
-          <input type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} className={inputCls} />
+          <PasswordInput autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} className={inputCls} />
         </div>
         <p className="text-[11px] text-slate-500">Every Super Admin gets an email when a coaching is deleted.</p>
         {error && <p className="text-xs text-rose-600">{error}</p>}
