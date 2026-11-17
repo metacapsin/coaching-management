@@ -71,14 +71,18 @@ export const AdmissionsView: React.FC<AdmissionsViewProps> = ({
   const filteredStudents = useMemo(() => {
     return students.filter(st => {
       const q = searchQuery.toLowerCase().trim();
+      // one letter (A to Z): every student whose name BEGINS with that letter (nothing else is looked at)
+      const oneLetter = /^\p{L}$/u.test(q);
       const matchesSearch =
         !q ||
-        st.name.toLowerCase().includes(q) ||
-        st.rollNo.toLowerCase().includes(q) ||
-        st.parentName.toLowerCase().includes(q) ||
-        st.phone.replace(/\D/g, '').includes(q.replace(/\D/g, '') || '\u0000') ||
-        st.parentPhone.replace(/\D/g, '').includes(q.replace(/\D/g, '') || '\u0000') ||
-        st.targetExam.toLowerCase().includes(q);
+        (oneLetter
+          ? st.name.trim().toLowerCase().startsWith(q)
+          : st.name.toLowerCase().includes(q) ||
+            st.rollNo.toLowerCase().includes(q) ||
+            st.parentName.toLowerCase().includes(q) ||
+            st.phone.replace(/\D/g, '').includes(q.replace(/\D/g, '') || '\u0000') ||
+            st.parentPhone.replace(/\D/g, '').includes(q.replace(/\D/g, '') || '\u0000') ||
+            st.targetExam.toLowerCase().includes(q));
 
       const matchesBatch = selectedBatch === 'all' || st.batchId === selectedBatch;
 
