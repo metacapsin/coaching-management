@@ -1161,6 +1161,27 @@ route('/api/rules', ['GET'], 'user', async (c) => {
   };
 });
 
+/** The person who agreed (teacher, student or parent) gets an email too: the proof that he or she accepted the rules and regulations. */
+function confirmAgreementToPerson(c: any, coaching: string, kind: 'teacher' | 'student' | 'parent', studentName?: string): void {
+  try {
+    const user = c.user;
+    mail(user.email, `You agreed to the rules and regulations of ${coaching}`, 'Thank you: you agreed to the rules', [
+      `You read the rules and regulations of ${coaching} and agreed to follow them. Please keep this email as a proof.`,
+      'You can read the rules again at any time in the page Rules & Regulations.',
+    ], {
+      details: [
+        ['Coaching', coaching],
+        [kind === 'teacher' ? 'Teacher' : kind === 'parent' ? 'Parent' : 'Student', user.name],
+        ...(kind === 'parent' && studentName ? ([['Student', studentName]] as [string, string][]) : []),
+        ['Agreed on', niceDay(String(user.rulesAcceptedAt).slice(0, 10))],
+      ],
+      name: user.name,
+    });
+  } catch {
+    /* a courtesy: the agreement is kept all the same */
+  }
+}
+
 /** The teacher agrees to the rules and regulations (the first sign in): the date is kept and the principal is told by email. */
 route('/api/rules/accept', ['POST'], 'user', async (c) => {
   if (c.user.role !== 'teacher' && c.user.role !== 'student') throw new HttpError(403, 'Only a teacher, a student or a parent agrees to the rules.');
@@ -1193,8 +1214,10 @@ route('/api/rules/accept', ['POST'], 'user', async (c) => {
       ],
       fromPerson(c.user, coaching),
     );
+    confirmAgreementToPerson(c, coaching, isParent ? 'parent' : 'student', kid?.name);
     return { user: auth.publicUser(c.user) };
   }
+  confirmAgreementToPerson(c, coaching, 'teacher');
   await tellPrincipals(c, c.store, `${c.user.name} agreed to the rules and regulations`, `${c.user.name} agreed to the rules`, [`${c.user.name} read the rules and regulations of ${coaching} and agreed to follow them.`], [['Teacher', c.user.name], ['Email', c.user.email], ['Agreed on', niceDay(String(c.user.rulesAcceptedAt).slice(0, 10))]], fromPerson(c.user, coaching));
   return { user: auth.publicUser(c.user) };
 });

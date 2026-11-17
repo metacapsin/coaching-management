@@ -1637,8 +1637,9 @@ describe('Rules and regulations of the teachers', () => {
     }
     assert.equal(me.mustAcceptRules, undefined);
     assert.ok(me.rulesAcceptedAt);
-    assert.deepEqual(mail.sent.map((m) => m[0]), ['pri@x.com']); // the principal is told
-    assert.ok(mail.sent[0][1].includes('agreed to the rules'));
+    assert.deepEqual(mail.sent.map((m) => m[0]).sort(), ['pri@x.com', 'r1@x.com']); // the principal is told, and the teacher gets the proof
+    assert.ok(mail.sent.find((m) => m[0] === 'pri@x.com')![1].includes('agreed to the rules'));
+    assert.ok(mail.sent.find((m) => m[0] === 'r1@x.com')![1].includes('You agreed to the rules'));
     // the principal sees the date of the agreement with the details of the teacher
     const list = (await call('GET', '/api/sync', null, admin))[1].users.find((u: any) => u.email === 'r1@x.com');
     const details = (await call('GET', `/api/users/${list.id}/details`, null, admin))[1];
@@ -1770,6 +1771,8 @@ describe('Rules and regulations of the students and parents', () => {
         const told = mail.sent.filter((m) => m[0] === 'p@x.com' && /agreed to the rules/.test(m[1]));
         assert.equal(told.length, 1);
         assert.ok(told[0][1].includes(isParent ? 'parent of' : 'X'));
+        const proof = mail.sent.filter((m) => m[0] === email && /You agreed to the rules/.test(m[1])); // the person gets the proof too
+        assert.equal(proof.length, 1);
       } finally {
         mail.stop();
       }
