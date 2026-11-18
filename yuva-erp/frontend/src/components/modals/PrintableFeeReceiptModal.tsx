@@ -10,7 +10,7 @@ import { downloadTablePdf } from '../utils/simplePdf';
 import { receiptPdfBytes, receiptTable, toBase64 } from '../utils/receiptPdf';
 import { TypedSignature, useSignatoryName } from '../ui/TypedSignature';
 import { openWhatsApp } from '../utils/helpers';
-import { X, Printer, Mail, FileDown, Share2, Loader2, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { X, Printer, Mail, FileDown, MessageCircle, Loader2, CheckCircle2, ShieldCheck } from 'lucide-react';
 
 interface PrintableFeeReceiptModalProps {
   transaction: FeeTransaction | null;
@@ -115,57 +115,60 @@ Thank you for choosing ${profile.name}.`;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
       <div className="relative w-full max-w-2xl bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden my-8 text-slate-900 print:m-0 print:border-none print:shadow-none print:w-full">
-        {/* Top bar (Hidden when printing) */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50 print:hidden">
-          <div className="flex items-center gap-2">
-            <span className="text-emerald-600 font-semibold text-sm flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4" />
-              {transaction.status === 'cancelled' ? 'Receipt Cancelled' : 'Receipt Ready'}
-            </span>
-            <span className="text-slate-300">·</span>
-            <span className="text-xs text-slate-500 font-mono">{transaction.receiptNo}</span>
+        {/* Top bar (Hidden when printing): the title and Close on the first line, the buttons (small, one line each) under it */}
+        <div className="px-6 py-3 border-b border-slate-200 bg-slate-50 print:hidden">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-emerald-600 font-semibold text-sm flex items-center gap-1.5 whitespace-nowrap">
+                <CheckCircle2 className="w-4 h-4" />
+                {transaction.status === 'cancelled' ? 'Receipt Cancelled' : 'Receipt Ready'}
+              </span>
+              <span className="text-slate-300">·</span>
+              <span className="text-xs text-slate-500 font-mono truncate">{transaction.receiptNo}</span>
+            </div>
+            <button aria-label="Close"
+              onClick={onClose}
+              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors shrink-0"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
             {office && transaction.status !== 'cancelled' && (
               <button
                 onClick={() => void sendToParent()}
                 disabled={sendState === 'sending'}
-                className="px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg flex items-center gap-1.5 transition-colors disabled:opacity-60"
+                title="Email the receipt (PDF) to the parent"
+                className="px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg flex items-center gap-1.5 transition-colors disabled:opacity-60"
               >
                 {sendState === 'sending' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
-                {sendState === 'sent' ? 'Send again' : 'Email PDF to Parent'}
+                {sendState === 'sent' ? 'Email again' : 'Email PDF'}
               </button>
             )}
             {office && transaction.status !== 'cancelled' && (
               <button
                 onClick={handleShareWhatsApp}
                 title="Send the receipt to the phone number of the parent on WhatsApp (when the email of the parent is not known)"
-                className="px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg flex items-center gap-1.5 transition-colors"
+                className="px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg flex items-center gap-1.5 transition-colors"
               >
-                <Share2 className="w-3.5 h-3.5" />
-                WhatsApp Parent
+                <MessageCircle className="w-3.5 h-3.5" />
+                WhatsApp
               </button>
             )}
             <button
               onClick={handleDownloadPdf}
-              className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg flex items-center gap-1.5 transition-colors"
+              className="px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg flex items-center gap-1.5 transition-colors"
             >
               <FileDown className="w-3.5 h-3.5" />
               Download PDF
             </button>
             <button
               onClick={handlePrint}
-              className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-1.5 transition-colors shadow-xs"
+              className="px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-white bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-1.5 transition-colors shadow-xs"
             >
               <Printer className="w-3.5 h-3.5" />
-              Print Receipt
-            </button>
-            <button aria-label="Close"
-              onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors ml-1"
-            >
-              <X className="w-5 h-5" />
+              Print
             </button>
           </div>
         </div>
@@ -179,8 +182,8 @@ Thank you for choosing ${profile.name}.`;
           >
             {sendState === 'sending' && 'Sending the receipt (PDF) to the parent...'}
             {sendState === 'sent' && `The receipt (PDF) was emailed to ${student?.parentEmail || 'the parent'}.`}
-            {sendState === 'no-email' && 'This student has no parent email, so no email was sent. Use WhatsApp Parent to send the receipt to the phone number of the parent, or download the PDF.'}
-            {sendState === 'failed' && 'The email could not be sent (check that email is connected). Use WhatsApp Parent, or download the PDF and send it yourself.'}
+            {sendState === 'no-email' && 'This student has no parent email, so no email was sent. Use the WhatsApp button to send the receipt to the phone number of the parent, or download the PDF.'}
+            {sendState === 'failed' && 'The email could not be sent (check that email is connected). Use the WhatsApp button, or download the PDF and send it yourself.'}
           </div>
         )}
 
