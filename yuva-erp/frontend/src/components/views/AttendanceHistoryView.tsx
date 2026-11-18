@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { CalendarCheck, ChevronDown, Search } from 'lucide-react';
+import { CalendarCheck, ChevronDown, Search, X } from 'lucide-react';
 import { useInstitute } from '../../Context/InstituteContext';
+import { useAuth } from '../../Context/AuthContext';
 import { DateInput, Select } from '../ui/Pickers';
 import { ExportMenu } from '../ui/ExportMenu';
 import { formatDate, toLocalISODate } from '../utils/helpers';
@@ -23,6 +24,22 @@ const teacherOf = (r: AttendanceRecord) => (r.teacherName ?? '').trim() || (r.ma
 
 type Period = 'day' | '7' | '30' | 'all';
 
+// ---- The three filters (batch, subject, teacher) are linked: choose one and the others follow. A teacher teaches some subjects in some batches
+// (the account of the teacher and the classes that were marked tell it), so: choose a teacher and the subject and the batch of the teacher are chosen
+// (when there is only one), choose a subject and the teacher and the batch of that subject follow, choose a batch and the subject and the teacher follow.
+type Sel = { batch: string; subject: string; teacher: string };
+type Field = keyof Sel;
+type Link = { teacher: string; subject: string; batchId: string };
+const key = (v: string) => v.trim().toLowerCase();
+const splitSubjects = (v?: string) => String(v ?? '').split(/[,&/]/).map(x => x.trim()).filter(Boolean);
+const NONE: Sel = { batch: 'all', subject: 'all', teacher: 'all' };
+
+// does this link fit the choices (leaving out the filter `skip`)? A teacher with no subject on record fits every subject.
+const fits = (l: Link, sel: Sel, skip?: Field) =>
+  (skip === 'batch' || sel.batch === 'all' || l.batchId === sel.batch) &&
+  (skip === 'subject' || sel.subject === 'all' || !l.subject || key(l.subject) === sel.subject) &&
+  (skip === 'teacher' || sel.teacher === 'all' || key(l.teacher) === sel.teacher);
+
 const daysAgo = (n: number) => {
   const d = new Date();
   d.setDate(d.getDate() - n);
@@ -31,20 +48,74 @@ const daysAgo = (n: number) => {
 
 export const AttendanceHistoryView: React.FC = () => {
   const { attendance, batches, students, profile } = useInstitute();
+  const { users } = useAuth();
 
   const [period, setPeriod] = useState<Period>('7');
   const [day, setDay] = useState(toLocalISODate());
-  const [batchId, setBatchId] = useState('all');
-  const [subject, setSubject] = useState('all');
-  const [teacher, setTeacher] = useState('all');
+  const [sel, setSel] = useState<Sel>(NONE);
+  const batchId = sel.batch;
+  const subject = sel.subject; // (the lower case key of the subject)
+  const teacher = sel.teacher; // (the lower case key of the name of the teacher)
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState<Record<string, boolean>>({});
 
   const batchName = (id: string) => batches.find(b => b.id === id)?.name || 'Batch';
   const studentById = useMemo(() => new Map(students.map(s => [s.id, s])), [students]);
 
-  const subjects = useMemo(() => Array.from(new Set(attendance.map(subjectOf))).sort(), [attendance]);
-  const teachers = useMemo(() => Array.from(new Set(attendance.map(teacherOf))).sort(), [attendance]);
+  // who teaches what, where: from the accounts of the teachers (subject and batches) and from the classes that were marked
+  const { links, subjectLabel, teacherLabel } = useMemo(() => {
+    const map = new Map<string, Link>();
+    const sl = new Map<string, string>();
+    const tl = new Map<string, string>();
+    const add = (teacherName: string, subjectName: string, batch: string) => {
+      if (!teacherName && !subjectName && !batch) return;
+      if (teacherName) tl.set(key(teacherName), tl.get(key(teacherName)) ?? teacherName);
+      if (subjectName) sl.set(key(subjectName), sl.get(key(subjectName)) ?? subjectName);
+      map.set(`${key(teacherName)}|${key(subjectName)}|${batch}`, { teacher: teacherName, subject: subjectName, batchId: batch });
+    };
+    for (const u of users) {
+      if (u.role !== 'teacher' || (u.status || 'active') !== 'active') continue;
+      const subs = splitSubjects(u.subject);
+      for (const b of u.batchIds ?? []) {
+        if (subs.length) subs.forEach(sj => add(u.name, sj, b));
+        else add(u.name, '', b);
+      }
+    }
+    for (const r of attendance) add(teacherOf(r) === '-' ? '' : teacherOf(r), subjectOf(r), r.batchId);
+    return { links: Array.from(map.values()), subjectLabel: sl, teacherLabel: tl };
+  }, [users, attendance]);
+
+  // the values that a filter can take, given the choices of the other two
+  const allowed = (s: Sel, f: Field): string[] => {
+    const set = new Set<string>();
+    for (const l of links) {
+      if (!fits(l, s, f)) continue;
+      const v = f === 'batch' ? l.batchId : f === 'subject' ? key(l.subject) : key(l.teacher);
+      if (v) set.add(v);
+    }
+    return Array.from(set);
+  };
+
+  // A choice is made: the other filters follow. A value that does not fit any more goes back to "all"; when only one value fits, it is chosen.
+  const choose = (field: Field, value: string) => {
+    let cur: Sel = { ...sel, [field]: value };
+    for (let i = 0; i < 3; i++) {
+      for (const f of ['batch', 'subject', 'teacher'] as const) {
+        if (f === field) continue;
+        const ok = allowed(cur, f);
+        if (cur[f] !== 'all' && !ok.includes(cur[f])) cur = { ...cur, [f]: 'all' };
+        if (cur[f] === 'all' && ok.length === 1) cur = { ...cur, [f]: ok[0] };
+      }
+    }
+    setSel(cur);
+  };
+  const filterActive = batchId !== 'all' || subject !== 'all' || teacher !== 'all';
+
+  const batchOptions = allowed(sel, 'batch').filter(id => batches.some(b => b.id === id));
+  const subjectOptions = allowed(sel, 'subject');
+  const teacherOptions = allowed(sel, 'teacher');
+  const subjectText = (k: string) => subjectLabel.get(k) ?? k;
+  const teacherText = (k: string) => teacherLabel.get(k) ?? k;
 
   const sessions = useMemo(() => {
     const from = period === '7' ? daysAgo(6) : period === '30' ? daysAgo(29) : '';
@@ -53,8 +124,8 @@ export const AttendanceHistoryView: React.FC = () => {
         if (period === 'day' && r.date !== day) return false;
         if (from && r.date < from) return false;
         if (batchId !== 'all' && r.batchId !== batchId) return false;
-        if (subject !== 'all' && subjectOf(r) !== subject) return false;
-        if (teacher !== 'all' && teacherOf(r) !== teacher) return false;
+        if (subject !== 'all' && key(subjectOf(r)) !== subject) return false;
+        if (teacher !== 'all' && key(teacherOf(r)) !== teacher) return false;
         return true;
       })
       .sort((a, b) => (a.date === b.date ? batchName(a.batchId).localeCompare(batchName(b.batchId)) || subjectOf(a).localeCompare(subjectOf(b)) : b.date.localeCompare(a.date)));
@@ -83,6 +154,28 @@ export const AttendanceHistoryView: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q, sessions, studentById, batches]);
 
+  // The students of the chosen teacher / subject / batch, with what each one did in the classes shown
+  const roster = useMemo(() => {
+    if (!filterActive) return [];
+    const batchIds = new Set(links.filter(l => fits(l, sel)).map(l => l.batchId).filter(Boolean));
+    const stat = new Map<string, { joined: number; notJoined: number; late: number; excused: number }>();
+    for (const r of sessions) {
+      for (const [sid, status] of Object.entries(r.records || {})) {
+        const x = stat.get(sid) ?? { joined: 0, notJoined: 0, late: 0, excused: 0 };
+        if (status === 'present') x.joined++;
+        else if (status === 'absent') x.notJoined++;
+        else if (status === 'late') x.late++;
+        else x.excused++;
+        stat.set(sid, x);
+      }
+    }
+    return students
+      .filter(st => st.status !== 'inactive' && batchIds.has(st.batchId))
+      .map(st => ({ st, x: stat.get(st.id) ?? { joined: 0, notJoined: 0, late: 0, excused: 0 } }))
+      .sort((a, b) => (a.st.rollNo || '').localeCompare(b.st.rollNo || '', undefined, { numeric: true }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterActive, links, sel, sessions, students]);
+
   const nameList = (r: AttendanceRecord, status: AttendanceStatus) =>
     Object.entries(r.records || {})
       .filter(([, s]) => s === status)
@@ -110,7 +203,7 @@ export const AttendanceHistoryView: React.FC = () => {
           filename={`attendance_history_${period === 'day' ? day : period}`}
           addDate={false}
           title="Attendance history"
-          subtitle={`${periodText}${batchId !== 'all' ? ` - ${batchName(batchId)}` : ''}${subject !== 'all' ? ` - ${subject}` : ''}${teacher !== 'all' ? ` - ${teacher}` : ''}`}
+          subtitle={`${periodText}${batchId !== 'all' ? ` - ${batchName(batchId)}` : ''}${subject !== 'all' ? ` - ${subjectText(subject)}` : ''}${teacher !== 'all' ? ` - ${teacherText(teacher)}` : ''}`}
           coaching={profile.name}
           disabled={sessions.length === 0}
           build={() => {
@@ -168,13 +261,13 @@ export const AttendanceHistoryView: React.FC = () => {
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Batch</label>
             <Select
               value={batchId}
-              onChange={e => setBatchId(e.target.value)}
+              onChange={e => choose('batch', e.target.value)}
               className="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium w-full"
             >
               <option value="all">All batches</option>
-              {batches.map(b => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
+              {batchOptions.map(id => (
+                <option key={id} value={id}>
+                  {batchName(id)}
                 </option>
               ))}
             </Select>
@@ -183,13 +276,13 @@ export const AttendanceHistoryView: React.FC = () => {
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Subject</label>
             <Select
               value={subject}
-              onChange={e => setSubject(e.target.value)}
+              onChange={e => choose('subject', e.target.value)}
               className="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium w-full"
             >
               <option value="all">All subjects</option>
-              {subjects.map(s => (
-                <option key={s} value={s}>
-                  {s}
+              {subjectOptions.map(k => (
+                <option key={k} value={k}>
+                  {subjectText(k)}
                 </option>
               ))}
             </Select>
@@ -198,18 +291,24 @@ export const AttendanceHistoryView: React.FC = () => {
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Teacher</label>
             <Select
               value={teacher}
-              onChange={e => setTeacher(e.target.value)}
+              onChange={e => choose('teacher', e.target.value)}
               className="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium w-full"
             >
               <option value="all">All teachers</option>
-              {teachers.map(t => (
-                <option key={t} value={t}>
-                  {t}
+              {teacherOptions.map(k => (
+                <option key={k} value={k}>
+                  {teacherText(k)}
                 </option>
               ))}
             </Select>
           </div>
         </div>
+        {filterActive && (
+          <button type="button" onClick={() => setSel(NONE)} className="text-xs font-medium text-blue-600 hover:underline inline-flex items-center gap-1">
+            <X className="w-3.5 h-3.5" />
+            Clear batch, subject and teacher
+          </button>
+        )}
         <div className="relative">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -241,6 +340,50 @@ export const AttendanceHistoryView: React.FC = () => {
           <p className="text-xl font-bold text-amber-800 mt-0.5">{totals.late}</p>
         </div>
       </div>
+
+      {/* The students of the chosen teacher / subject / batch */}
+      {!q && filterActive && (
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+          <div className="p-4 border-b border-slate-200 bg-slate-50/50">
+            <h3 className="text-sm font-semibold text-slate-900">
+              Students{teacher !== 'all' ? ` of ${teacherText(teacher)}` : ''}
+              {subject !== 'all' ? ` · ${subjectText(subject)}` : ''}
+              {batchId !== 'all' ? ` · ${batchName(batchId)}` : ''} ({roster.length})
+            </h3>
+            <p className="text-[11px] text-slate-500 mt-0.5">What each student did in the classes of {periodText}.</p>
+          </div>
+          {roster.length === 0 ? (
+            <div className="py-10 text-center text-slate-400 text-xs">No student is in this batch.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-semibold uppercase">
+                  <tr>
+                    <th className="p-3 w-14">Roll</th>
+                    <th className="p-3">Student</th>
+                    <th className="p-3">Batch</th>
+                    <th className="p-3 text-center">Joined</th>
+                    <th className="p-3 text-center">Not joined</th>
+                    <th className="p-3 text-center">Late join</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {roster.map(({ st, x }) => (
+                    <tr key={st.id}>
+                      <td className="p-3 font-mono text-slate-400">{st.rollNo}</td>
+                      <td className="p-3 font-semibold text-slate-900">{st.name}</td>
+                      <td className="p-3 text-slate-600">{batchName(st.batchId)}</td>
+                      <td className="p-3 text-center font-semibold text-emerald-700">{x.joined}</td>
+                      <td className="p-3 text-center font-semibold text-rose-700">{x.notJoined}</td>
+                      <td className="p-3 text-center font-semibold text-amber-700">{x.late}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {q ? (
         /* One student: every class */
