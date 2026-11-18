@@ -124,6 +124,7 @@ function MainApp() {
   const [preselectedPaymentStudentId, setPreselectedPaymentStudentId] = useState<string | undefined>(undefined);
 
   const [receiptModalTx, setReceiptModalTx] = useState<FeeTransaction | null>(null);
+  const [receiptAutoSend, setReceiptAutoSend] = useState(false); // the form asked to email the receipt (PDF) to the parent
   const [detailModalStudent, setDetailModalStudent] = useState<Student | null>(null);
 
   // Global admission success banner
@@ -141,10 +142,12 @@ function MainApp() {
 
   const handleViewReceipt = (txId: string) => {
     const tx = transactions.find(t => t.id === txId);
+    setReceiptAutoSend(false);
     if (tx) setReceiptModalTx(tx);
   };
 
-  const handlePaymentSuccess = (tx: FeeTransaction) => {
+  const handlePaymentSuccess = (tx: FeeTransaction, options?: { emailToParent: boolean }) => {
+    setReceiptAutoSend(!!options?.emailToParent);
     setReceiptModalTx(tx);
   };
 
@@ -462,7 +465,7 @@ function MainApp() {
         />
       )}
 
-      <PrintableFeeReceiptModal transaction={receiptModalTx} onClose={() => setReceiptModalTx(null)} />
+      <PrintableFeeReceiptModal transaction={receiptModalTx} onClose={() => setReceiptModalTx(null)} autoSend={receiptAutoSend} />
 
       <StudentDetailModal
         student={detailModalStudent}

@@ -454,7 +454,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             className="px-3.5 py-2 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg transition-colors flex items-center gap-1.5"
           >
             <CreditCard className="w-4 h-4 text-blue-600" />
-            Collect Fee
+            Fee Received
           </button>
           <button
             onClick={() => onNavigate('notifications')}

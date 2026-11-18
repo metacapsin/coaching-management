@@ -1,23 +1,67 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useEscape } from '../ui/useEscape';
 import { OrgLogo } from '../ui/OrgLogo';
 import { useInstitute } from '../../Context/InstituteContext';
 import { useAuth } from '../../Context/AuthContext';
 import { canManageInstitute } from '../../Context/Access';
 import type { FeeTransaction } from '../../types';
-import { openWhatsApp } from '../utils/helpers';
-import { X, Printer, Share2, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { emailFeeReceipt, flushPending } from '../utils/api';
+import { downloadTablePdf } from '../utils/simplePdf';
+import { receiptPdfBytes, receiptTable, toBase64 } from '../utils/receiptPdf';
+import { TypedSignature, useSignatoryName } from '../ui/TypedSignature';
+import { X, Printer, Mail, FileDown, Loader2, CheckCircle2, ShieldCheck } from 'lucide-react';
 
 interface PrintableFeeReceiptModalProps {
   transaction: FeeTransaction | null;
   onClose: () => void;
+  // the principal asked, in the form, to send the receipt (PDF) to the parent: it goes at once when the receipt opens
+  autoSend?: boolean;
 }
 
-export const PrintableFeeReceiptModal: React.FC<PrintableFeeReceiptModalProps> = ({ transaction, onClose }) => {
+type SendState = 'idle' | 'sending' | 'sent' | 'no-email' | 'failed';
+
+export const PrintableFeeReceiptModal: React.FC<PrintableFeeReceiptModalProps> = ({ transaction, onClose, autoSend = false }) => {
   useEscape(onClose);
-  const { profile, students, sendNotification } = useInstitute();
+  const { profile, students } = useInstitute();
   const { user } = useAuth();
   const office = canManageInstitute(user?.role); // a parent or a student only prints or saves the receipt
+  const [sendState, setSendState] = useState<SendState>('idle');
+  const signatory = useSignatoryName(transaction?.issuedBy);
+  const autoDone = useRef<string | null>(null);
+
+  // The PDF of this receipt goes to the parent by email. The receipt may not be on the server yet (it is saved a moment after the form): try a few times.
+  const sendToParent = async () => {
+    if (!transaction) return;
+    const st = students.find(s => s.id === transaction.studentId);
+    const bal = typeof transaction.balanceAfter === 'number' ? transaction.balanceAfter : Math.max(0, (st ? st.totalFees - st.discount - st.feePaid : 0));
+    setSendState('sending');
+    try {
+      await flushPending(); // (what the form just saved, the receipt and a new parent email, has to be on the server first)
+      const pdf = toBase64(receiptPdfBytes(transaction, st, profile.name, bal, { name: signatory, title: profile.signatoryTitle }));
+      for (let i = 0; i < 6; i++) {
+        try {
+          const r = await emailFeeReceipt(transaction.id, pdf);
+          setSendState(r.sent ? 'sent' : r.reason === 'no-email' ? 'no-email' : 'failed');
+          return;
+        } catch (err) {
+          if (!/not found/i.test(err instanceof Error ? err.message : '')) throw err;
+          await flushPending();
+          await new Promise(res => setTimeout(res, 500));
+        }
+      }
+      setSendState('failed');
+    } catch {
+      setSendState('failed');
+    }
+  };
+
+  useEffect(() => {
+    if (autoSend && office && transaction && autoDone.current !== transaction.id) {
+      autoDone.current = transaction.id;
+      void sendToParent();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSend, office, transaction?.id]);
 
   if (!transaction) return null;
 
@@ -38,21 +82,9 @@ export const PrintableFeeReceiptModal: React.FC<PrintableFeeReceiptModalProps> =
     window.print();
   };
 
-  const handleShareWhatsApp = () => {
-    if (!student) return;
-    const message = `Official Fee Receipt: ${profile.name}\nReceipt No: ${transaction.receiptNo}\nDate: ${transaction.date}\nStudent: ${student.name} (${student.rollNo})\nBatch: ${transaction.batchName}\nAmount Paid: ${profile.currencySymbol}${transaction.amount.toLocaleString()} via ${transaction.paymentMethod}\nOutstanding Balance: ${profile.currencySymbol}${outstandingBalance.toLocaleString()}\nThank you for choosing ${profile.name}.`;
-
-    sendNotification({
-      type: 'fee_due',
-      channel: 'whatsapp',
-      recipientName: student.parentName,
-      recipientPhone: student.parentPhone,
-      studentName: student.name,
-      studentId: student.id,
-      content: `Fee Receipt ${transaction.receiptNo} sent for ${profile.currencySymbol}${transaction.amount}`
-    });
-
-    openWhatsApp(student.parentPhone, message);
+  // the receipt as a PDF file (to keep, or to send by any way)
+  const handleDownloadPdf = () => {
+    void downloadTablePdf(`Receipt-${transaction.receiptNo}.pdf`, receiptTable(transaction, student, profile.name, outstandingBalance, { name: signatory, title: profile.signatoryTitle }));
   };
 
   return (
@@ -70,15 +102,23 @@ export const PrintableFeeReceiptModal: React.FC<PrintableFeeReceiptModalProps> =
           </div>
 
           <div className="flex items-center gap-2">
-            {office && (
+            {office && transaction.status !== 'cancelled' && (
               <button
-                onClick={handleShareWhatsApp}
-                className="px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg flex items-center gap-1.5 transition-colors"
+                onClick={() => void sendToParent()}
+                disabled={sendState === 'sending'}
+                className="px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg flex items-center gap-1.5 transition-colors disabled:opacity-60"
               >
-                <Share2 className="w-3.5 h-3.5" />
-                WhatsApp Parent
+                {sendState === 'sending' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
+                {sendState === 'sent' ? 'Send again' : 'Email PDF to Parent'}
               </button>
             )}
+            <button
+              onClick={handleDownloadPdf}
+              className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg flex items-center gap-1.5 transition-colors"
+            >
+              <FileDown className="w-3.5 h-3.5" />
+              Download PDF
+            </button>
             <button
               onClick={handlePrint}
               className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-1.5 transition-colors shadow-xs"
@@ -94,6 +134,20 @@ export const PrintableFeeReceiptModal: React.FC<PrintableFeeReceiptModalProps> =
             </button>
           </div>
         </div>
+
+        {office && sendState !== 'idle' && (
+          <div
+            role="status"
+            className={`px-6 py-2.5 text-xs border-b print:hidden ${
+              sendState === 'sent' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : sendState === 'sending' ? 'bg-slate-50 text-slate-600 border-slate-200' : 'bg-amber-50 text-amber-900 border-amber-200'
+            }`}
+          >
+            {sendState === 'sending' && 'Sending the receipt (PDF) to the parent...'}
+            {sendState === 'sent' && `The receipt (PDF) was emailed to ${student?.parentEmail || 'the parent'}.`}
+            {sendState === 'no-email' && 'This student has no parent email, so nothing was sent. Add the parent email in Edit, or download the PDF.'}
+            {sendState === 'failed' && 'The email could not be sent (check that email is connected). You can download the PDF and send it yourself.'}
+          </div>
+        )}
 
         {/* Printable Voucher Sheet */}
         <div className="relative p-8 print:p-6" id="printable-receipt">
@@ -242,12 +296,9 @@ export const PrintableFeeReceiptModal: React.FC<PrintableFeeReceiptModalProps> =
               <p>Keep this receipt safe for course material and admit card issuance.</p>
             </div>
 
-            <div className="text-right space-y-3">
-              <div className="w-36 border-b border-slate-400 pb-1 mx-auto text-center font-serif italic text-slate-700">
-                &nbsp;
-              </div>
-              <p className="font-semibold text-slate-900">{profile.signatoryTitle || 'Authorized Signatory'}</p>
-              <p className="text-slate-400">{profile.name}</p>
+            <div className="text-right">
+              {/* the signature: the name written as text (no pen is needed) */}
+              <TypedSignature name={signatory} title={profile.signatoryTitle || 'Authorized Signatory'} institute={profile.name} />
             </div>
           </div>
         </div>

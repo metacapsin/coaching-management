@@ -35,6 +35,13 @@ export interface OrgMail {
   fromName: string; // the name shown for an email that has no person (the coaching)
 }
 
+/** A file that goes with an email (for example the PDF of a fee receipt). */
+export interface Attachment {
+  filename: string;
+  content: Buffer;
+  contentType: string;
+}
+
 export interface Mail {
   to: string;
   subject: string;
@@ -42,6 +49,7 @@ export interface Mail {
   html?: string | null;
   sender?: Sender;
   org?: OrgMail | null;
+  attachments?: Attachment[];
 }
 
 // ---- which coaching an email belongs to: the request that writes it says so (AsyncLocalStorage), and the settings of that coaching
@@ -104,7 +112,7 @@ export function setDelivery(fn: Delivery | null, retryMs = 3000): void {
   retryDelayMs = retryMs;
 }
 
-type SendFn = (to: string, subject: string, text: string, html: string | null, sender?: Sender) => boolean;
+type SendFn = (to: string, subject: string, text: string, html: string | null, sender?: Sender, attachments?: Attachment[]) => boolean;
 let sendOverride: SendFn | null = null;
 
 /** Replaces send() as a whole (tests that look at the emails the routes write). Pass null to go back. */
@@ -164,7 +172,7 @@ async function deliver(mail: Mail): Promise<boolean> {
     // (an email without a person shows the name AcademiaOS, unless SMTP_FROM already has a name)
     const fallbackName = mail.org?.fromName || 'AcademiaOS';
     const from = mail.sender?.name ? { name: mail.sender.name, address } : mail.org || !/<[^>]+>/.test(s.sender) ? { name: fallbackName, address } : s.sender;
-    await transport.sendMail({ from, replyTo: mail.sender?.replyTo || undefined, to: mail.to, subject: mail.subject, text: mail.text, html: mail.html || undefined });
+    await transport.sendMail({ from, replyTo: mail.sender?.replyTo || undefined, to: mail.to, subject: mail.subject, text: mail.text, html: mail.html || undefined, attachments: mail.attachments });
     console.log(`[mail] sent to ${mail.to}: ${mail.subject}`);
     return true;
   } catch (err) {
@@ -177,11 +185,11 @@ async function deliver(mail: Mail): Promise<boolean> {
 let line: Promise<void> = Promise.resolve();
 
 /** Puts the email in the line of the background worker. Returns true when it was taken, false when email is not set up. */
-export function send(to: string, subject: string, text: string, html: string | null = null, sender?: Sender): boolean {
-  if (sendOverride) return sendOverride(to, subject, text, html, sender);
+export function send(to: string, subject: string, text: string, html: string | null = null, sender?: Sender, attachments?: Attachment[]): boolean {
+  if (sendOverride) return sendOverride(to, subject, text, html, sender, attachments);
   if (!to || !configured()) return false;
   const org = requestOrg.getStore()?.org;
-  const mail: Mail = { to, subject, text, html, sender, org: org ? orgCache.get(org) ?? null : null };
+  const mail: Mail = { to, subject, text, html, sender, attachments, org: org ? orgCache.get(org) ?? null : null };
   line = line.then(async () => {
     if (!(await deliver(mail))) {
       await new Promise((resolve) => setTimeout(resolve, retryDelayMs));

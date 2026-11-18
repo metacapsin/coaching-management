@@ -25,6 +25,7 @@ const PROFILE_FIELDS: { key: string; label: string; mono?: boolean; wide?: boole
   { key: 'academicYear', label: 'Academic Session Year' },
   { key: 'currencySymbol', label: 'Billing Currency Symbol', mono: true },
   { key: 'signatoryTitle', label: 'Signatory Title' },
+  { key: 'signatoryName', label: 'Signature name (written as the signature on receipts, admit cards and results)' },
   { key: 'address', label: 'Campus Physical Address', wide: true },
   { key: 'website', label: 'Website' },
   { key: 'phone', label: 'Official Front-Desk Phone' },

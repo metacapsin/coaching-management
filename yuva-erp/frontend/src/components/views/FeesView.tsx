@@ -254,7 +254,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
             <h1 className="text-xl font-bold text-slate-900 tracking-tight">Fee Management & Invoicing</h1>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Track tuition fee ledgers, installments, cash/UPI receipt generation, and WhatsApp payment reminders.
+            The fees that the parents paid: write how each parent paid (online or offline), make the receipt, and send it to the parent as a PDF.
           </p>
         </div>
 
@@ -263,7 +263,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
           className="px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
         >
           <Plus className="w-4 h-4" />
-          Record Fee Payment
+          Fee Received from Parent
         </button>
       </div>
 

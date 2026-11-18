@@ -2,6 +2,7 @@ import React from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { Exam, Student } from '../../types';
 import { ModalShell } from '../ui/ModalShell';
+import { TypedSignature, useSignatoryName } from '../ui/TypedSignature';
 import { formatDate } from '../utils/helpers';
 import { Printer, Award } from 'lucide-react';
 
@@ -19,6 +20,7 @@ export const PrintableMyResultsModal: React.FC<{ student: Student; batchName: st
   onClose
 }) => {
   const { profile } = useInstitute();
+  const signatory = useSignatoryName();
   const total = rows.reduce((n, r) => n + r.result.marksObtained, 0);
   const max = rows.reduce((n, r) => n + r.exam.maxMarks, 0);
 
@@ -97,7 +99,7 @@ export const PrintableMyResultsModal: React.FC<{ student: Student; batchName: st
         </table>
         {rows.length === 0 && <p className="text-xs text-slate-400 text-center py-6">No published results yet.</p>}
         <div className="mt-8 flex justify-end text-[11px] text-slate-600">
-          <span className="border-t border-slate-500 pt-1 px-6">{profile.signatoryTitle}</span>
+          <TypedSignature name={signatory} title={profile.signatoryTitle} />
         </div>
       </div>
     </ModalShell>

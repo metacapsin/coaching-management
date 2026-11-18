@@ -779,7 +779,8 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       date,
       installmentNo,
       notes,
-      balanceAfter: balanceBefore - amount
+      balanceAfter: balanceBefore - amount,
+      issuedBy: user?.name || undefined
     };
 
     setTransactions(prev => [newTx, ...prev]);

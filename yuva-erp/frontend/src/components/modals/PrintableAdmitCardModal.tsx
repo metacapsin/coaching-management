@@ -3,6 +3,7 @@ import { useInstitute } from '../../Context/InstituteContext';
 import type { Exam } from '../../types';
 import { ModalShell } from '../ui/ModalShell';
 import { formatDate, plural } from '../utils/helpers';
+import { TypedSignature, useSignatoryName } from '../ui/TypedSignature';
 import { Printer, Ticket } from 'lucide-react';
 
 interface PrintableAdmitCardModalProps {
@@ -13,6 +14,7 @@ interface PrintableAdmitCardModalProps {
 // Admit cards for every student of the exam's batch (two on a page)
 export const PrintableAdmitCardModal: React.FC<PrintableAdmitCardModalProps> = ({ exam, onClose }) => {
   const { profile, students, batches } = useInstitute();
+  const signatory = useSignatoryName();
   const batch = batches.find(b => b.id === exam.batchId);
   const list = students.filter(s => s.batchId === exam.batchId && s.status !== 'inactive');
 
@@ -71,7 +73,7 @@ export const PrintableAdmitCardModal: React.FC<PrintableAdmitCardModalProps> = (
             </ul>
             <div className="mt-6 flex justify-between text-[11px] text-slate-600">
               <span className="border-t border-slate-500 pt-1 px-4">Signature of student</span>
-              <span className="border-t border-slate-500 pt-1 px-4">{profile.signatoryTitle}</span>
+              <TypedSignature name={signatory} title={profile.signatoryTitle} />
             </div>
           </div>
         ))}

@@ -1848,3 +1848,51 @@ describe('Attendance: each teacher marks the own subject', () => {
     }
   });
 });
+
+
+describe('The fee receipt goes to the parent as a PDF', () => {
+  let admin = '';
+  let teacher = '';
+  const s = withServer(async (api) => {
+    admin = (await api.call('POST', '/api/auth/setup', { name: 'P', email: 'p@x.com', password: PASSWORD }))[1].token;
+    const kid = { ...STUDENTS[0], parentName: 'Alice Father', parentEmail: 'dad@x.com', totalFees: 5000, feePaid: 1000 };
+    const tx = { id: 'tx1', receiptNo: 'REC-2026-0001', studentId: 's1', studentName: 'Alice', studentRollNo: '01', batchName: 'Batch A', amount: 1000, paymentMethod: 'UPI', date: '2026-11-18', installmentNo: 1, balanceAfter: 4000 };
+    await api.call('PUT', '/api/institute', { changes: { batches: { upsert: BATCHES }, students: { upsert: [kid, STUDENTS[1]] }, transactions: { upsert: [tx, { ...tx, id: 'tx2', receiptNo: 'REC-2026-0002', studentId: 's2', status: 'cancelled' }] } } }, admin);
+    await api.call('POST', '/api/users', { name: 'T', email: 't@x.com', password: PASSWORD, role: 'teacher', batchIds: ['b1'] }, admin);
+    teacher = await tokenOf(api, 't@x.com', 'member');
+  });
+  const call = (...a: Parameters<Api['call']>) => s.api.call(...a);
+  const pdf = Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(200, 'x')]).toString('base64');
+
+  it('1 the PDF is attached to the email to the parent', async () => {
+    const mail = captureMail();
+    try {
+      const [status, data] = await call('POST', '/api/transactions/tx1/email-receipt', { pdf }, admin);
+      assert.equal(status, 200);
+      assert.equal(data.sent, true);
+      const sent = mail.sent.filter((m) => m[0] === 'dad@x.com');
+      assert.equal(sent.length, 1);
+      assert.ok(sent[0][1].includes('REC-2026-0001'));
+      const files = sent[0][5]!;
+      assert.equal(files.length, 1);
+      assert.equal(files[0].contentType, 'application/pdf');
+      assert.equal(files[0].filename, 'Receipt-REC-2026-0001.pdf');
+      assert.ok(files[0].content.subarray(0, 5).toString() === '%PDF-');
+    } finally {
+      mail.stop();
+    }
+  });
+
+  it('2 only the principal, only a real PDF, only a receipt that is not cancelled; a parent with no email gets nothing', async () => {
+    assert.notEqual((await call('POST', '/api/transactions/tx1/email-receipt', { pdf }, teacher))[0], 200);
+    assert.equal((await call('POST', '/api/transactions/tx1/email-receipt', { pdf: Buffer.from('not a pdf at all, only some text here').toString('base64') }, admin))[0], 400);
+    assert.equal((await call('POST', '/api/transactions/tx1/email-receipt', {}, admin))[0], 400);
+    assert.equal((await call('POST', '/api/transactions/nobody/email-receipt', { pdf }, admin))[0], 404);
+    assert.equal((await call('POST', '/api/transactions/tx2/email-receipt', { pdf }, admin))[0], 400); // cancelled
+    await call('PUT', '/api/institute', { changes: { students: { upsert: [{ ...STUDENTS[0], parentEmail: '', totalFees: 5000, feePaid: 1000 }] } } }, admin);
+    const [status, data] = await call('POST', '/api/transactions/tx1/email-receipt', { pdf }, admin);
+    assert.equal(status, 200);
+    assert.equal(data.sent, false);
+    assert.equal(data.reason, 'no-email');
+  });
+});

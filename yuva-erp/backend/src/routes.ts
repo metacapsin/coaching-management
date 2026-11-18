@@ -1266,6 +1266,48 @@ route('/api/students/<student_id>/send-rules', ['POST'], 'admin', async (c) => {
   return { sent };
 });
 
+/** The receipt of a fee that a parent paid goes to the parent by email as a PDF. The principal's browser makes the PDF (the receipt of the page) and sends it
+ * here; the server checks that the receipt and the parent exist and that the file is a small PDF. */
+route('/api/transactions/<tx_id>/email-receipt', ['POST'], 'admin', async (c) => {
+  const s = c.store;
+  const tx = await s.getItem('transactions', c.req.params.tx_id as string);
+  if (!tx) throw new HttpError(404, 'Receipt not found.');
+  if (tx.status === 'cancelled') throw new HttpError(400, 'This receipt is cancelled.');
+  const b = c.body(2 * 1024 * 1024);
+  const raw = typeof b.pdf === 'string' ? b.pdf.replace(/^data:application\/pdf;base64,/, '') : '';
+  if (!raw || !/^[A-Za-z0-9+/]*={0,2}$/.test(raw)) throw new HttpError(400, 'The receipt PDF is missing.');
+  const pdf = Buffer.from(raw, 'base64');
+  if (pdf.length < 100 || pdf.length > 1_000_000 || pdf.subarray(0, 5).toString('latin1') !== '%PDF-') throw new HttpError(400, 'The receipt must be a small PDF file.');
+  const student = await s.getItem('students', tx.studentId);
+  const to = text(student?.parentEmail, 150).toLowerCase();
+  if (!student || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return { sent: false, reason: 'no-email' };
+  const coaching = await coachingName(c, s);
+  const money = `Rs. ${Number(tx.amount || 0).toLocaleString('en-IN')}`;
+  const [queued] = mail(
+    to,
+    `Fee receipt ${tx.receiptNo} from ${coaching}`,
+    'Your fee receipt',
+    [`We received ${money} for ${student.name}. The receipt is attached to this email as a PDF. Please keep it.`],
+    {
+      details: [
+        ['Receipt no', tx.receiptNo],
+        ['Student', student.name],
+        ['Amount received', money],
+        ['Paid by', tx.paymentMethod],
+        ['Date', tx.date],
+        ...(typeof tx.balanceAfter === 'number' ? ([['Balance due', `Rs. ${Number(tx.balanceAfter).toLocaleString('en-IN')}`]] as [string, string][]) : []),
+      ],
+      button: ['Sign in as Parent', c.loginLink('parent')],
+      note: 'In the parent login you also see all the receipts and the fees of your child.',
+      name: student.parentName,
+      from: fromPerson(c.user, coaching),
+    },
+    [{ filename: `Receipt-${String(tx.receiptNo).replace(/[^A-Za-z0-9_-]/g, '')}.pdf`, content: pdf, contentType: 'application/pdf' }],
+  );
+  await s.audit(c.user, 'receipt-emailed', `${tx.receiptNo} -> ${student.name}`);
+  return { sent: queued, reason: queued ? '' : 'mail-not-set-up' };
+});
+
 // ---------- documents of a student (Aadhaar card, TC, character certificate...): only the principal adds and reads them ----------
 
 const DOCUMENT_KINDS: Record<string, string> = {

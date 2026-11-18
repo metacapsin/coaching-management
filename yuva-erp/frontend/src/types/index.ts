@@ -92,6 +92,7 @@ export interface FeeTransaction {
   installmentNo: number;
   notes?: string;
   balanceAfter?: number; // fee balance right after this payment (for the receipt)
+  issuedBy?: string; // the principal who made the receipt (his name is the typed signature when the profile has no signature name)
   // A cancelled receipt stays in the ledger (for the accounts) but is not counted as money received
   status?: 'active' | 'cancelled';
   cancelReason?: string;
@@ -167,6 +168,7 @@ export interface InstituteProfile {
   currencySymbol: string;
   academicYear: string;
   signatoryTitle: string;
+  signatoryName?: string; // the name typed as the signature of the principal on the receipts, admit cards and results (no pen is needed)
   upiId?: string; // where parents pay the fee (UPI id like name@bank): the "Pay now" link of a fee notice goes there
   logo?: string; // a small picture (data URL) for the letterhead
   autoFeeReminders?: boolean; // queue the reminders of the overdue fees once a day

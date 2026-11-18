@@ -427,6 +427,10 @@ export interface StudentDocument {
   url: string;
 }
 
+// The receipt of a fee (the PDF made in the browser) goes to the parent by email.
+export const emailFeeReceipt = (transactionId: string, pdfBase64: string) =>
+  request<{ sent: boolean; reason?: string }>('POST', `/transactions/${encodeURIComponent(transactionId)}/email-receipt`, { pdf: pdfBase64 });
+
 // The rules and regulations for students and parents go by email to the student and to the parent.
 export const sendStudentRules = (studentId: string) =>
   request<{ sent: string[] }>('POST', `/students/${encodeURIComponent(studentId)}/send-rules`, {});

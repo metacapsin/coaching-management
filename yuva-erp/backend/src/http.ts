@@ -296,11 +296,11 @@ export const nowIso = (): string => new Date().toISOString().slice(0, 19) + 'Z';
 // ---------- emails ----------
 
 /** Sends a good looking email (HTML card with the plain text next to it). Returns [handed over, plain text]. */
-export function mail(to: string, subject: string, heading: string, lines: string[], look: emailTemplate.RenderOptions = {}): [boolean, string] {
+export function mail(to: string, subject: string, heading: string, lines: string[], look: emailTemplate.RenderOptions = {}, attachments?: mailer.Attachment[]): [boolean, string] {
   const [plain, html] = emailTemplate.render(heading, lines, look);
   // an email that comes from a person shows that person's name as the sender, and Reply writes to the person
   const sender = look.from ? { name: look.from.name, replyTo: look.from.email } : undefined;
-  return [Boolean(mailer.send(to, subject, plain, html, sender)), plain];
+  return [Boolean(mailer.send(to, subject, plain, html, sender, attachments)), plain];
 }
 
 /** The sender of an email that comes from a person. The address in "From" can only be the account that sends (Gmail does not allow another
