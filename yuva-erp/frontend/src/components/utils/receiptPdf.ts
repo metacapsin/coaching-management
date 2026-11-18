@@ -53,6 +53,10 @@ export function receiptTable(tx: FeeTransaction, student: Student | undefined, c
 export const receiptPdfBytes = (tx: FeeTransaction, student: Student | undefined, coaching: string, balanceDue: number, signatory?: { name: string; title: string }): Uint8Array =>
   buildTablePdf(receiptTable(tx, student, coaching, balanceDue, signatory));
 
+// The receipt as a WhatsApp message (the details in words; the PDF can be attached by hand)
+export const receiptWhatsAppMessage = (tx: FeeTransaction, studentRoll: string, coaching: string, currency: string, balanceDue: number): string =>
+  `Official Fee Receipt: ${coaching}\nReceipt No: ${tx.receiptNo}\nDate: ${tx.date}\nStudent: ${tx.studentName} (${studentRoll})\nBatch: ${tx.batchName}\nAmount Paid: ${currency}${tx.amount.toLocaleString()} via ${tx.paymentMethod}\nOutstanding Balance: ${currency}${balanceDue.toLocaleString()}\nThank you for choosing ${coaching}.`;
+
 // The bytes of the PDF as base64 text (to send them to the server)
 export const toBase64 = (bytes: Uint8Array): string => {
   let binary = '';

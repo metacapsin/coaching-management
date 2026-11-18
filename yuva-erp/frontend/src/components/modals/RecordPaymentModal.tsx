@@ -4,8 +4,8 @@ import { useEscape } from '../ui/useEscape';
 import { NeedFirst } from '../ui/NeedFirst';
 import { useInstitute } from '../../Context/InstituteContext';
 import type { PaymentMethod, FeeTransaction } from '../../types';
-import { toLocalISODate } from '../utils/helpers';
-import { PAYMENT_MODES } from '../utils/receiptPdf';
+import { openWhatsApp, toLocalISODate } from '../utils/helpers';
+import { PAYMENT_MODES, receiptWhatsAppMessage } from '../utils/receiptPdf';
 import { X, CreditCard, Check, AlertCircle } from 'lucide-react';
 
 interface RecordPaymentModalProps {
@@ -23,7 +23,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   onPaymentSuccess
 }) => {
   useEscape(onClose);
-  const { students, recordPayment, updateStudent, profile } = useInstitute();
+  const { students, recordPayment, updateStudent, sendNotification, profile } = useInstitute();
 
   // Archived students cannot pay; a pre-selected student is always kept in the list
   const payableStudents = students.filter(s => s.status !== 'inactive' || s.id === preselectedStudentId);
@@ -31,6 +31,8 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   // The amount is what the PARENT paid: the principal writes it (nothing is filled in), so no payment is made from this page.
   const [amount, setAmount] = useState<number>(0);
   const [emailToParent, setEmailToParent] = useState(false);
+  // the receipt on WhatsApp, to the phone number of the parent (when the email of the parent is not known)
+  const [whatsAppToParent, setWhatsAppToParent] = useState(false);
   // a student with no parent email: the principal writes it right here (it is saved on the student)
   const [parentEmailText, setParentEmailText] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('UPI');
@@ -43,6 +45,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   useEffect(() => {
     // the box is ticked at first when the student has a parent email; the email written for another student is not kept
     setEmailToParent(startEmail);
+    setWhatsAppToParent(!startEmail); // (no email known: WhatsApp is ticked at first)
     setParentEmailText('');
   }, [studentId, startEmail]);
 
@@ -90,6 +93,20 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
         date
       });
 
+      // WhatsApp: the receipt goes to the phone number of the parent (the window of WhatsApp opens from this click)
+      if (whatsAppToParent && currentStudent?.parentPhone) {
+        const bal = typeof tx.balanceAfter === 'number' ? tx.balanceAfter : currentBalance;
+        sendNotification({
+          type: 'fee_due',
+          channel: 'whatsapp',
+          recipientName: currentStudent.parentName,
+          recipientPhone: currentStudent.parentPhone,
+          studentName: currentStudent.name,
+          studentId: currentStudent.id,
+          content: `Fee Receipt ${tx.receiptNo} sent for ${profile.currencySymbol}${tx.amount}`
+        });
+        openWhatsApp(currentStudent.parentPhone, receiptWhatsAppMessage(tx, currentStudent.rollNo, profile.name, profile.currencySymbol, bal));
+      }
       if (onPaymentSuccess) {
         onPaymentSuccess(tx, { emailToParent: emailToParent && (parentHasEmail || validEmail(parentEmailText)) });
       }
@@ -249,7 +266,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
               <span className="text-xs">
                 <span className="font-medium text-slate-800">Send the receipt (PDF) to the parent by email</span>
                 <span className="block text-[11px] text-slate-500 mt-0.5">
-                  {parentHasEmail ? `It goes to ${currentStudent?.parentEmail}.` : 'This student has no parent email yet. Write it below (it is saved on the student), or leave the tick off and send the receipt on WhatsApp to the phone number of the parent.'}
+                  {parentHasEmail ? `It goes to ${currentStudent?.parentEmail}.` : 'This student has no parent email yet. Write it below (it is saved on the student), or use WhatsApp below.'}
                 </span>
               </span>
             </label>
@@ -265,6 +282,25 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                 className="mt-2 w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               />
             )}
+
+            {/* WhatsApp: the receipt goes to the phone number of the parent (useful when the email of the parent is not known) */}
+            <label className="flex items-start gap-2 cursor-pointer mt-3 pt-3 border-t border-blue-100">
+              <input
+                type="checkbox"
+                checked={whatsAppToParent}
+                disabled={!currentStudent?.parentPhone}
+                onChange={e => setWhatsAppToParent(e.target.checked)}
+                className="mt-0.5 rounded border-slate-300 text-emerald-600 w-4 h-4 shrink-0"
+              />
+              <span className="text-xs">
+                <span className="font-medium text-slate-800">Send the receipt on WhatsApp to the parent</span>
+                <span className="block text-[11px] text-slate-500 mt-0.5">
+                  {currentStudent?.parentPhone
+                    ? `WhatsApp opens with the receipt written for ${currentStudent.parentPhone}. Press send there. (To send the PDF too, download it from the receipt and attach it.)`
+                    : 'This student has no parent phone number.'}
+                </span>
+              </span>
+            </label>
           </div>
 
           <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
