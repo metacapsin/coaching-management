@@ -28,8 +28,13 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   // Archived students cannot pay; a pre-selected student is always kept in the list
   const payableStudents = students.filter(s => s.status !== 'inactive' || s.id === preselectedStudentId);
   const [studentId, setStudentId] = useState(preselectedStudentId || (payableStudents[0]?.id || ''));
-  // The amount is what the PARENT paid: the principal writes it (nothing is filled in), so no payment is made from this page.
-  const [amount, setAmount] = useState<number>(0);
+  // The amount is what the PARENT paid. When a student is chosen, the whole pending fee of the student is written here at once; the principal changes it
+  // when the parent paid less (a part of the fee).
+  const dueOf = (id: string) => {
+    const st = students.find(x => x.id === id);
+    return st ? Math.max(0, st.totalFees - st.discount - st.feePaid) : 0;
+  };
+  const [amount, setAmount] = useState<number>(() => dueOf(preselectedStudentId || payableStudents[0]?.id || ''));
   const [emailToParent, setEmailToParent] = useState(false);
   // a student with no parent email: the principal writes it right here (it is saved on the student)
   const [parentEmailText, setParentEmailText] = useState('');
@@ -154,7 +159,11 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
             <label className="block text-xs font-medium text-slate-700 mb-1">Student whose fee the parent paid</label>
             <Select
               value={studentId}
-              onChange={e => setStudentId(e.target.value)}
+              onChange={e => {
+                setStudentId(e.target.value);
+                setAmount(dueOf(e.target.value)); // (the pending fee of the chosen student is filled in; it can be changed)
+                setError('');
+              }}
               className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
             >
               {payableStudents.map(s => {
@@ -193,6 +202,11 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
           <div>
             <div className="flex justify-between items-center mb-1">
               <label className="block text-xs font-medium text-slate-700">Amount paid by the parent ({profile.currencySymbol})</label>
+              {currentBalance > 0 && amount !== currentBalance && (
+                <button type="button" onClick={() => setAmount(currentBalance)} className="text-[11px] text-blue-600 hover:underline">
+                  Use the full pending fee ({profile.currencySymbol}{currentBalance.toLocaleString()})
+                </button>
+              )}
             </div>
             <input
               type="number"
