@@ -9,7 +9,8 @@ import { emailFeeReceipt, flushPending } from '../utils/api';
 import { downloadTablePdf } from '../utils/simplePdf';
 import { receiptPdfBytes, receiptTable, toBase64 } from '../utils/receiptPdf';
 import { TypedSignature, useSignatoryName } from '../ui/TypedSignature';
-import { X, Printer, Mail, FileDown, Loader2, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { openWhatsApp } from '../utils/helpers';
+import { X, Printer, Mail, FileDown, Share2, Loader2, CheckCircle2, ShieldCheck } from 'lucide-react';
 
 interface PrintableFeeReceiptModalProps {
   transaction: FeeTransaction | null;
@@ -22,7 +23,7 @@ type SendState = 'idle' | 'sending' | 'sent' | 'no-email' | 'failed';
 
 export const PrintableFeeReceiptModal: React.FC<PrintableFeeReceiptModalProps> = ({ transaction, onClose, autoSend = false }) => {
   useEscape(onClose);
-  const { profile, students } = useInstitute();
+  const { profile, students, sendNotification } = useInstitute();
   const { user } = useAuth();
   const office = canManageInstitute(user?.role); // a parent or a student only prints or saves the receipt
   const [sendState, setSendState] = useState<SendState>('idle');
@@ -82,6 +83,30 @@ export const PrintableFeeReceiptModal: React.FC<PrintableFeeReceiptModalProps> =
     window.print();
   };
 
+  // When the principal has no email of the parent: the receipt goes to the phone number of the parent on WhatsApp (the message with the details; the PDF can be
+  // downloaded here and attached in WhatsApp)
+  const handleShareWhatsApp = () => {
+    if (!student) return;
+    const message = `Official Fee Receipt: ${profile.name}
+Receipt No: ${transaction.receiptNo}
+Date: ${transaction.date}
+Student: ${student.name} (${student.rollNo})
+Batch: ${transaction.batchName}
+Amount Paid: ${profile.currencySymbol}${transaction.amount.toLocaleString()} via ${transaction.paymentMethod}
+Outstanding Balance: ${profile.currencySymbol}${outstandingBalance.toLocaleString()}
+Thank you for choosing ${profile.name}.`;
+    sendNotification({
+      type: 'fee_due',
+      channel: 'whatsapp',
+      recipientName: student.parentName,
+      recipientPhone: student.parentPhone,
+      studentName: student.name,
+      studentId: student.id,
+      content: `Fee Receipt ${transaction.receiptNo} sent for ${profile.currencySymbol}${transaction.amount}`
+    });
+    openWhatsApp(student.parentPhone, message);
+  };
+
   // the receipt as a PDF file (to keep, or to send by any way)
   const handleDownloadPdf = () => {
     void downloadTablePdf(`Receipt-${transaction.receiptNo}.pdf`, receiptTable(transaction, student, profile.name, outstandingBalance, { name: signatory, title: profile.signatoryTitle }));
@@ -110,6 +135,16 @@ export const PrintableFeeReceiptModal: React.FC<PrintableFeeReceiptModalProps> =
               >
                 {sendState === 'sending' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
                 {sendState === 'sent' ? 'Send again' : 'Email PDF to Parent'}
+              </button>
+            )}
+            {office && transaction.status !== 'cancelled' && (
+              <button
+                onClick={handleShareWhatsApp}
+                title="Send the receipt to the phone number of the parent on WhatsApp (when the email of the parent is not known)"
+                className="px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg flex items-center gap-1.5 transition-colors"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                WhatsApp Parent
               </button>
             )}
             <button
@@ -144,8 +179,8 @@ export const PrintableFeeReceiptModal: React.FC<PrintableFeeReceiptModalProps> =
           >
             {sendState === 'sending' && 'Sending the receipt (PDF) to the parent...'}
             {sendState === 'sent' && `The receipt (PDF) was emailed to ${student?.parentEmail || 'the parent'}.`}
-            {sendState === 'no-email' && 'This student has no parent email, so nothing was sent. Add the parent email in Edit, or download the PDF.'}
-            {sendState === 'failed' && 'The email could not be sent (check that email is connected). You can download the PDF and send it yourself.'}
+            {sendState === 'no-email' && 'This student has no parent email, so no email was sent. Use WhatsApp Parent to send the receipt to the phone number of the parent, or download the PDF.'}
+            {sendState === 'failed' && 'The email could not be sent (check that email is connected). Use WhatsApp Parent, or download the PDF and send it yourself.'}
           </div>
         )}
 

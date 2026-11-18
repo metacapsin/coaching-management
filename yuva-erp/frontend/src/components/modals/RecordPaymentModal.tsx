@@ -249,7 +249,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
               <span className="text-xs">
                 <span className="font-medium text-slate-800">Send the receipt (PDF) to the parent by email</span>
                 <span className="block text-[11px] text-slate-500 mt-0.5">
-                  {parentHasEmail ? `It goes to ${currentStudent?.parentEmail}.` : 'This student has no parent email yet: write it below and it is saved on the student.'}
+                  {parentHasEmail ? `It goes to ${currentStudent?.parentEmail}.` : 'This student has no parent email yet. Write it below (it is saved on the student), or leave the tick off and send the receipt on WhatsApp to the phone number of the parent.'}
                 </span>
               </span>
             </label>
