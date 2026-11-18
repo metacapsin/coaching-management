@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertCircle, ArrowLeft, CheckCircle2, GraduationCap, Heart, Loader2, Lock, Mail } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Award, CalendarCheck, CreditCard, Eye, Heart, Loader2, Lock, Mail, ShieldCheck } from 'lucide-react';
 import { PasswordInput } from '../ui/PasswordInput';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { useAuth } from '../../Context/AuthContext';
@@ -9,7 +9,10 @@ import { ForgotPassword } from './AuthPage';
 import { ParentSignup } from './ParentSignup';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const cls = 'w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500';
+const cls = 'w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-400';
+
+// the icon of each point on the left side
+const POINT_ICONS: LucideIcon[] = [CalendarCheck, CreditCard, Award, Eye];
 
 type Look = {
   portal: Portal;
@@ -68,9 +71,11 @@ const SeparateLoginPage: React.FC<{ kind: 'parent' }> = ({ kind }) => {
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-slate-50 text-slate-900 font-sans antialiased">
-      <div className="theme-keep hidden lg:flex flex-col justify-between bg-slate-900 text-white p-12">
-        <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-xl ${look.accent} flex items-center justify-center shadow-sm`}>
+      <div className="theme-keep relative overflow-hidden hidden lg:flex flex-col justify-between bg-gradient-to-br from-[#0d1721] via-[#14202e] to-[#1a2a3b] text-white p-12">
+        <span className="absolute -top-24 -left-20 w-72 h-72 rounded-full bg-rose-500/15 blur-3xl pointer-events-none" />
+        <span className="absolute -bottom-28 -right-16 w-80 h-80 rounded-full bg-sky-500/15 blur-3xl pointer-events-none" />
+        <div className="relative flex items-center gap-3">
+          <div className={`w-11 h-11 rounded-xl ${look.accent} flex items-center justify-center shadow-lg shadow-rose-900/40`}>
             <Icon className="w-6 h-6" />
           </div>
           <div>
@@ -78,29 +83,41 @@ const SeparateLoginPage: React.FC<{ kind: 'parent' }> = ({ kind }) => {
             <div className="text-xs text-slate-400">{look.brandSub}</div>
           </div>
         </div>
-        <div>
-          <h2 className="text-3xl font-bold leading-tight tracking-tight max-w-md">{look.headline}</h2>
-          <ul className="mt-8 space-y-3 text-sm">
-            {look.points.map(p => (
-              <li key={p} className="flex items-start gap-2.5 text-slate-300">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
-                <span>{p}</span>
-              </li>
-            ))}
+        <div className="relative">
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider px-3 py-1 rounded-full bg-rose-500/15 text-rose-200 border border-rose-400/30">
+            <Heart className="w-3.5 h-3.5" />
+            For parents
+          </span>
+          <h2 className="mt-5 text-4xl font-bold leading-tight tracking-tight max-w-md">{look.headline}</h2>
+          <ul className="mt-9 space-y-3 max-w-md">
+            {look.points.map((p, i) => {
+              const PointIcon = POINT_ICONS[i] ?? ShieldCheck;
+              return (
+                <li key={p} className="flex items-center gap-3.5 text-sm text-slate-200 rounded-xl border border-white/10 bg-[#0b1520]/50 px-4 py-3">
+                  <span className="w-9 h-9 shrink-0 rounded-lg bg-sky-400/10 text-sky-300 flex items-center justify-center">
+                    <PointIcon className="w-[18px] h-[18px]" />
+                  </span>
+                  <span>{p}</span>
+                </li>
+              );
+            })}
           </ul>
         </div>
-        <div className="text-[11px] text-slate-500">© {new Date().getFullYear()} AcademiaOS</div>
+        <div className="relative text-[11px] text-slate-500">© {new Date().getFullYear()} AcademiaOS</div>
       </div>
 
       <ThemeToggle className="fixed top-3 right-3 z-30 bg-white/80 border border-slate-200" />
 
-      <div className="flex items-center justify-center p-6 sm:p-10">
-        <div className="w-full max-w-md min-w-0">
-          <div className="lg:hidden flex items-center gap-2.5 mb-8">
-            <div className={`w-9 h-9 rounded-lg ${look.accent} text-white flex items-center justify-center`}>
-              <GraduationCap className="w-5 h-5" />
+      <div className="flex items-center justify-center p-5 sm:p-10">
+        <div className="w-full max-w-md min-w-0 bg-white rounded-3xl border border-slate-200 shadow-xl p-7 sm:p-9">
+          <div className="flex items-center gap-2.5 mb-7">
+            <div className={`w-10 h-10 rounded-xl ${look.accent} text-white flex items-center justify-center shadow-md shadow-rose-900/20`}>
+              <Icon className="w-5 h-5" />
             </div>
-            <div className="text-base font-bold tracking-tight">AcademiaOS</div>
+            <div>
+              <div className="text-base font-bold tracking-tight leading-tight">AcademiaOS</div>
+              <div className="text-[11px] text-slate-500">{look.brandSub}</div>
+            </div>
           </div>
 
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">{signup ? 'Create a parent account' : `${look.name} login`}</h1>
@@ -128,7 +145,7 @@ const SeparateLoginPage: React.FC<{ kind: 'parent' }> = ({ kind }) => {
                   </div>
                 </div>
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4" />
+                  <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} className="rounded border-slate-300 text-rose-500 focus:ring-rose-400 w-4 h-4" />
                   <span className="text-xs text-slate-700">Keep me signed in on this device</span>
                 </label>
                 {error && (
@@ -140,7 +157,7 @@ const SeparateLoginPage: React.FC<{ kind: 'parent' }> = ({ kind }) => {
                 <button
                   type="submit"
                   disabled={busy}
-                  className="w-full py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-lg shadow-sm flex items-center justify-center gap-2"
+                  className="w-full py-3 text-sm font-semibold text-white bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 disabled:opacity-60 rounded-xl shadow-lg shadow-rose-500/25 flex items-center justify-center gap-2 transition-all"
                 >
                   {busy ? (
                     <>
@@ -169,7 +186,7 @@ const SeparateLoginPage: React.FC<{ kind: 'parent' }> = ({ kind }) => {
             <p className="text-[11px] uppercase tracking-wider text-slate-400 text-center mb-3">Not a parent?</p>
             <a
               href="/"
-              className="w-full py-2.5 px-4 text-sm font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-2"
+              className="w-full py-2.5 px-4 text-sm font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-colors flex items-center justify-center gap-2"
             >
               <ArrowLeft className="w-4 h-4" />
               {look.other}

@@ -147,32 +147,40 @@ export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }>
       {(balance > 0 && !feeNotSet) || nextTest ? (
         <div className="grid gap-3 md:grid-cols-2">
           {balance > 0 && !feeNotSet && (
-            <div className={`p-4 rounded-2xl border border-rose-200 bg-rose-50 flex items-center justify-between gap-3 flex-wrap ${nextTest ? '' : 'md:col-span-2'}`}>
-              <div className="min-w-0">
+            <div className={`p-4 rounded-2xl border border-rose-200 bg-rose-50 flex items-center gap-4 flex-wrap shadow-sm ${nextTest ? '' : 'md:col-span-2'}`}>
+              <span className="w-11 h-11 shrink-0 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center">
+                <CreditCard className="w-5 h-5" />
+              </span>
+              <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold uppercase tracking-wider text-rose-700">Fee not fully paid</p>
-                <p className="text-2xl font-bold text-rose-800 mt-0.5">
+                <p className="text-2xl font-bold text-rose-800 mt-0.5 leading-tight">
                   {profile.currencySymbol}
                   {formatINR(balance)}
                 </p>
                 <p className="text-[11px] text-rose-700/80 mt-0.5">pending for {user?.isParent ? student.name : 'you'}</p>
               </div>
               {payLink ? (
-                <a href={payLink} target="_blank" rel="noopener noreferrer" className="px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs">
+                <a href={payLink} target="_blank" rel="noopener noreferrer" className="px-5 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md shadow-emerald-900/20">
                   Pay now
                 </a>
               ) : (
-                <span className="text-[11px] text-rose-700/80">Please pay at the office.</span>
+                <span className="text-[11px] font-medium px-3 py-1.5 rounded-lg bg-rose-100 text-rose-700">Please pay at the office</span>
               )}
             </div>
           )}
           {nextTest && (
-            <div className={`p-4 rounded-2xl border border-amber-200 bg-amber-50 ${balance > 0 && !feeNotSet ? '' : 'md:col-span-2'}`}>
-              <p className="text-xs font-semibold uppercase tracking-wider text-amber-700">Next test of {childWord}</p>
-              <p className="text-base font-bold text-amber-900 mt-0.5">{nextTest.title}</p>
-              <p className="text-xs text-amber-900/80 mt-0.5">
-                {nextTest.subject} · {formatDate(nextTest.date)} · {daysToTest <= 0 ? 'today' : daysToTest === 1 ? 'tomorrow' : `in ${daysToTest} days`} · out of {nextTest.maxMarks}
-              </p>
-              {nextTest.syllabusTopics.length > 0 && <p className="text-[11px] text-amber-900/70 mt-1">Covers: {nextTest.syllabusTopics.join(', ')}</p>}
+            <div className={`p-4 rounded-2xl border border-amber-200 bg-amber-50 flex items-start gap-4 shadow-sm ${balance > 0 && !feeNotSet ? '' : 'md:col-span-2'}`}>
+              <span className="w-11 h-11 shrink-0 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center">
+                <Award className="w-5 h-5" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wider text-amber-700">Next test of {childWord}</p>
+                <p className="text-base font-bold text-amber-900 mt-0.5">{nextTest.title}</p>
+                <p className="text-xs text-amber-900/80 mt-0.5">
+                  {nextTest.subject} · {formatDate(nextTest.date)} · {daysToTest <= 0 ? 'today' : daysToTest === 1 ? 'tomorrow' : `in ${daysToTest} days`} · out of {nextTest.maxMarks}
+                </p>
+                {nextTest.syllabusTopics.length > 0 && <p className="text-[11px] text-amber-900/70 mt-1">Covers: {nextTest.syllabusTopics.join(', ')}</p>}
+              </div>
             </div>
           )}
         </div>
