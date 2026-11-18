@@ -24,9 +24,10 @@ const teacherOf = (r: AttendanceRecord) => (r.teacherName ?? '').trim() || (r.ma
 
 type Period = 'day' | '7' | '30' | 'all';
 
-// ---- The three filters (batch, subject, teacher) are linked: choose one and the others follow. A teacher teaches some subjects in some batches
-// (the account of the teacher and the classes that were marked tell it), so: choose a teacher and the subject and the batch of the teacher are chosen
-// (when there is only one), choose a subject and the teacher and the batch of that subject follow, choose a batch and the subject and the teacher follow.
+// ---- The three filters (batch, subject, teacher) are linked: the filter that was chosen LAST decides and the other two follow it. A teacher teaches some
+// subjects in some batches (the account of the teacher and the classes that were marked tell it), so: choose a teacher and the subject and the batch of
+// THAT teacher are put in the other two boxes (when there is only one; with more than one the box says "all"), choose a subject and its teacher and batch
+// follow, choose a batch and its subject and teacher follow. Every box lists all the values: whatever is chosen, the others change to match it.
 type Sel = { batch: string; subject: string; teacher: string };
 type Field = keyof Sel;
 type Link = { teacher: string; subject: string; batchId: string };
@@ -76,7 +77,13 @@ export const AttendanceHistoryView: React.FC = () => {
     for (const u of users) {
       if (u.role !== 'teacher' || (u.status || 'active') !== 'active') continue;
       const subs = splitSubjects(u.subject);
-      for (const b of u.batchIds ?? []) {
+      const own = u.batchIds ?? [];
+      if (!own.length) {
+        // a teacher with no batch: he is in the list, and has no students
+        if (subs.length) subs.forEach(sj => add(u.name, sj, ''));
+        else add(u.name, '', '');
+      }
+      for (const b of own) {
         if (subs.length) subs.forEach(sj => add(u.name, sj, b));
         else add(u.name, '', b);
       }
@@ -96,24 +103,26 @@ export const AttendanceHistoryView: React.FC = () => {
     return Array.from(set);
   };
 
-  // A choice is made: the other filters follow. A value that does not fit any more goes back to "all"; when only one value fits, it is chosen.
+  // A choice is made: the other two boxes change to what fits THIS choice (the one value of the teacher / subject / batch, or "all" when there are many).
   const choose = (field: Field, value: string) => {
-    let cur: Sel = { ...sel, [field]: value };
-    for (let i = 0; i < 3; i++) {
-      for (const f of ['batch', 'subject', 'teacher'] as const) {
-        if (f === field) continue;
-        const ok = allowed(cur, f);
-        if (cur[f] !== 'all' && !ok.includes(cur[f])) cur = { ...cur, [f]: 'all' };
-        if (cur[f] === 'all' && ok.length === 1) cur = { ...cur, [f]: ok[0] };
+    let cur: Sel = { ...NONE, [field]: value };
+    if (value !== 'all') {
+      for (let i = 0; i < 3; i++) {
+        for (const f of ['batch', 'subject', 'teacher'] as const) {
+          if (f === field) continue;
+          const ok = allowed(cur, f);
+          cur = { ...cur, [f]: ok.length === 1 ? ok[0] : 'all' };
+        }
       }
     }
     setSel(cur);
   };
   const filterActive = batchId !== 'all' || subject !== 'all' || teacher !== 'all';
 
-  const batchOptions = allowed(sel, 'batch').filter(id => batches.some(b => b.id === id));
-  const subjectOptions = allowed(sel, 'subject');
-  const teacherOptions = allowed(sel, 'teacher');
+  // every box lists all its values (the choice of one changes the others)
+  const batchOptions = allowed(NONE, 'batch').filter(id => batches.some(b => b.id === id));
+  const subjectOptions = allowed(NONE, 'subject').sort();
+  const teacherOptions = allowed(NONE, 'teacher').sort();
   const subjectText = (k: string) => subjectLabel.get(k) ?? k;
   const teacherText = (k: string) => teacherLabel.get(k) ?? k;
 
@@ -353,7 +362,16 @@ export const AttendanceHistoryView: React.FC = () => {
             <p className="text-[11px] text-slate-500 mt-0.5">What each student did in the classes of {periodText}.</p>
           </div>
           {roster.length === 0 ? (
-            <div className="py-10 text-center text-slate-400 text-xs">No student is in this batch.</div>
+            <div className="py-10 px-4 text-center text-xs">
+              <p className="font-semibold text-amber-700">
+                {teacher !== 'all' ? `No student studies under ${teacherText(teacher)}.` : 'No student studies here.'}
+              </p>
+              <p className="text-slate-500 mt-1">
+                {teacher !== 'all'
+                  ? 'The teacher has no batch, or the batch of the teacher has no student. You can ask the teacher what the reason is.'
+                  : 'There is no student in this batch or for this subject.'}
+              </p>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left">
