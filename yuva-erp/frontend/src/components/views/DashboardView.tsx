@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { GettingStarted, FollowUpsCard, NoticesCard } from '../ui/HomeCards';
 import { useInstitute } from '../../Context/InstituteContext';
 import { useAuth } from '../../Context/AuthContext';
+import { KpiCard, MonthCard, TodayTile } from '../ui/HomeBlocks';
 import type { TimetableSlot, Student } from '../../types';
 import {
   Users,
@@ -25,7 +26,6 @@ import {
   Wallet,
   PhoneCall
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import { nextBirthdays } from '../utils/helpers';
 import { useFeeNotice } from '../utils/useFeeNotice';
 import type { NoticeResult } from '../utils/useFeeNotice';
@@ -139,87 +139,6 @@ const Avatar: React.FC<{ name: string; photoUrl?: string; size?: string }> = ({
 };
 
 // "vs last month" arrow label
-// the colours of a card: the strip on top, the box of the icon, the link
-const ACCENTS = {
-  blue: { bar: 'from-blue-500 to-sky-400', icon: 'bg-blue-50 text-blue-600', link: 'text-blue-600 hover:bg-blue-50' },
-  emerald: { bar: 'from-emerald-500 to-teal-400', icon: 'bg-emerald-50 text-emerald-600', link: 'text-emerald-700 hover:bg-emerald-50' },
-  indigo: { bar: 'from-indigo-500 to-violet-400', icon: 'bg-indigo-50 text-indigo-600', link: 'text-indigo-600 hover:bg-indigo-50' },
-  amber: { bar: 'from-amber-500 to-orange-400', icon: 'bg-amber-50 text-amber-600', link: 'text-amber-700 hover:bg-amber-50' },
-  rose: { bar: 'from-rose-500 to-pink-400', icon: 'bg-rose-50 text-rose-600', link: 'text-rose-700 hover:bg-rose-50' }
-} as const;
-type Accent = keyof typeof ACCENTS;
-
-// A big number of the dashboard: a coloured strip on top, an icon, the number, a line under it and a link
-const KpiCard: React.FC<{
-  label: string;
-  icon: LucideIcon;
-  accent: Accent;
-  value: React.ReactNode;
-  note?: React.ReactNode;
-  footer: React.ReactNode;
-  link: { text: string; onClick: () => void };
-}> = ({ label, icon: Icon, accent, value, note, footer, link }) => {
-  const c = ACCENTS[accent];
-  return (
-    <div className="group relative overflow-hidden bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
-      <div className={`h-1 bg-gradient-to-r ${c.bar}`} />
-      <div className="p-5">
-        <div className="flex justify-between items-start gap-3">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 leading-snug">{label}</span>
-          <span className={`p-2.5 rounded-xl ${c.icon} group-hover:scale-110 transition-transform`}>
-            <Icon className="w-5 h-5" />
-          </span>
-        </div>
-        <div className="mt-3 flex items-baseline flex-wrap gap-x-2 gap-y-0.5">
-          {value}
-          {note}
-        </div>
-        <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2 text-xs text-slate-500">
-          <span className="min-w-0">{footer}</span>
-          <button onClick={link.onClick} className={`shrink-0 px-2 py-1 -mr-2 rounded-lg font-medium transition-colors ${c.link}`}>
-            {link.text}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// A small tile of "today": an icon, the name and the number; a press opens the page
-const TodayTile: React.FC<{ label: string; value: React.ReactNode; icon: LucideIcon; accent: Accent; alert?: boolean; onClick: () => void }> = ({ label, value, icon: Icon, accent, alert, onClick }) => {
-  const c = ACCENTS[accent];
-  return (
-    <button
-      onClick={onClick}
-      className="text-left relative overflow-hidden bg-white rounded-2xl border border-slate-200 px-4 py-3.5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-3"
-    >
-      <span className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center ${alert ? c.icon : 'bg-slate-100 text-slate-500'}`}>
-        <Icon className="w-5 h-5" />
-      </span>
-      <span className="min-w-0">
-        <span className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 truncate">{label}</span>
-        <span className="block text-xl font-bold font-mono text-slate-900 leading-tight mt-0.5">{value}</span>
-      </span>
-    </button>
-  );
-};
-
-// A card of "this month": an icon, the name, the number and how it went compared with last month
-const MonthCard: React.FC<{ label: string; icon: LucideIcon; accent: Accent; value: React.ReactNode; trend: React.ReactNode }> = ({ label, icon: Icon, accent, value, trend }) => {
-  const c = ACCENTS[accent];
-  return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex items-center gap-3.5">
-      <span className={`w-11 h-11 shrink-0 rounded-xl flex items-center justify-center ${c.icon}`}>
-        <Icon className="w-5 h-5" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate">{label}</span>
-        <div className="mt-1 flex items-center justify-between gap-2">{value}{trend}</div>
-      </div>
-    </div>
-  );
-};
-
 const TrendLabel: React.FC<{ current: number; previous: number }> = ({ current, previous }) => {
   if (previous === 0 && current === 0) {
     return <span className="text-[11px] text-slate-400">No activity yet</span>;

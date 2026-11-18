@@ -3,6 +3,7 @@ import { PrintableFeeReceiptModal } from '../modals/PrintableFeeReceiptModal';
 import { ProgressCharts } from '../ui/ProgressCharts';
 import React, { useState } from 'react';
 import { NoticesCard, MaterialCard } from '../ui/HomeCards';
+import { HomeBanner, KpiCard } from '../ui/HomeBlocks';
 import { useInstitute } from '../../Context/InstituteContext';
 import { useAuth } from '../../Context/AuthContext';
 import type { ScopedResult } from '../layout/Rolescope';
@@ -146,7 +147,7 @@ export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }>
       {(balance > 0 && !feeNotSet) || nextTest ? (
         <div className="grid gap-3 md:grid-cols-2">
           {balance > 0 && !feeNotSet && (
-            <div className="p-4 rounded-xl border border-rose-200 bg-rose-50 flex items-center justify-between gap-3 flex-wrap">
+            <div className={`p-4 rounded-2xl border border-rose-200 bg-rose-50 flex items-center justify-between gap-3 flex-wrap ${nextTest ? '' : 'md:col-span-2'}`}>
               <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-wider text-rose-700">Fee not fully paid</p>
                 <p className="text-2xl font-bold text-rose-800 mt-0.5">
@@ -165,7 +166,7 @@ export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }>
             </div>
           )}
           {nextTest && (
-            <div className="p-4 rounded-xl border border-amber-200 bg-amber-50">
+            <div className={`p-4 rounded-2xl border border-amber-200 bg-amber-50 ${balance > 0 && !feeNotSet ? '' : 'md:col-span-2'}`}>
               <p className="text-xs font-semibold uppercase tracking-wider text-amber-700">Next test of {childWord}</p>
               <p className="text-base font-bold text-amber-900 mt-0.5">{nextTest.title}</p>
               <p className="text-xs text-amber-900/80 mt-0.5">
@@ -178,35 +179,22 @@ export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }>
       ) : null}
 
       {/* Profile banner */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex flex-col md:flex-row md:items-center gap-5">
-        <img
-          src={student.photoUrl}
-          alt={student.name}
-          className="w-20 h-20 rounded-full object-cover border border-slate-200 shrink-0"
-        />
-        <div className="min-w-0 flex-1">
-          <span className="text-xs font-semibold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
-            {user?.isParent ? 'Parent Portal' : 'Student Portal'} · {profile.academicYear}
-          </span>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1.5">
-            {user?.isParent ? `Hello, parent of ${student.name}` : `Hello, ${student.name}`}
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
+      <HomeBanner
+        label={`${user?.isParent ? 'Parent Portal' : 'Student Portal'} · ${profile.academicYear}`}
+        date={now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+        photo={student.photoUrl}
+        title={user?.isParent ? `Hello, parent of ${student.name}` : `Hello, ${student.name}`}
+        lines={[
+          <>
             <span className="font-mono">{student.rollNo}</span> · {student.grade} · Target: {student.targetExam}
-          </p>
-          <p className="text-xs text-slate-500 mt-0.5">
-            {batch?.name || 'Batch'} · {course?.name || 'Program'}
-          </p>
-        </div>
-        <div className="text-xs text-slate-500 md:text-right">
-          <div>{now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
-          <div className="mt-0.5">{batch ? `${batch.classroom} · ${batch.startTime} - ${batch.endTime}` : ''}</div>
-        </div>
-      </div>
+          </>,
+          [batch?.name || 'Batch', course?.name || 'Program', batch?.classroom, batch ? `${batch.startTime} - ${batch.endTime}` : ''].filter(Boolean).join(' · ')
+        ]}
+      />
 
       {/* Leave: a student asks the principal (the form is on the Notice Board); a parent does not get it */}
       {!user?.isParent && (
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0">
             <span className="p-2 rounded-lg bg-indigo-50 text-indigo-600 shrink-0">
               <CalendarOff className="w-4 h-4" />
@@ -233,72 +221,47 @@ export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }>
 
       {/* KPI cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
-          <div className="flex justify-between items-start">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">My Attendance</span>
-            <span className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
-              <CalendarCheck className="w-4 h-4" />
+        <KpiCard
+          label="My Attendance"
+          icon={CalendarCheck}
+          accent="emerald"
+          value={<span className={`text-3xl font-bold tracking-tight ${stats.percentage < 75 ? 'text-rose-600' : 'text-slate-900'}`}>{stats.percentage}%</span>}
+          footer={
+            <>
+              {stats.present} of {stats.total} classes attended
+            </>
+          }
+        />
+        <KpiCard
+          label="Fee Balance"
+          icon={CreditCard}
+          accent="indigo"
+          value={
+            <span className={`text-2xl font-bold font-mono tracking-tight ${balance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+              {profile.currencySymbol}
+              {formatINR(balance)}
             </span>
-          </div>
-          <div
-            className={`mt-3 text-3xl font-bold tracking-tight ${
-              stats.percentage < 75 ? 'text-rose-600' : 'text-slate-900'
-            }`}
-          >
-            {stats.percentage}%
-          </div>
-          <div className="mt-2 text-xs text-slate-500">
-            {stats.present} of {stats.total} classes attended
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
-          <div className="flex justify-between items-start">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Fee Balance</span>
-            <span className="p-2 rounded-lg bg-indigo-50 text-indigo-600">
-              <CreditCard className="w-4 h-4" />
-            </span>
-          </div>
-          <div
-            className={`mt-3 text-2xl font-bold font-mono tracking-tight ${
-              balance > 0 ? 'text-rose-600' : 'text-emerald-600'
-            }`}
-          >
-            {profile.currencySymbol}
-            {formatINR(balance)}
-          </div>
-          <div className="mt-2 text-xs text-slate-500">
-            {feeNotSet ? 'Fee not set yet' : balance > 0 ? `${paidPercent}% of fees paid` : 'All fees cleared'}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
-          <div className="flex justify-between items-start">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Average Score</span>
-            <span className="p-2 rounded-lg bg-amber-50 text-amber-600">
-              <Award className="w-4 h-4" />
-            </span>
-          </div>
-          <div className="mt-3 text-3xl font-bold text-slate-900 tracking-tight">
-            {avgPercent !== null ? `${avgPercent}%` : '—'}
-          </div>
-          <div className="mt-2 text-xs text-slate-500">
-            {results.length} {results.length === 1 ? 'test' : 'tests'} graded
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
-          <div className="flex justify-between items-start">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Upcoming Tests</span>
-            <span className="p-2 rounded-lg bg-blue-50 text-blue-600">
-              <GraduationCap className="w-4 h-4" />
-            </span>
-          </div>
-          <div className="mt-3 text-3xl font-bold text-slate-900 tracking-tight">{upcoming.length}</div>
-          <div className="mt-2 text-xs text-slate-500">
-            {upcoming[0] ? `Next: ${formatDate(upcoming[0].date)}` : 'Nothing scheduled'}
-          </div>
-        </div>
+          }
+          footer={feeNotSet ? 'Fee not set yet' : balance > 0 ? `${paidPercent}% of fees paid` : 'All fees cleared'}
+        />
+        <KpiCard
+          label="Average Score"
+          icon={Award}
+          accent="amber"
+          value={<span className="text-3xl font-bold text-slate-900 tracking-tight">{avgPercent !== null ? `${avgPercent}%` : '—'}</span>}
+          footer={
+            <>
+              {results.length} {results.length === 1 ? 'test' : 'tests'} graded
+            </>
+          }
+        />
+        <KpiCard
+          label="Upcoming Tests"
+          icon={GraduationCap}
+          accent="blue"
+          value={<span className="text-3xl font-bold text-slate-900 tracking-tight">{upcoming.length}</span>}
+          footer={upcoming[0] ? `Next: ${formatDate(upcoming[0].date)}` : 'Nothing scheduled'}
+        />
       </div>
 
       <ProgressCharts tests={chartTests} months={chartMonths} />
@@ -306,7 +269,7 @@ export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           {/* Today's classes */}
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
             <div className="p-4 border-b border-slate-200 flex items-center gap-2 bg-slate-50/50">
               <Clock className="w-4 h-4 text-slate-600" />
               <h3 className="text-sm font-semibold text-slate-900">My Classes Today</h3>
@@ -335,7 +298,7 @@ export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }>
           </div>
 
           {/* Exam results */}
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
             <div className="p-4 border-b border-slate-200 flex items-center gap-2 bg-slate-50/50">
               <Award className="w-4 h-4 text-amber-600" />
               <h3 className="text-sm font-semibold text-slate-900">My Test Results</h3>
@@ -396,7 +359,7 @@ export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }>
           </div>
 
           {/* Weekly timetable */}
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
             <div className="p-4 border-b border-slate-200 bg-slate-50/50">
               <h3 className="text-sm font-semibold text-slate-900">My Weekly Timetable</h3>
             </div>
@@ -440,7 +403,7 @@ export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }>
         {/* Right column */}
         <div className="space-y-6">
           {/* Fees */}
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
             <div className="p-4 border-b border-slate-200 flex items-center gap-2 bg-slate-50/50">
               <CreditCard className="w-4 h-4 text-emerald-600" />
               <h3 className="text-sm font-semibold text-slate-900">My Fees</h3>
@@ -518,7 +481,7 @@ export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }>
           </div>
 
           {/* Attendance history */}
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
             <div className="p-4 border-b border-slate-200 flex items-center gap-2 bg-slate-50/50">
               <CalendarCheck className="w-4 h-4 text-emerald-600" />
               <h3 className="text-sm font-semibold text-slate-900">Recent Attendance</h3>
@@ -544,7 +507,7 @@ export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }>
           </div>
 
           {/* Upcoming tests */}
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
             <div className="p-4 border-b border-slate-200 flex items-center gap-2 bg-slate-50/50">
               <GraduationCap className="w-4 h-4 text-blue-600" />
               <h3 className="text-sm font-semibold text-slate-900">Upcoming Tests</h3>
@@ -569,7 +532,7 @@ export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }>
           </div>
 
           {/* Messages */}
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
             <div className="p-4 border-b border-slate-200 flex items-center gap-2 bg-slate-50/50">
               <Bell className="w-4 h-4 text-amber-600" />
               <h3 className="text-sm font-semibold text-slate-900">Messages from the Institute</h3>

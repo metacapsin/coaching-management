@@ -1,5 +1,6 @@
 import React from 'react';
 import { NoticesCard, MaterialCard } from '../ui/HomeCards';
+import { BannerButton, HomeBanner, KpiCard } from '../ui/HomeBlocks';
 import { useInstitute } from '../../Context/InstituteContext';
 import { useAuth } from '../../Context/AuthContext';
 import { CalendarCheck, Clock, Award, Users, Layers, AlertTriangle, CheckCircle2 } from 'lucide-react';
@@ -76,33 +77,53 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({ onNavigate }) 
   return (
     <div className="space-y-6">
       {/* Banner */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <span className="text-xs font-semibold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
-            Teacher Dashboard · {profile.academicYear}
-          </span>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1.5">Welcome, {firstName}</h1>
-          <p className="text-xs text-slate-500 mt-1">
+      <HomeBanner
+        label={`Teacher Dashboard · ${profile.academicYear}`}
+        date={now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+        greeting={now.getHours() < 12 ? 'Good morning' : now.getHours() < 17 ? 'Good afternoon' : 'Good evening'}
+        title={firstName}
+        lines={[
+          <>
             {user?.subject ? `${user.subject} · ` : ''}
             {batches.length} {batches.length === 1 ? 'batch' : 'batches'} · {plural(students.length, 'student')}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => onNavigate('attendance')}
-            className="px-3.5 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
-          >
-            <CalendarCheck className="w-4 h-4" />
+          </>
+        ]}
+      >
+        <div className="grid grid-cols-2 gap-2.5 sm:min-w-[20rem]">
+          <BannerButton icon={CalendarCheck} onClick={() => onNavigate('attendance')}>
             Mark Attendance
-          </button>
-          <button
-            onClick={() => onNavigate('exams')}
-            className="px-3.5 py-2 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg transition-colors flex items-center gap-1.5"
-          >
-            <Award className="w-4 h-4 text-amber-600" />
+          </BannerButton>
+          <BannerButton icon={Award} onClick={() => onNavigate('exams')}>
             Tests & Marks
-          </button>
+          </BannerButton>
         </div>
+      </HomeBanner>
+
+      {/* the numbers of the day */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <KpiCard
+          label="My Batches"
+          icon={Layers}
+          accent="indigo"
+          value={<span className="text-3xl font-bold text-slate-900 tracking-tight">{batches.length}</span>}
+          footer={`${markedToday.size} of ${batches.length} marked today`}
+        />
+        <KpiCard
+          label="My Students"
+          icon={Users}
+          accent="blue"
+          value={<span className="text-3xl font-bold text-slate-900 tracking-tight">{students.length}</span>}
+          footer={`${todayClasses.length} ${todayClasses.length === 1 ? 'class' : 'classes'} today`}
+        />
+        <KpiCard
+          label="Tests"
+          icon={Award}
+          accent="amber"
+          value={<span className="text-3xl font-bold text-slate-900 tracking-tight">{upcomingExams.length}</span>}
+          note={<span className="text-xs text-slate-500 font-medium">upcoming</span>}
+          footer={pendingMarks.length > 0 ? `${pendingMarks.length} waiting for marks` : 'Marks are up to date'}
+          link={{ text: 'Open →', onClick: () => onNavigate('exams') }}
+        />
       </div>
 
       {pendingMarks.length > 0 && (
@@ -124,7 +145,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({ onNavigate }) 
           const enrolled = students.filter(s => s.batchId === b.id).length;
           const marked = markedToday.has(b.id);
           return (
-            <div key={b.id} className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
+            <div key={b.id} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
               <div className="flex justify-between items-start">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
@@ -156,7 +177,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({ onNavigate }) 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           {/* Today's classes */}
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
             <div className="p-4 border-b border-slate-200 flex items-center gap-2 bg-slate-50/50">
               <Clock className="w-4 h-4 text-slate-600" />
               <h3 className="text-sm font-semibold text-slate-900">Today's Classes</h3>
@@ -193,7 +214,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({ onNavigate }) 
           </div>
 
           {/* My students */}
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
             <div className="p-4 border-b border-slate-200 flex items-center gap-2 bg-slate-50/50">
               <Users className="w-4 h-4 text-blue-600" />
               <h3 className="text-sm font-semibold text-slate-900">My Students ({studentRows.length})</h3>
@@ -252,7 +273,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({ onNavigate }) 
         </div>
 
         {/* Upcoming tests */}
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs h-fit">
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm h-fit">
           <div className="p-4 border-b border-slate-200 flex items-center gap-2 bg-slate-50/50">
             <Award className="w-4 h-4 text-amber-600" />
             <h3 className="text-sm font-semibold text-slate-900">Upcoming Tests</h3>
