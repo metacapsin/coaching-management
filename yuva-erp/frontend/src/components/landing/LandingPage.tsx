@@ -252,11 +252,10 @@ const SectionHead: React.FC<{ kicker: string; title: React.ReactNode; text?: str
 // `signedIn`: somebody is already signed in on this browser and came here by a link of an email
 export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () => void; onSignOut: () => void } }> = ({ signedIn }) => {
   const { t: tr } = useLang();
-  // the "Add coaching" buttons open the registration of a coaching in the form at the top
+  // the "Add coaching" buttons open the registration of a coaching as a pop-up (three steps)
   const [registerSignal, setRegisterSignal] = useState(0);
   const openRegister = () => {
     setRegisterSignal(n => n + 1);
-    document.getElementById('signin')?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
   };
   const [tab, setTab] = useState(WHY_TABS[0].id);
   const [coachings, setCoachings] = useState<PublicCoaching[]>([]);

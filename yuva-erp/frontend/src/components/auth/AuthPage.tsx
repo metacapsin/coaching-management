@@ -5,7 +5,7 @@ import { useAuth } from '../../Context/AuthContext';
 import { useLang } from '../../i18n/LangContext';
 import type { Portal } from '../../Context/AuthContext';
 import { ApiError, requestPasswordReset, resetPasswordWithCode, resetSuperPassword } from '../utils/api';
-import { RegisterCoachingForm } from './CoachingForms';
+import { AddCoachingModal } from './AddCoachingModal';
 import { MemberSignup } from './MemberSignup';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import {
@@ -444,6 +444,8 @@ export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }>
 
   return (
     <div className={embedded ? 'text-slate-900 font-sans' : 'min-h-screen grid lg:grid-cols-2 bg-slate-50 text-slate-900 font-sans antialiased'}>
+      {/* "Add coaching": the registration of a new coaching opens as a pop-up of three steps */}
+      {registering && <AddCoachingModal onClose={() => setRegistering(false)} />}
       {/* Left: brand panel */}
       {!embedded && (
       <div className="theme-keep hidden lg:flex flex-col justify-between bg-slate-900 text-white p-12">
@@ -549,9 +551,7 @@ export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }>
             </div>
           )}
 
-          {registering ? (
-            <RegisterCoachingForm onClose={() => setRegistering(false)} />
-          ) : codeStep ? (
+          {codeStep ? (
             <LoginCodeStep
               step={codeStep}
               onBack={() => {
@@ -661,7 +661,7 @@ export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }>
             </form>
           )}
 
-          {portal === 'admin' && !registering && (
+          {portal === 'admin' && (
             <div className="mt-5 text-sm text-slate-600 text-center">
               {t('New coaching?')}{' '}
               <button type="button" onClick={() => setRegistering(true)} className="font-semibold text-blue-600 hover:underline">
