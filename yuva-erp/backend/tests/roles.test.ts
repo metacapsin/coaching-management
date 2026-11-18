@@ -1791,3 +1791,60 @@ describe('Rules and regulations of the students and parents', () => {
     assert.notEqual((await call('POST', '/api/students/s1/send-rules', {}, bob))[0], 200);
   });
 });
+
+
+describe('Attendance: each teacher marks the own subject', () => {
+  let admin = '';
+  let maths = '';
+  let physics = '';
+  const s = withServer(async (api) => {
+    admin = (await api.call('POST', '/api/auth/setup', { name: 'P', email: 'p@x.com', password: PASSWORD }))[1].token;
+    await api.call('PUT', '/api/institute', { changes: { batches: { upsert: BATCHES }, students: { upsert: STUDENTS } } }, admin);
+    await api.call('POST', '/api/users', { name: 'Maths Sir', email: 'maths@x.com', password: PASSWORD, role: 'teacher', subject: 'Maths', batchIds: ['b1'] }, admin);
+    await api.call('POST', '/api/users', { name: 'Physics Madam', email: 'phy@x.com', password: PASSWORD, role: 'teacher', subject: 'Physics', batchIds: ['b1'] }, admin);
+    maths = await tokenOf(api, 'maths@x.com', 'member');
+    physics = await tokenOf(api, 'phy@x.com', 'member');
+  });
+  const call = (...a: Parameters<Api['call']>) => s.api.call(...a);
+  const rec = (id: string, subject: string, batchId = 'b1') => ({ changes: { attendance: { upsert: [{ id, date: '2026-11-18', batchId, subject, records: { s1: 'present', s2: 'late' }, markedBy: 'x', updatedAt: '' }] } } });
+
+  it('1 a teacher marks the own subject; the server writes the teacher on it', async () => {
+    assert.equal((await call('PUT', '/api/institute', rec('a-m', 'Maths'), maths))[0], 200);
+    assert.equal((await call('PUT', '/api/institute', rec('a-p', 'Physics'), physics))[0], 200);
+    const all = (await call('GET', '/api/sync', null, admin))[1].institute.attendance;
+    const m = all.find((a: any) => a.id === 'a-m');
+    assert.deepEqual([m.subject, m.teacherName, m.markedBy], ['Maths', 'Maths Sir', 'Maths Sir']);
+    assert.ok(m.teacherId);
+  });
+
+  it('2 a teacher cannot mark another subject, another batch, or the class of another teacher', async () => {
+    assert.equal((await call('PUT', '/api/institute', rec('a-x', 'Physics'), maths))[0], 403); // not the subject of this teacher
+    assert.equal((await call('PUT', '/api/institute', rec('a-y', ''), maths))[0], 200); // no subject written: the own subject of the teacher is put on it
+    assert.equal((await call('GET', '/api/sync', null, admin))[1].institute.attendance.find((a: any) => a.id === 'a-y').subject, 'Maths');
+    assert.equal((await call('PUT', '/api/institute', rec('a-z', 'Maths', 'b2'), maths))[0], 403); // not an own batch
+    assert.equal((await call('PUT', '/api/institute', rec('a-m', 'Maths'), physics))[0], 403); // the record of the Maths teacher
+  });
+
+  it('3 each teacher sees the own marks only; the principal sees all of them (the history)', async () => {
+    const mine = (await call('GET', '/api/sync', null, maths))[1].institute.attendance.map((a: any) => a.id).sort();
+    assert.deepEqual(mine, ['a-m', 'a-y']);
+    const all = (await call('GET', '/api/sync', null, admin))[1].institute.attendance.map((a: any) => a.id).sort();
+    assert.deepEqual(all, ['a-m', 'a-p', 'a-y']);
+  });
+
+  it('4 the parent is told in which class the child was absent', async () => {
+    await call('PUT', '/api/institute', { changes: { students: { upsert: [{ ...STUDENTS[0], parentEmail: 'dad@x.com' }] } } }, admin);
+    const today = new Date().toISOString().slice(0, 10);
+    const mail = captureMail();
+    try {
+      const body = { changes: { attendance: { upsert: [{ id: 'a-today', date: today, batchId: 'b1', subject: 'Maths', records: { s1: 'absent' }, markedBy: 'x', updatedAt: '' }] } } };
+      assert.equal((await call('PUT', '/api/institute', body, maths))[0], 200);
+      await new Promise((r) => setTimeout(r, 300));
+      const told = mail.sent.filter((m) => m[0] === 'dad@x.com');
+      assert.equal(told.length, 1);
+      assert.ok(told[0][2].includes('Maths'));
+    } finally {
+      mail.stop();
+    }
+  });
+});

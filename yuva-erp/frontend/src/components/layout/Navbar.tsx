@@ -33,7 +33,7 @@ interface NavbarProps {
 const TAB_META: Record<TabId, { title: string; subtitle: string }> = {
   dashboard: { title: 'Dashboard', subtitle: 'Live overview of your institute' },
   students: { title: 'Admissions & Students', subtitle: 'Enroll, search and manage students' },
-  attendance: { title: 'Daily Attendance', subtitle: 'Mark roll call and alert parents' },
+  attendance: { title: 'Attendance', subtitle: 'Each teacher marks the own subject; the principal sees the history' },
   fees: { title: 'Fees & Invoicing', subtitle: 'Collect fees, receipts and dues' },
   exams: { title: 'Exams & Results', subtitle: 'Tests, marks, ranks and report cards' },
   batches: { title: 'Batches & Timetable', subtitle: 'Batches, faculty and weekly schedule' },

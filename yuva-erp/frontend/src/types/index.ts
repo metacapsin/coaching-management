@@ -69,6 +69,11 @@ export interface AttendanceRecord {
   date: string; // YYYY-MM-DD
   batchId: string;
   records: Record<string, AttendanceStatus>; // studentId -> status
+  // The attendance is marked by the TEACHER of a SUBJECT (an online or an offline class): who joined, who did not, who was late.
+  // The principal only reads these as the history. An old mark of a whole day has no subject and no teacher.
+  subject?: string;
+  teacherId?: string;
+  teacherName?: string;
   markedBy: string;
   updatedAt: string;
 }

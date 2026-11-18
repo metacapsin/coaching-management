@@ -116,7 +116,8 @@ export async function scopeInstitute(user: any, store: Store): Promise<any> {
       templates: await store.find('templates'),
       batches: await store.find('batches', { _id: { $in: ids } }),
       students: await store.find('students', { batchId: { $in: ids } }),
-      attendance: await store.find('attendance', { batchId: { $in: ids } }),
+      // the marks of this teacher (each teacher marks the own subject); the old marks of a whole day (no teacher on them) are seen by all
+      attendance: await store.find('attendance', { batchId: { $in: ids }, $or: [{ teacherId: user.id }, { teacherId: { $exists: false } }] }),
       exams: await store.find('exams', { batchId: { $in: ids } }),
       timetable: await store.find('timetable', { batchId: { $in: ids } }),
       transactions: [],
@@ -313,10 +314,24 @@ async function teacherPlan(name: string, change: Plan, user: any, store: Store):
   if (change.remove.length) throw new HttpError(403, 'Teachers cannot delete records.');
 
   if (name === 'attendance') {
+    // The attendance is marked by the TEACHER, for the own SUBJECT and the own batches (an online or an offline class: who joined, who did not, who was late).
+    // The teacher and the subject are written by the server, so the principal's history shows who marked which class.
+    const mine = String(user.subject ?? '').trim();
+    const mySubject = mine.toLowerCase();
+    const before = await store.getMany('attendance', change.upsert.map((a) => a.id));
+    const upsert: any[] = [];
     for (const a of change.upsert) {
       if (!ids.includes(a.batchId)) throw new HttpError(403, 'You can only mark attendance for your own batches.');
+      const subject = String(a.subject ?? '').trim() || mine; // (no subject written: the own subject of the teacher)
+      const wanted = subject.toLowerCase();
+      if (mySubject && !(wanted.includes(mySubject) || mySubject.includes(wanted))) {
+        throw new HttpError(403, `You mark the attendance of your own subject (${mine}).`);
+      }
+      const was = before[a.id];
+      if (was && was.teacherId && was.teacherId !== user.id) throw new HttpError(403, 'This attendance was marked by another teacher.');
+      upsert.push({ ...a, subject, teacherId: user.id, teacherName: user.name, markedBy: user.name });
     }
-    return change;
+    return { upsert, remove: change.remove };
   }
 
   if (name === 'exams') {

@@ -66,7 +66,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     ...attendance.flatMap(a => {
       const status = a.records[student.id];
       return status === 'absent' || status === 'late'
-        ? [{ date: a.date, icon: <CalendarX className="w-3.5 h-3.5" />, title: status === 'absent' ? 'Absent' : 'Late', detail: undefined, tone: status === 'absent' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-800' }]
+        ? [{ date: a.date, icon: <CalendarX className="w-3.5 h-3.5" />, title: status === 'absent' ? 'Absent' : 'Late', detail: a.subject ? `${a.subject}${a.teacherName ? ` · ${a.teacherName}` : ''}` : undefined, tone: status === 'absent' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-800' }]
         : [];
     }),
     ...exams.flatMap(e => {

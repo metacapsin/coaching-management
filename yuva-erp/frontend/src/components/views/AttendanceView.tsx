@@ -2,7 +2,6 @@ import { DateInput, Select } from '../ui/Pickers';
 import React, { useState, useEffect } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import { useAuth } from '../../Context/AuthContext';
-import { canManageInstitute } from '../../Context/Access';
 import type { AttendanceStatus } from '../../types';
 import { AttendanceAbsentAlertModal } from '../modals/AttendanceAbsentAlertModal';
 import { ExportMenu } from '../ui/ExportMenu';
@@ -19,6 +18,17 @@ export const AttendanceView: React.FC = () => {
   } = useInstitute();
   const { profile } = useInstitute();
   const { user } = useAuth();
+
+  // The TEACHER marks the attendance of the own SUBJECT (an online or an offline class: who joined, who did not, who was late).
+  // The subject is the one of the teacher; a teacher with no subject on record takes the subjects of the own batches.
+  const mySubjects = (() => {
+    const own = String(user?.subject ?? '').split(/[,&/]/).map(x => x.trim()).filter(Boolean);
+    if (own.length) return own;
+    const fromBatches = Array.from(new Set(batches.flatMap(b => b.subjects ?? []).map(x => x.trim()).filter(Boolean)));
+    return fromBatches.length ? fromBatches : [''];
+  })();
+  const [subject, setSubject] = useState(mySubjects[0]);
+  const subjectLabel = subject || 'your class';
 
   // '__all' shows every student in one list (the default); a batch can be chosen to see only its students
   const ALL = '__all';
@@ -40,7 +50,7 @@ export const AttendanceView: React.FC = () => {
     const initial: Record<string, AttendanceStatus> = {};
     
     batchStudents.forEach(st => {
-      const existing = getAttendanceForBatchAndDate(selectedDate, st.batchId);
+      const existing = getAttendanceForBatchAndDate(selectedDate, st.batchId, subject);
       if (existing && existing.records[st.id]) {
         initial[st.id] = existing.records[st.id];
       } else {
@@ -50,7 +60,7 @@ export const AttendanceView: React.FC = () => {
     });
 
     setLocalRecords(initial);
-  }, [selectedDate, selectedBatchId, students, attendance]);
+  }, [selectedDate, selectedBatchId, subject, students, attendance]);
 
   const setStatus = (studentId: string, status: AttendanceStatus) => {
     setLocalRecords(prev => ({
@@ -65,7 +75,7 @@ export const AttendanceView: React.FC = () => {
     batchStudents.forEach(st => {
       (byBatch[st.batchId] ||= {})[st.id] = localRecords[st.id] || 'present';
     });
-    Object.entries(byBatch).forEach(([batchId, records]) => markAttendance(selectedDate, batchId, records));
+    Object.entries(byBatch).forEach(([batchId, records]) => markAttendance(selectedDate, batchId, records, subject));
     setSaveFeedback(true);
     setTimeout(() => setSaveFeedback(false), 3000);
   };
@@ -77,19 +87,18 @@ export const AttendanceView: React.FC = () => {
   const totalCount = batchStudents.length;
   const attendanceRate = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
 
-  // Absent and late students. The parents are told by the CLASS TEACHER of the batch, and by the principal (who does it alone for a
-  // batch that has no class teacher).
-  const mayTell = (s: { batchId: string }) => canManageInstitute(user?.role) || batches.find(b => b.id === s.batchId)?.classTeacherId === user?.id;
+  // Absent and late students. The parents are told by the CLASS TEACHER of the batch.
+  const mayTell = (s: { batchId: string }) => batches.find(b => b.id === s.batchId)?.classTeacherId === user?.id;
   const absentStudents = batchStudents.filter(s => localRecords[s.id] === 'absent' && mayTell(s));
   const lateStudents = batchStudents.filter(s => localRecords[s.id] === 'late' && mayTell(s));
   const toTell = absentStudents.length + lateStudents.length;
-  const cannotTell = (absentCount > 0 || lateCount > 0) && toTell === 0 && !canManageInstitute(user?.role);
+  const cannotTell = (absentCount > 0 || lateCount > 0) && toTell === 0;
 
   return (
     <div className="space-y-6">
       {cannotTell && (
         <div role="status" className="p-3 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg">
-          Only the class teacher of the batch, or the principal, tells the parents about absent and late students. You can mark the attendance here.
+          Only the class teacher of the batch tells the parents about absent and late students. You mark the attendance of your class here; the principal sees it in the history.
         </div>
       )}
 
@@ -100,15 +109,15 @@ export const AttendanceView: React.FC = () => {
             <span className="p-1.5 rounded-lg bg-emerald-600 text-white">
               <CalendarCheck className="w-5 h-5" />
             </span>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Daily Student Attendance</h1>
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Class Attendance</h1>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Real-time batch roll call, late logging, attendance analytics, and instant parent absence alerts.
+            Mark who joined your class (online or offline), who did not and who was late. Every subject has its own attendance; the principal sees it in the history.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* absent and late students: told to the parents by the principal or by the class teacher of the batch */}
+          {/* absent and late students: told to the parents by the class teacher of the batch */}
           {toTell > 0 && (
             <button
               onClick={() => setIsAbsentModalOpen(true)}
@@ -120,9 +129,9 @@ export const AttendanceView: React.FC = () => {
           )}
 
           <ExportMenu
-            filename={`attendance_${selectedDate}${showAll ? '' : `_${currentBatch?.name ?? 'batch'}`}`}
+            filename={`attendance_${selectedDate}_${subject || 'class'}${showAll ? '' : `_${currentBatch?.name ?? 'batch'}`}`}
             addDate={false}
-            title="Daily attendance"
+            title={`Attendance${subject ? `: ${subject}` : ''}`}
             subtitle={`${showAll ? 'All students' : currentBatch?.name ?? 'Batch'} - ${formatDate(selectedDate)}`}
             coaching={profile.name}
             disabled={batchStudents.length === 0}
@@ -130,8 +139,8 @@ export const AttendanceView: React.FC = () => {
               const marks = batchStudents.map(st => localRecords[st.id] || 'present');
               const count = (k: string) => marks.filter(m => m === k).length;
               return {
-                headers: ['Date', 'Roll no', 'Student', 'Batch', 'Status', 'Parent', 'Parent phone'],
-                rows: batchStudents.map(st => [selectedDate, st.rollNo, st.name, batches.find(b => b.id === st.batchId)?.name || '', localRecords[st.id] || 'present', st.parentName, st.parentPhone]),
+                headers: ['Date', 'Subject', 'Roll no', 'Student', 'Batch', 'Status', 'Parent', 'Parent phone'],
+                rows: batchStudents.map(st => [selectedDate, subject, st.rollNo, st.name, batches.find(b => b.id === st.batchId)?.name || '', localRecords[st.id] || 'present', st.parentName, st.parentPhone]),
                 summary: [
                   { label: 'Students', value: batchStudents.length },
                   { label: 'Present', value: count('present') },
@@ -139,7 +148,7 @@ export const AttendanceView: React.FC = () => {
                   { label: 'Late', value: count('late') },
                   { label: 'Excused', value: count('excused') }
                 ],
-                colorize: (col, value) => (col === 4 ? (value === 'present' ? 'green' : value === 'absent' ? 'red' : 'amber') : undefined)
+                colorize: (col, value) => (col === 5 ? (value === 'present' ? 'green' : value === 'absent' ? 'red' : 'amber') : undefined)
               };
             }}
           />
@@ -160,7 +169,7 @@ export const AttendanceView: React.FC = () => {
 
       {/* Control Bar: Date Selector & Batch Selector */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-3 w-full md:max-w-xl">
+        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] gap-3 w-full md:max-w-2xl">
           {/* Batch Selector */}
           <div className="min-w-0">
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
@@ -179,6 +188,28 @@ export const AttendanceView: React.FC = () => {
                 </option>
               ))}
             </Select>
+          </div>
+
+          {/* Subject: the teacher marks the attendance of the own subject */}
+          <div className="min-w-0">
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
+              Subject
+            </label>
+            {mySubjects.length > 1 ? (
+              <Select
+                value={subject}
+                onChange={e => setSubject(e.target.value)}
+                className="px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium min-w-0 w-full"
+              >
+                {mySubjects.map(sj => (
+                  <option key={sj} value={sj}>
+                    {sj || 'General'}
+                  </option>
+                ))}
+              </Select>
+            ) : (
+              <div className="px-3 py-2 text-xs border border-slate-200 bg-slate-50 rounded-lg font-medium text-slate-700 truncate">{subject || 'General'}</div>
+            )}
           </div>
 
           {/* Date Picker */}
@@ -204,27 +235,27 @@ export const AttendanceView: React.FC = () => {
         </div>
 
         <div className="bg-white rounded-xl border border-emerald-200 bg-emerald-50/20 p-3.5 shadow-xs text-center">
-          <span className="text-[11px] uppercase tracking-wider font-semibold text-emerald-700">Present</span>
+          <span className="text-[11px] uppercase tracking-wider font-semibold text-emerald-700">Joined</span>
           <p className="text-xl font-bold text-emerald-800 mt-0.5">{presentCount - lateCount}</p>
-          <span className="text-[10px] text-emerald-600">On-time attendance</span>
+          <span className="text-[10px] text-emerald-600">Joined on time</span>
         </div>
 
         <div className="bg-white rounded-xl border border-rose-200 bg-rose-50/20 p-3.5 shadow-xs text-center">
-          <span className="text-[11px] uppercase tracking-wider font-semibold text-rose-700">Absent</span>
+          <span className="text-[11px] uppercase tracking-wider font-semibold text-rose-700">Not joined</span>
           <p className="text-xl font-bold text-rose-800 mt-0.5">{absentCount}</p>
-          <span className="text-[10px] text-rose-600">Unexcused</span>
+          <span className="text-[10px] text-rose-600">Did not join</span>
         </div>
 
         <div className="bg-white rounded-xl border border-amber-200 bg-amber-50/20 p-3.5 shadow-xs text-center">
-          <span className="text-[11px] uppercase tracking-wider font-semibold text-amber-700">Late Marked</span>
+          <span className="text-[11px] uppercase tracking-wider font-semibold text-amber-700">Late join</span>
           <p className="text-xl font-bold text-amber-800 mt-0.5">{lateCount}</p>
-          <span className="text-[10px] text-amber-600">Arrived after start</span>
+          <span className="text-[10px] text-amber-600">Joined after the start</span>
         </div>
 
         <div className="bg-white rounded-xl border border-blue-200 bg-blue-50/20 p-3.5 shadow-xs text-center col-span-2 md:col-span-1">
           <span className="text-[11px] uppercase tracking-wider font-semibold text-blue-700">Turnout Rate</span>
           <p className="text-xl font-bold text-blue-900 mt-0.5">{attendanceRate}%</p>
-          <span className="text-[10px] text-blue-600">Overall batch attendance</span>
+          <span className="text-[10px] text-blue-600">Joined or late, of all</span>
         </div>
       </div>
 
@@ -233,7 +264,7 @@ export const AttendanceView: React.FC = () => {
         <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
           <div>
             <h3 className="text-sm font-semibold text-slate-900">
-              {showAll ? 'Roll Call: all students' : `Batch Roll Call: ${currentBatch?.name}`}
+              {showAll ? `Roll Call ${subject ? `(${subject})` : ''}: all students` : `Batch Roll Call${subject ? ` (${subject})` : ''}: ${currentBatch?.name}`}
             </h3>
             <p className="text-xs text-slate-500">
               {showAll
@@ -242,7 +273,7 @@ export const AttendanceView: React.FC = () => {
             </p>
           </div>
           <span className="text-xs text-slate-500">
-            Click status toggle buttons to mark student state
+            Joined, Not joined, Late join or Excused: press the button for each student
           </span>
         </div>
 
@@ -259,7 +290,7 @@ export const AttendanceView: React.FC = () => {
                   <th className="p-3.5">Student Information</th>
                   {showAll && <th className="p-3.5">Batch</th>}
                   <th className="p-3.5">Guardian Contact</th>
-                  <th className="p-3.5 text-center">Attendance Toggle</th>
+                  <th className="p-3.5 text-center">Attendance of {subjectLabel}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -307,7 +338,7 @@ export const AttendanceView: React.FC = () => {
                                 : 'bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700'
                             }`}
                           >
-                            Present
+                            Joined
                           </button>
 
                           {/* Absent button */}
@@ -320,7 +351,7 @@ export const AttendanceView: React.FC = () => {
                                 : 'bg-slate-100 text-slate-600 hover:bg-rose-50 hover:text-rose-700'
                             }`}
                           >
-                            Absent
+                            Not joined
                           </button>
 
                           {/* Late button */}
@@ -333,7 +364,7 @@ export const AttendanceView: React.FC = () => {
                                 : 'bg-slate-100 text-slate-600 hover:bg-amber-50 hover:text-amber-700'
                             }`}
                           >
-                            Late
+                            Late join
                           </button>
 
                           {/* Excused button */}

@@ -225,16 +225,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   let presentToday = 0;
   let absentToday = 0;
 
+  const absentIdsToday = new Set<string>();
   todayAttendanceRecords.forEach(rec => {
     const records: Record<string, string> = rec.records || {};
-    Object.values(records).forEach(status => {
+    Object.entries(records).forEach(([sid, status]) => {
       totalMarkedToday++;
       if (status === 'present' || status === 'late') presentToday++;
-      if (status === 'absent') absentToday++;
+      if (status === 'absent') absentIdsToday.add(sid);
     });
   });
+  absentToday = absentIdsToday.size; // (students who did not join at least one class today)
 
-  const markedBatchCount = todayAttendanceRecords.length;
+  // (every teacher marks the own subject: a batch can have many marks in a day, so the batches are counted once)
+  const markedBatchCount = new Set(todayAttendanceRecords.map(a => a.batchId)).size;
   const todayAttendanceRate =
     totalMarkedToday > 0 ? Math.round((presentToday / totalMarkedToday) * 100) : 0;
 
@@ -243,7 +246,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   todayAttendanceRecords.forEach(rec => {
     const records: Record<string, string> = rec.records || {};
     Object.entries(records).forEach(([studentId, status]) => {
-      if (status === 'absent') {
+      if (status === 'absent' && !absentTodayList.some(x => x.student.id === studentId)) {
         const student = students.find(s => s.id === studentId);
         if (student) {
           absentTodayList.push({
@@ -444,7 +447,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             className="px-3.5 py-2 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg transition-colors flex items-center gap-1.5"
           >
             <CalendarCheck className="w-4 h-4 text-emerald-600" />
-            Mark Attendance
+            Attendance History
           </button>
           <button
             onClick={onOpenRecordPayment}
@@ -476,7 +479,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: "Collected today", value: `${profile.currencySymbol}${collectedToday.toLocaleString('en-IN')}`, tab: 'fees', tone: 'text-emerald-700' },
-          { label: 'Absent today', value: absentToday, tab: 'attendance', tone: absentToday > 0 ? 'text-rose-700' : 'text-slate-900' },
+          { label: 'Not joined today', value: absentToday, tab: 'attendance', tone: absentToday > 0 ? 'text-rose-700' : 'text-slate-900' },
           { label: 'Follow-ups due', value: followUpsDue, tab: 'enquiries', tone: followUpsDue > 0 ? 'text-amber-700' : 'text-slate-900' },
           { label: 'Overdue fee accounts', value: overdueFees, tab: 'fees', tone: overdueFees > 0 ? 'text-rose-700' : 'text-slate-900' }
         ].map(item => (
@@ -537,16 +540,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {totalMarkedToday > 0 ? `${todayAttendanceRate}%` : '—'}
             </span>
             <span className="text-xs text-slate-500 font-medium">
-              {totalMarkedToday > 0 ? `${presentToday} Present` : 'Not marked yet'}
+              {totalMarkedToday > 0 ? `${presentToday} Joined` : 'Not marked yet'}
             </span>
           </div>
           <div className="mt-2 text-xs text-slate-500 flex justify-between">
             <span>
-              {totalMarkedToday > 0 ? `${absentToday} Absent · ` : ''}
+              {totalMarkedToday > 0 ? `${absentToday} not joined · ` : ''}
               {markedBatchCount}/{batches.length} batches marked
             </span>
             <button onClick={() => onNavigate('attendance')} className="text-emerald-700 hover:underline">
-              Take Roll →
+              History →
             </button>
           </div>
         </div>
@@ -833,13 +836,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {totalMarkedToday === 0 ? (
             <div className="py-10 px-4 text-center text-xs text-slate-400">
-              Today's attendance is not marked yet.
+              The teachers have not marked today's attendance yet.
               <div className="mt-2">
                 <button
                   onClick={() => onNavigate('attendance')}
                   className="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
                 >
-                  Mark Attendance
+                  Attendance History
                 </button>
               </div>
             </div>

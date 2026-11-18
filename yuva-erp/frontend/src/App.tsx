@@ -16,6 +16,7 @@ import { tabPath, useTabRoute } from './components/utils/useTabRoute';
 import { DashboardView } from './components/views/DashboardView';
 import { AdmissionsView } from './components/views/AdmissionsView';
 import { AttendanceView } from './components/views/AttendanceView';
+import { AttendanceHistoryView } from './components/views/AttendanceHistoryView';
 import { FeesView } from './components/views/FeesView';
 import { ExamsView } from './components/views/ExamsView';
 import { BatchesTimetableView } from './components/views/BatchesTimetableView';
@@ -154,7 +155,7 @@ function MainApp() {
     { id: 'dashboard', label: dashboardLabel, icon: LayoutDashboard },
     { id: 'students', label: 'Admissions & Students', icon: Users },
     { id: 'enquiries', label: 'Enquiries', icon: PhoneCall },
-    { id: 'attendance', label: 'Daily Attendance', icon: CalendarCheck },
+    { id: 'attendance', label: role === 'admin' ? 'Attendance History' : 'Daily Attendance', icon: CalendarCheck },
     { id: 'fees', label: 'Fees & Invoicing', icon: CreditCard },
     { id: 'exams', label: role === 'teacher' ? 'Tests & Marks' : 'Exams & Results', icon: Award },
     { id: 'batches', label: 'Batches & Timetable', icon: Layers },
@@ -221,7 +222,8 @@ function MainApp() {
           />
         );
       case 'attendance':
-        return <AttendanceView />;
+        // the teachers mark the attendance (each the own subject); the principal sees the history
+        return role === 'admin' ? <AttendanceHistoryView /> : <AttendanceView />;
       case 'fees':
         return (
           <FeesView

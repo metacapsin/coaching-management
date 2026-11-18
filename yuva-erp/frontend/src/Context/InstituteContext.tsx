@@ -223,8 +223,8 @@ interface InstituteContextType {
   deleteCourse: (id: string) => void;
 
   // Attendance actions
-  markAttendance: (date: string, batchId: string, records: Record<string, AttendanceStatus>) => void;
-  getAttendanceForBatchAndDate: (date: string, batchId: string) => AttendanceRecord | undefined;
+  markAttendance: (date: string, batchId: string, records: Record<string, AttendanceStatus>, subject?: string) => void;
+  getAttendanceForBatchAndDate: (date: string, batchId: string, subject?: string) => AttendanceRecord | undefined;
   getStudentAttendanceStats: (studentId: string) => { total: number; present: number; absent: number; late: number; excused: number; percentage: number };
 
   // Fee actions
@@ -676,14 +676,21 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   // ----- attendance -----
 
-  const markAttendance = (date: string, batchId: string, records: Record<string, AttendanceStatus>) => {
+  // One record for each day, batch and SUBJECT (the teacher of the subject marks it; the same teacher changes it later).
+  const sameClass = (a: AttendanceRecord, date: string, batchId: string, subject: string) =>
+    a.date === date && a.batchId === batchId && (a.subject ?? '').trim().toLowerCase() === subject.trim().toLowerCase() && (!a.teacherId || !user?.id || a.teacherId === user.id);
+
+  const markAttendance = (date: string, batchId: string, records: Record<string, AttendanceStatus>, subject = '') => {
     setAttendance(prev => {
-      const existingIndex = prev.findIndex(a => a.date === date && a.batchId === batchId);
+      const existingIndex = prev.findIndex(a => sameClass(a, date, batchId, subject));
       const newRecord: AttendanceRecord = {
         id: existingIndex >= 0 ? prev[existingIndex].id : uid('att'),
         date,
         batchId,
         records,
+        subject: subject.trim(),
+        teacherId: user?.id,
+        teacherName: user?.name,
         markedBy: user?.name || 'Faculty / Academic Desk',
         updatedAt: new Date().toISOString()
       };
@@ -697,8 +704,8 @@ export const InstituteProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     });
   };
 
-  const getAttendanceForBatchAndDate = (date: string, batchId: string) => {
-    return attendance.find(a => a.date === date && a.batchId === batchId);
+  const getAttendanceForBatchAndDate = (date: string, batchId: string, subject = '') => {
+    return attendance.find(a => sameClass(a, date, batchId, subject));
   };
 
   const getStudentAttendanceStats = (studentId: string) => {

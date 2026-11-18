@@ -1011,11 +1011,13 @@ async function mailAbsences(c: any, s: any, saved: any[], before: Map<string, an
       const to = text(st?.parentEmail, 150).toLowerCase();
       if (!st || !to || st.status === 'inactive') continue;
       if (!(await s.claimAbsenceMail(late ? `${rec.date}:${sid}:late` : `${rec.date}:${sid}`))) continue;
-      mail(to, `${st.name} was ${late ? 'late' : 'absent'} on ${rec.date}`, late ? 'Your child came late' : 'Your child was absent', [`${st.name} was marked ${late ? 'late' : 'absent'} at ${coaching}. If this is a mistake, please tell the office.`], {
+      const classOf = text(rec.subject, 60) ? `${text(rec.subject, 60)}${text(rec.teacherName, 80) ? ` (${text(rec.teacherName, 80)})` : ''}` : '';
+      mail(to, `${st.name} was ${late ? 'late' : 'absent'} on ${rec.date}`, late ? 'Your child came late' : 'Your child was absent', [`${st.name} was marked ${late ? 'late' : 'absent'}${classOf ? ` in the ${text(rec.subject, 60)} class` : ''} at ${coaching}. If this is a mistake, please tell the office.`], {
         details: [
           ['Student', st.name],
           ['Date', rec.date],
           ['Batch', (st.batchName as string) || ''],
+          ...(classOf ? ([['Class', classOf]] as [string, string][]) : []),
         ],
         button: ['Sign in as Parent', c.loginLink('parent')],
         note: 'In the parent login you see the attendance of your child day by day.',
