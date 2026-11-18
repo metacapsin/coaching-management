@@ -6,7 +6,7 @@ import { useInstitute } from '../../Context/InstituteContext';
 import type { PaymentMethod, FeeTransaction } from '../../types';
 import { openWhatsApp, toLocalISODate } from '../utils/helpers';
 import { PAYMENT_MODES, receiptWhatsAppMessage } from '../utils/receiptPdf';
-import { X, CreditCard, Check, AlertCircle, Share2 } from 'lucide-react';
+import { X, CreditCard, Check, AlertCircle, MessageCircle } from 'lucide-react';
 
 interface RecordPaymentModalProps {
   isOpen: boolean;
@@ -268,7 +268,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
               <span className="text-xs">
                 <span className="font-medium text-slate-800">Send the receipt (PDF) to the parent by email</span>
                 <span className="block text-[11px] text-slate-500 mt-0.5">
-                  {parentHasEmail ? `It goes to ${currentStudent?.parentEmail}.` : 'This student has no parent email yet. Write it below (it is saved on the student), or use the WhatsApp button below to send it to the phone number of the parent.'}
+                  {parentHasEmail ? `It goes to ${currentStudent?.parentEmail}.` : 'This student has no parent email yet. Write it below (it is saved on the student), or use the Send on WhatsApp button below to send it to the phone number of the parent.'}
                 </span>
               </span>
             </label>
@@ -286,7 +286,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
             )}
           </div>
 
-          <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
+          <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
@@ -298,18 +298,18 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
               type="button"
               onClick={() => save(true)}
               disabled={!currentStudent?.parentPhone}
-              title={currentStudent?.parentPhone ? `Make the receipt and open WhatsApp for ${currentStudent.parentPhone}` : 'This student has no parent phone number'}
-              className="px-4 py-2 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              title={currentStudent?.parentPhone ? `Save the payment, make the receipt and open WhatsApp for ${currentStudent.parentPhone}` : 'This student has no parent phone number'}
+              className="px-3 py-2 text-sm font-medium whitespace-nowrap text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Share2 className="w-4 h-4" />
-              Save & Send on WhatsApp
+              <MessageCircle className="w-4 h-4" />
+              Send on WhatsApp
             </button>
             <button
               type="submit"
-              className="px-5 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-colors flex items-center gap-2"
+              className="px-3.5 py-2 text-sm font-medium whitespace-nowrap text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
             >
               <Check className="w-4 h-4" />
-              Save & Generate Receipt
+              Generate Receipt
             </button>
           </div>
         </form>
