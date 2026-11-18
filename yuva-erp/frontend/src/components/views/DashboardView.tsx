@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { GettingStarted, FollowUpsCard, NoticesCard } from '../ui/HomeCards';
 import { useInstitute } from '../../Context/InstituteContext';
+import { useAuth } from '../../Context/AuthContext';
 import type { TimetableSlot, Student } from '../../types';
 import {
   Users,
@@ -20,8 +21,11 @@ import {
   UserX,
   Layers,
   MessageSquare,
-  Cake
+  Cake,
+  Wallet,
+  PhoneCall
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { nextBirthdays } from '../utils/helpers';
 import { useFeeNotice } from '../utils/useFeeNotice';
 import type { NoticeResult } from '../utils/useFeeNotice';
@@ -135,6 +139,87 @@ const Avatar: React.FC<{ name: string; photoUrl?: string; size?: string }> = ({
 };
 
 // "vs last month" arrow label
+// the colours of a card: the strip on top, the box of the icon, the link
+const ACCENTS = {
+  blue: { bar: 'from-blue-500 to-sky-400', icon: 'bg-blue-50 text-blue-600', link: 'text-blue-600 hover:bg-blue-50' },
+  emerald: { bar: 'from-emerald-500 to-teal-400', icon: 'bg-emerald-50 text-emerald-600', link: 'text-emerald-700 hover:bg-emerald-50' },
+  indigo: { bar: 'from-indigo-500 to-violet-400', icon: 'bg-indigo-50 text-indigo-600', link: 'text-indigo-600 hover:bg-indigo-50' },
+  amber: { bar: 'from-amber-500 to-orange-400', icon: 'bg-amber-50 text-amber-600', link: 'text-amber-700 hover:bg-amber-50' },
+  rose: { bar: 'from-rose-500 to-pink-400', icon: 'bg-rose-50 text-rose-600', link: 'text-rose-700 hover:bg-rose-50' }
+} as const;
+type Accent = keyof typeof ACCENTS;
+
+// A big number of the dashboard: a coloured strip on top, an icon, the number, a line under it and a link
+const KpiCard: React.FC<{
+  label: string;
+  icon: LucideIcon;
+  accent: Accent;
+  value: React.ReactNode;
+  note?: React.ReactNode;
+  footer: React.ReactNode;
+  link: { text: string; onClick: () => void };
+}> = ({ label, icon: Icon, accent, value, note, footer, link }) => {
+  const c = ACCENTS[accent];
+  return (
+    <div className="group relative overflow-hidden bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
+      <div className={`h-1 bg-gradient-to-r ${c.bar}`} />
+      <div className="p-5">
+        <div className="flex justify-between items-start gap-3">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 leading-snug">{label}</span>
+          <span className={`p-2.5 rounded-xl ${c.icon} group-hover:scale-110 transition-transform`}>
+            <Icon className="w-5 h-5" />
+          </span>
+        </div>
+        <div className="mt-3 flex items-baseline flex-wrap gap-x-2 gap-y-0.5">
+          {value}
+          {note}
+        </div>
+        <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2 text-xs text-slate-500">
+          <span className="min-w-0">{footer}</span>
+          <button onClick={link.onClick} className={`shrink-0 px-2 py-1 -mr-2 rounded-lg font-medium transition-colors ${c.link}`}>
+            {link.text}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// A small tile of "today": an icon, the name and the number; a press opens the page
+const TodayTile: React.FC<{ label: string; value: React.ReactNode; icon: LucideIcon; accent: Accent; alert?: boolean; onClick: () => void }> = ({ label, value, icon: Icon, accent, alert, onClick }) => {
+  const c = ACCENTS[accent];
+  return (
+    <button
+      onClick={onClick}
+      className="text-left relative overflow-hidden bg-white rounded-2xl border border-slate-200 px-4 py-3.5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-3"
+    >
+      <span className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center ${alert ? c.icon : 'bg-slate-100 text-slate-500'}`}>
+        <Icon className="w-5 h-5" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 truncate">{label}</span>
+        <span className="block text-xl font-bold font-mono text-slate-900 leading-tight mt-0.5">{value}</span>
+      </span>
+    </button>
+  );
+};
+
+// A card of "this month": an icon, the name, the number and how it went compared with last month
+const MonthCard: React.FC<{ label: string; icon: LucideIcon; accent: Accent; value: React.ReactNode; trend: React.ReactNode }> = ({ label, icon: Icon, accent, value, trend }) => {
+  const c = ACCENTS[accent];
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex items-center gap-3.5">
+      <span className={`w-11 h-11 shrink-0 rounded-xl flex items-center justify-center ${c.icon}`}>
+        <Icon className="w-5 h-5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate">{label}</span>
+        <div className="mt-1 flex items-center justify-between gap-2">{value}{trend}</div>
+      </div>
+    </div>
+  );
+};
+
 const TrendLabel: React.FC<{ current: number; previous: number }> = ({ current, previous }) => {
   if (previous === 0 && current === 0) {
     return <span className="text-[11px] text-slate-400">No activity yet</span>;
@@ -192,6 +277,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [feeNotice, setFeeNotice] = useState<NoticeResult | null>(null);
 
   const now = new Date();
+  const { user } = useAuth();
+  const hour = now.getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   const todayStr = toLocalISODate(now);
 
   // The strip "Today": what needs the principal's eyes right now
@@ -415,237 +503,160 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     <div className="space-y-6">
       <GettingStarted onNavigate={onNavigate} onOpenAdmission={onOpenAdmission} />
 
-      {/* Top Banner & Quick Action Shortcuts */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
-              Academic Session {profile.academicYear}
-            </span>
-            <span className="text-slate-400">·</span>
-            <span className="text-xs text-slate-500">
-              {now.toLocaleDateString('en-IN', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              })}
-            </span>
+      {/* Top banner: the greeting, the coaching and the quick shortcuts */}
+      <div className="relative overflow-hidden rounded-2xl p-6 sm:p-7 text-white shadow-lg bg-gradient-to-br from-[#1565c0] via-[#1b4aa8] to-[#0f1b26]">
+        <span className="absolute -top-20 -right-12 w-64 h-64 rounded-full bg-sky-300/20 blur-3xl pointer-events-none" />
+        <span className="absolute -bottom-24 left-1/3 w-72 h-72 rounded-full bg-indigo-400/15 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-[rgb(255_255_255/0.16)] text-white">
+                Academic Session {profile.academicYear}
+              </span>
+              <span className="text-xs text-sky-100/85">
+                {now.toLocaleDateString('en-IN', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })}
+              </span>
+            </div>
+            <p className="mt-4 text-sm text-sky-100/90">
+              {greeting}
+              {user?.name ? `, ${user.name}` : ''}
+            </p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mt-0.5 truncate">{profile.name}</h1>
+            <p className="text-xs text-sky-100/75 mt-2 max-w-xl">
+              Institute Management Command Center · Real-time admissions, attendance, fees & exam analytics.
+            </p>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1">
-            Welcome to {profile.name}
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Institute Management Command Center · Real-time admissions, attendance, fees & exam analytics.
-          </p>
-        </div>
 
-        {/* Quick Launch Buttons (New Admission lives in the sidebar and top navbar) */}
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => onNavigate('attendance')}
-            className="px-3.5 py-2 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg transition-colors flex items-center gap-1.5"
-          >
-            <CalendarCheck className="w-4 h-4 text-emerald-600" />
-            Attendance History
-          </button>
-          <button
-            onClick={onOpenRecordPayment}
-            className="px-3.5 py-2 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg transition-colors flex items-center gap-1.5"
-          >
-            <CreditCard className="w-4 h-4 text-blue-600" />
-            Fee Received
-          </button>
-          <button
-            onClick={() => onNavigate('notifications')}
-            className="px-3.5 py-2 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg transition-colors flex items-center gap-1.5"
-          >
-            <Bell className="w-4 h-4 text-amber-600" />
-            Broadcast Alert
-          </button>
-          {onAddTeacher && (
-            <button
-              onClick={onAddTeacher}
-              className="px-3.5 py-2 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg transition-colors flex items-center gap-1.5"
-            >
-              <UserPlus className="w-4 h-4 text-emerald-600" />
-              Add Teacher
-            </button>
-          )}
+          {/* Quick Launch Buttons (New Admission lives in the sidebar and top navbar) */}
+          <div className="grid grid-cols-2 gap-2.5 shrink-0 sm:min-w-[22rem]">
+            {[
+              { label: 'Attendance History', icon: CalendarCheck, onClick: () => onNavigate('attendance') },
+              { label: 'Fee Received', icon: CreditCard, onClick: onOpenRecordPayment },
+              { label: 'Broadcast Alert', icon: Bell, onClick: () => onNavigate('notifications') },
+              ...(onAddTeacher ? [{ label: 'Add Teacher', icon: UserPlus, onClick: onAddTeacher }] : [])
+            ].map(b => (
+              <button
+                key={b.label}
+                onClick={b.onClick}
+                className="px-3.5 py-2.5 text-xs font-semibold text-white bg-[rgb(255_255_255/0.12)] hover:bg-[rgb(255_255_255/0.22)] border border-[rgb(255_255_255/0.22)] rounded-xl backdrop-blur-sm transition-colors flex items-center gap-2"
+              >
+                <b.icon className="w-4 h-4 text-sky-200" />
+                {b.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Today */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: "Collected today", value: `${profile.currencySymbol}${collectedToday.toLocaleString('en-IN')}`, tab: 'fees', tone: 'text-emerald-700' },
-          { label: 'Not joined today', value: absentToday, tab: 'attendance', tone: absentToday > 0 ? 'text-rose-700' : 'text-slate-900' },
-          { label: 'Follow-ups due', value: followUpsDue, tab: 'enquiries', tone: followUpsDue > 0 ? 'text-amber-700' : 'text-slate-900' },
-          { label: 'Overdue fee accounts', value: overdueFees, tab: 'fees', tone: overdueFees > 0 ? 'text-rose-700' : 'text-slate-900' }
-        ].map(item => (
-          <button
-            key={item.label}
-            onClick={() => onNavigate(item.tab)}
-            className="text-left bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-xs hover:shadow-md transition-shadow"
-          >
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{item.label}</div>
-            <div className={`text-xl font-bold font-mono mt-0.5 ${item.tone}`}>{item.value}</div>
-          </button>
-        ))}
+        <TodayTile label="Collected today" value={`${profile.currencySymbol}${collectedToday.toLocaleString('en-IN')}`} icon={Wallet} accent="emerald" alert={collectedToday > 0} onClick={() => onNavigate('fees')} />
+        <TodayTile label="Not joined today" value={absentToday} icon={UserX} accent="rose" alert={absentToday > 0} onClick={() => onNavigate('attendance')} />
+        <TodayTile label="Follow-ups due" value={followUpsDue} icon={PhoneCall} accent="amber" alert={followUpsDue > 0} onClick={() => onNavigate('enquiries')} />
+        <TodayTile label="Overdue fee accounts" value={overdueFees} icon={AlertTriangle} accent="rose" alert={overdueFees > 0} onClick={() => onNavigate('fees')} />
       </div>
 
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Students */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
-          <div className="flex justify-between items-start">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Total Enrolled Students
-            </span>
-            <span className="p-2 rounded-lg bg-blue-50 text-blue-600">
-              <Users className="w-4 h-4" />
-            </span>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-slate-900 tracking-tight">
-              {totalEnrolled}
-            </span>
-            {totalEnrolled > 0 && (
+        <KpiCard
+          label="Total Enrolled Students"
+          icon={Users}
+          accent="blue"
+          value={<span className="text-3xl font-bold text-slate-900 tracking-tight">{totalEnrolled}</span>}
+          note={
+            totalEnrolled > 0 ? (
               <span className="text-xs text-emerald-600 font-medium flex items-center">
                 <TrendingUp className="w-3.5 h-3.5 mr-0.5" />
                 {activePercent}% Active
               </span>
-            )}
-          </div>
-          <div className="mt-2 text-xs text-slate-500 flex justify-between">
-            <span>Across {batches.length} Batches</span>
-            <button onClick={() => onNavigate('students')} className="text-blue-600 hover:underline">
-              View Roster →
-            </button>
-          </div>
-        </div>
-
-        {/* Today's Attendance */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
-          <div className="flex justify-between items-start">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Attendance Today
-            </span>
-            <span className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
-              <CalendarCheck className="w-4 h-4" />
-            </span>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-slate-900 tracking-tight">
-              {totalMarkedToday > 0 ? `${todayAttendanceRate}%` : '—'}
-            </span>
-            <span className="text-xs text-slate-500 font-medium">
-              {totalMarkedToday > 0 ? `${presentToday} Joined` : 'Not marked yet'}
-            </span>
-          </div>
-          <div className="mt-2 text-xs text-slate-500 flex justify-between">
-            <span>
+            ) : undefined
+          }
+          footer={<>Across {batches.length} Batches</>}
+          link={{ text: 'View Roster →', onClick: () => onNavigate('students') }}
+        />
+        <KpiCard
+          label="Attendance Today"
+          icon={CalendarCheck}
+          accent="emerald"
+          value={<span className="text-3xl font-bold text-slate-900 tracking-tight">{totalMarkedToday > 0 ? `${todayAttendanceRate}%` : '—'}</span>}
+          note={<span className="text-xs text-slate-500 font-medium">{totalMarkedToday > 0 ? `${presentToday} Joined` : 'Not marked yet'}</span>}
+          footer={
+            <>
               {totalMarkedToday > 0 ? `${absentToday} not joined · ` : ''}
               {markedBatchCount}/{batches.length} batches marked
-            </span>
-            <button onClick={() => onNavigate('attendance')} className="text-emerald-700 hover:underline">
-              History →
-            </button>
-          </div>
-        </div>
-
-        {/* Fee Collection */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
-          <div className="flex justify-between items-start">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Total Revenue Collected
-            </span>
-            <span className="p-2 rounded-lg bg-indigo-50 text-indigo-600">
-              <CreditCard className="w-4 h-4" />
-            </span>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
+            </>
+          }
+          link={{ text: 'History →', onClick: () => onNavigate('attendance') }}
+        />
+        <KpiCard
+          label="Total Revenue Collected"
+          icon={CreditCard}
+          accent="indigo"
+          value={
             <span className="text-2xl font-bold font-mono text-slate-900 tracking-tight">
-              {profile.currencySymbol}{formatINR(totalCollected)}
+              {profile.currencySymbol}
+              {formatINR(totalCollected)}
             </span>
-            <span className="text-xs text-emerald-600 font-medium">
-              {feeCollectionRate}% Realized
-            </span>
-          </div>
-          <div className="mt-2 text-xs text-slate-500 flex justify-between">
-            <span>Pending: {profile.currencySymbol}{formatINR(totalDues)}</span>
-            <button onClick={() => onNavigate('fees')} className="text-indigo-600 hover:underline">
-              Ledger →
-            </button>
-          </div>
-        </div>
-
-        {/* Tests */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
-          <div className="flex justify-between items-start">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Tests & Exams
-            </span>
-            <span className="p-2 rounded-lg bg-amber-50 text-amber-600">
-              <Award className="w-4 h-4" />
-            </span>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-slate-900 tracking-tight">
-              {exams.length}
-            </span>
-            <span className="text-xs text-slate-500 font-medium">
-              {publishedExams} Published
-            </span>
-          </div>
-          <div className="mt-2 text-xs text-slate-500 flex justify-between">
-            <span>{upcomingExamCount} Upcoming</span>
-            <button onClick={() => onNavigate('exams')} className="text-amber-700 hover:underline">
-              Leaderboard →
-            </button>
-          </div>
-        </div>
+          }
+          note={<span className="text-xs text-emerald-600 font-medium">{feeCollectionRate}% Realized</span>}
+          footer={
+            <>
+              Pending: {profile.currencySymbol}
+              {formatINR(totalDues)}
+            </>
+          }
+          link={{ text: 'Ledger →', onClick: () => onNavigate('fees') }}
+        />
+        <KpiCard
+          label="Tests & Exams"
+          icon={Award}
+          accent="amber"
+          value={<span className="text-3xl font-bold text-slate-900 tracking-tight">{exams.length}</span>}
+          note={<span className="text-xs text-slate-500 font-medium">{publishedExams} Published</span>}
+          footer={<>{upcomingExamCount} Upcoming</>}
+          link={{ text: 'Leaderboard →', onClick: () => onNavigate('exams') }}
+        />
       </div>
 
       {/* This Month Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-            New Admissions · {monthName}
-          </span>
-          <div className="mt-1.5 flex items-center justify-between">
-            <span className="text-2xl font-bold text-slate-900">{admissionsThisMonth}</span>
-            <TrendLabel current={admissionsThisMonth} previous={admissionsPrevMonth} />
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-            Fees Collected · {monthName}
-          </span>
-          <div className="mt-1.5 flex items-center justify-between">
+        <MonthCard
+          label={`New Admissions · ${monthName}`}
+          icon={UserPlus}
+          accent="blue"
+          value={<span className="text-2xl font-bold text-slate-900">{admissionsThisMonth}</span>}
+          trend={<TrendLabel current={admissionsThisMonth} previous={admissionsPrevMonth} />}
+        />
+        <MonthCard
+          label={`Fees Collected · ${monthName}`}
+          icon={Wallet}
+          accent="emerald"
+          value={
             <span className="text-2xl font-bold font-mono text-slate-900">
-              {profile.currencySymbol}{formatINR(collectedThisMonth)}
+              {profile.currencySymbol}
+              {formatINR(collectedThisMonth)}
             </span>
-            <TrendLabel current={collectedThisMonth} previous={collectedPrevMonth} />
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-            Receipts Issued · {monthName}
-          </span>
-          <div className="mt-1.5 flex items-center justify-between">
-            <span className="text-2xl font-bold text-slate-900">{txThisMonth.length}</span>
-            <TrendLabel current={txThisMonth.length} previous={txPrevMonth.length} />
-          </div>
-        </div>
+          }
+          trend={<TrendLabel current={collectedThisMonth} previous={collectedPrevMonth} />}
+        />
+        <MonthCard
+          label={`Receipts Issued · ${monthName}`}
+          icon={CreditCard}
+          accent="indigo"
+          value={<span className="text-2xl font-bold text-slate-900">{txThisMonth.length}</span>}
+          trend={<TrendLabel current={txThisMonth.length} previous={txPrevMonth.length} />}
+        />
       </div>
 
       {/* Charts Row: Fee Collection + Attendance Trend */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Monthly Fee Collection Chart */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="p-4 border-b border-slate-200 flex flex-wrap justify-between items-center gap-2 bg-slate-50/50">
             <div className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-indigo-600" />
@@ -733,7 +744,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Attendance Trend (last 7 days) */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
             <div className="flex items-center gap-2">
               <Activity className="w-4 h-4 text-emerald-600" />
@@ -815,7 +826,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Attention Row: Absent Today, Low Attendance, Batch Capacity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Absent Today */}
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
           <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
             <div className="flex items-center gap-2">
               <UserX className="w-4 h-4 text-rose-500" />
@@ -902,7 +913,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Low Attendance */}
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
           <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
             <div className="flex items-center gap-2">
               <TrendingDown className="w-4 h-4 text-amber-600" />
@@ -960,7 +971,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Batch Capacity */}
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
           <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
             <div className="flex items-center gap-2">
               <Layers className="w-4 h-4 text-indigo-600" />
@@ -1013,7 +1024,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Left 2 Cols */}
         <div className="lg:col-span-2 space-y-6">
           {/* Today's Class Schedule */}
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
             <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-slate-600" />
@@ -1097,7 +1108,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           {/* Pending Fee Reminders / Defaulters Alert */}
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
             <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-rose-500" />
@@ -1183,7 +1194,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Right 1 Col: Recent Admissions, Receipts, Upcoming Tests (the last card grows to the bottom of the left column) */}
         <div className="flex flex-col gap-6">
           {/* Recent Admissions */}
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
             <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
               <div className="flex items-center gap-2">
                 <UserPlus className="w-4 h-4 text-blue-600" />
@@ -1241,7 +1252,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           {/* Recent Fee Receipts */}
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
             <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
               <div className="flex items-center gap-2">
                 <CreditCard className="w-4 h-4 text-emerald-600" />
@@ -1291,7 +1302,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Birthdays */}
           {birthdays.length > 0 && (
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
               <div className="p-4 border-b border-slate-200 flex items-center gap-2 bg-slate-50/50">
                 <Cake className="w-4 h-4 text-pink-600" />
                 <h3 className="text-sm font-semibold text-slate-900">Birthdays</h3>
