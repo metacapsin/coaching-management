@@ -6,7 +6,7 @@ import { useInstitute } from '../../Context/InstituteContext';
 import type { PaymentMethod, FeeTransaction } from '../../types';
 import { openWhatsApp, toLocalISODate } from '../utils/helpers';
 import { PAYMENT_MODES, receiptWhatsAppMessage } from '../utils/receiptPdf';
-import { X, CreditCard, Check, AlertCircle } from 'lucide-react';
+import { X, CreditCard, Check, AlertCircle, Share2 } from 'lucide-react';
 
 interface RecordPaymentModalProps {
   isOpen: boolean;
@@ -31,8 +31,6 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   // The amount is what the PARENT paid: the principal writes it (nothing is filled in), so no payment is made from this page.
   const [amount, setAmount] = useState<number>(0);
   const [emailToParent, setEmailToParent] = useState(false);
-  // the receipt on WhatsApp, to the phone number of the parent (when the email of the parent is not known)
-  const [whatsAppToParent, setWhatsAppToParent] = useState(false);
   // a student with no parent email: the principal writes it right here (it is saved on the student)
   const [parentEmailText, setParentEmailText] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('UPI');
@@ -45,7 +43,6 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   useEffect(() => {
     // the box is ticked at first when the student has a parent email; the email written for another student is not kept
     setEmailToParent(startEmail);
-    setWhatsAppToParent(!startEmail); // (no email known: WhatsApp is ticked at first)
     setParentEmailText('');
   }, [studentId, startEmail]);
 
@@ -60,6 +57,11 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    save(false);
+  };
+
+  // `viaWhatsApp`: the "Save & Send on WhatsApp" button: the receipt is made and WhatsApp opens for the phone number of the parent (no email is needed)
+  const save = (viaWhatsApp: boolean) => {
     if (!studentId) {
       setError('Please select a student');
       return;
@@ -76,7 +78,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
       setError(`Amount is more than the pending balance (${profile.currencySymbol}${currentBalance.toLocaleString('en-IN')}).`);
       return;
     }
-    if (emailToParent && !parentHasEmail && !validEmail(parentEmailText)) {
+    if (!viaWhatsApp && emailToParent && !parentHasEmail && !validEmail(parentEmailText)) {
       setError('Write the email of the parent to send the receipt, or remove the tick.');
       return;
     }
@@ -94,7 +96,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
       });
 
       // WhatsApp: the receipt goes to the phone number of the parent (the window of WhatsApp opens from this click)
-      if (whatsAppToParent && currentStudent?.parentPhone) {
+      if (viaWhatsApp && currentStudent?.parentPhone) {
         const bal = typeof tx.balanceAfter === 'number' ? tx.balanceAfter : currentBalance;
         sendNotification({
           type: 'fee_due',
@@ -266,7 +268,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
               <span className="text-xs">
                 <span className="font-medium text-slate-800">Send the receipt (PDF) to the parent by email</span>
                 <span className="block text-[11px] text-slate-500 mt-0.5">
-                  {parentHasEmail ? `It goes to ${currentStudent?.parentEmail}.` : 'This student has no parent email yet. Write it below (it is saved on the student), or use WhatsApp below.'}
+                  {parentHasEmail ? `It goes to ${currentStudent?.parentEmail}.` : 'This student has no parent email yet. Write it below (it is saved on the student), or use the WhatsApp button below to send it to the phone number of the parent.'}
                 </span>
               </span>
             </label>
@@ -282,25 +284,6 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                 className="mt-2 w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               />
             )}
-
-            {/* WhatsApp: the receipt goes to the phone number of the parent (useful when the email of the parent is not known) */}
-            <label className="flex items-start gap-2 cursor-pointer mt-3 pt-3 border-t border-blue-100">
-              <input
-                type="checkbox"
-                checked={whatsAppToParent}
-                disabled={!currentStudent?.parentPhone}
-                onChange={e => setWhatsAppToParent(e.target.checked)}
-                className="mt-0.5 rounded border-slate-300 text-emerald-600 w-4 h-4 shrink-0"
-              />
-              <span className="text-xs">
-                <span className="font-medium text-slate-800">Send the receipt on WhatsApp to the parent</span>
-                <span className="block text-[11px] text-slate-500 mt-0.5">
-                  {currentStudent?.parentPhone
-                    ? `WhatsApp opens with the receipt written for ${currentStudent.parentPhone}. Press send there. (To send the PDF too, download it from the receipt and attach it.)`
-                    : 'This student has no parent phone number.'}
-                </span>
-              </span>
-            </label>
           </div>
 
           <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
@@ -310,6 +293,16 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
               className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
             >
               Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => save(true)}
+              disabled={!currentStudent?.parentPhone}
+              title={currentStudent?.parentPhone ? `Make the receipt and open WhatsApp for ${currentStudent.parentPhone}` : 'This student has no parent phone number'}
+              className="px-4 py-2 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Share2 className="w-4 h-4" />
+              Save & Send on WhatsApp
             </button>
             <button
               type="submit"
