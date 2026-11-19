@@ -11,7 +11,9 @@ export const ACCENTS = {
   // (the blue and indigo of the screens are orange now; the palette's Info blue #3B82F6 keeps one card apart from the orange ones)
   indigo: { bar: 'from-info-500 to-info-400', icon: 'bg-info-50 text-info-500', link: 'text-info-600 hover:bg-info-50' },
   amber: { bar: 'from-amber-500 to-amber-400', icon: 'bg-amber-50 text-amber-600', link: 'text-amber-700 hover:bg-amber-50' },
-  rose: { bar: 'from-rose-500 to-rose-400', icon: 'bg-rose-50 text-rose-600', link: 'text-rose-700 hover:bg-rose-50' }
+  rose: { bar: 'from-rose-500 to-rose-400', icon: 'bg-rose-50 text-rose-600', link: 'text-rose-700 hover:bg-rose-50' },
+  // purple (written as colours, because violet and purple of the screens are amber): one more card apart from the other five
+  violet: { bar: 'from-[#8b5cf6] to-[#a78bfa]', icon: 'bg-[#8b5cf6]/10 text-[#8b5cf6]', link: 'text-[#7c3aed] hover:bg-[#8b5cf6]/10' }
 } as const;
 export type Accent = keyof typeof ACCENTS;
 
@@ -21,7 +23,8 @@ const GLOW: Record<Accent, { glow: string; line: string }> = {
   emerald: { glow: 'bg-emerald-400', line: '#10b981' },
   indigo: { glow: 'bg-info-400', line: '#3b82f6' },
   amber: { glow: 'bg-amber-400', line: '#f59e0b' },
-  rose: { glow: 'bg-rose-400', line: '#ef4444' }
+  rose: { glow: 'bg-rose-400', line: '#ef4444' },
+  violet: { glow: 'bg-[#a78bfa]', line: '#8b5cf6' }
 };
 
 // A small line chart with a soft area under it (the last numbers of a card). Nothing is shown for fewer than two numbers.
