@@ -410,6 +410,16 @@ button.bg-blue-600:hover, a.bg-blue-600:hover {
 }
 button.bg-blue-600:disabled { box-shadow: none; }
 
+[data-kpi] > span.absolute { display: none; }
+
+/* light mode: the same idea, very soft: a faint light of the own colour from the corner on white, and a faint border of the colour */
+[data-kpi] {
+  background-image:
+    radial-gradient(120% 95% at 100% 0%, color-mix(in oklab, var(--tint) 11%, white), transparent 62%),
+    linear-gradient(180deg, color-mix(in oklab, var(--tint) 3%, white), #ffffff);
+  border-color: color-mix(in oklab, var(--tint) 16%, #e2e8f0);
+}
+
 /* ---------- The big number cards in dark mode: a clean dark base, a soft light of the own colour from the corner (no muddy grey glow) ---------- */
 .dark [data-kpi] {
   background-color: #111a2c;
@@ -419,4 +429,3 @@ button.bg-blue-600:disabled { box-shadow: none; }
   border-color: color-mix(in oklab, var(--tint) 28%, #1e293b);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 10px 26px -14px color-mix(in oklab, var(--tint) 55%, #000);
 }
-.dark [data-kpi] > span.absolute { display: none; }
