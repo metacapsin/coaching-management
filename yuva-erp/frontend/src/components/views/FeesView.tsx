@@ -260,7 +260,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
 
         <button
           onClick={onOpenRecordPayment}
-          className="px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
+          className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
         >
           <Plus className="w-4 h-4" />
           Fee Received from Parent
@@ -507,7 +507,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
             <button
               onClick={handleQueueAll}
               disabled={shownDefaulters.length === 0}
-              className="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-lg flex items-center gap-1.5"
+              className="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg flex items-center gap-1.5"
             >
               <MessageSquare className="w-3.5 h-3.5" />
               Queue reminders for all ({shownDefaulters.length})

@@ -107,7 +107,7 @@ export const AttendanceAbsentAlertModal: React.FC<AttendanceAbsentAlertModalProp
               <p className="text-xs text-emerald-700 max-w-md mx-auto">
                 {sentCount} message{sentCount === 1 ? '' : 's'} sent: they are in the bell and on the Notice Board of the parent login. To send them on WhatsApp too, open Parent Broadcasts, Audit Logs, and press Send now on each one (or use the WhatsApp button next to a student to send it right away).
               </p>
-              <button onClick={onClose} className="mt-2 px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors">
+              <button onClick={onClose} className="mt-2 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
                 Done
               </button>
             </div>

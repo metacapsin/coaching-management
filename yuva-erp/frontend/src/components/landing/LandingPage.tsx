@@ -311,9 +311,9 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
 
 
   return (
-    <div id="top" className="theme-keep min-h-screen bg-[#0f1b26] text-slate-200 antialiased font-sans scroll-smooth pb-16 lg:pb-0">
+    <div id="top" className="theme-keep min-h-screen bg-[#080f1e] text-slate-200 antialiased font-sans scroll-smooth pb-16 lg:pb-0">
       {/* Top bar */}
-      <header className={`sticky top-0 z-40 border-b ${scrolled ? 'bg-[#0f1b26]/95 backdrop-blur border-white/10' : 'bg-[#0f1b26] border-transparent'}`}>
+      <header className={`sticky top-0 z-40 border-b ${scrolled ? 'bg-[#080f1e]/95 backdrop-blur border-white/10' : 'bg-[#080f1e] border-transparent'}`}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4">
           <Logo className="shrink-0" />
           <nav className="hidden lg:flex items-center gap-7" aria-label="Main">
@@ -324,7 +324,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
             ))}
           </nav>
           <div className="flex items-center gap-2">
-            <button type="button" onClick={openRegister} className="px-2.5 sm:px-3.5 py-2 text-xs sm:text-sm font-semibold text-white bg-[#1565c0] hover:bg-[#0d47a1] rounded-lg transition-colors">
+            <button type="button" onClick={openRegister} className="px-2.5 sm:px-3.5 py-2 text-xs sm:text-sm font-semibold text-white bg-[#f97316] hover:bg-[#ea580c] rounded-lg transition-colors">
               {tr('Add coaching')}
             </button>
           </div>
@@ -332,7 +332,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
       </header>
 
       {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#1b2c3c] via-[#16293a] to-[#0f1b26]">
+      <section className="relative overflow-hidden bg-gradient-to-br from-[#1e293b] via-[#1e293b] to-[#080f1e]">
         <div className="lp-blob absolute -top-24 -right-24 w-96 h-96 rounded-full bg-pink-500/10 blur-3xl" aria-hidden="true" />
         <div className="lp-blob lp-blob-2 absolute top-1/3 -left-32 w-96 h-96 rounded-full bg-blue-600/15 blur-3xl" aria-hidden="true" />
         <div className="lp-blob absolute -bottom-32 left-1/3 w-80 h-80 rounded-full bg-sky-400/10 blur-3xl" aria-hidden="true" />
@@ -363,7 +363,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
                 </button>
               ))}
             </div>
-            <button type="button" onClick={openRegister} className="mt-6 px-6 py-3 text-sm font-semibold text-white bg-[#1565c0] hover:bg-[#0d47a1] rounded-lg shadow-lg shadow-blue-900/30 transition-colors">
+            <button type="button" onClick={openRegister} className="mt-6 px-6 py-3 text-sm font-semibold text-white bg-[#f97316] hover:bg-[#ea580c] rounded-lg shadow-lg shadow-blue-900/30 transition-colors">
               {tr('Add coaching')}
             </button>
             <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-300">
@@ -376,14 +376,14 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
             </ul>
           </div>
           <div id="signin" className="lp-slide w-full max-w-md mx-auto lg:ml-auto">
-            <div className="auth-dark rounded-2xl bg-[#2a3742] border border-sky-300/25 text-slate-900 shadow-2xl shadow-black/30 p-6 sm:p-8">
+            <div className="auth-dark rounded-2xl bg-[#334155] border border-sky-300/25 text-slate-900 shadow-2xl shadow-black/30 p-6 sm:p-8">
               {signedIn && (
                 <div className="mb-5 p-3 rounded-lg border border-sky-300/30 bg-sky-400/10 text-xs text-sky-100">
                   <p>
                     {tr('You are already signed in as')} <strong className="text-white">{signedIn.text}</strong>. {tr('Use the form below to sign in as somebody else.')}
                   </p>
                   <div className="mt-2 flex gap-2">
-                    <button type="button" onClick={signedIn.onContinue} className="px-3 py-1.5 font-semibold text-white bg-[#1565c0] hover:bg-[#0d47a1] rounded-md">
+                    <button type="button" onClick={signedIn.onContinue} className="px-3 py-1.5 font-semibold text-white bg-[#f97316] hover:bg-[#ea580c] rounded-md">
                       {tr('Open my dashboard')}
                     </button>
                     <button type="button" onClick={signedIn.onSignOut} className="px-3 py-1.5 font-semibold text-sky-100 border border-sky-300/40 hover:bg-white/10 rounded-md">
@@ -399,7 +399,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
       </section>
 
       {/* Why: tabs */}
-      <section id="why" className="scroll-mt-16 bg-[#16222d]">
+      <section id="why" className="scroll-mt-16 bg-[#0f172a]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div role="tablist" aria-label="Why AcademiaOS" className="flex overflow-x-auto -mx-4 sm:mx-0 border-b border-white/10" onMouseEnter={() => setTabHold(true)} onMouseLeave={() => setTabHold(false)}>
             {WHY_TABS.map(t => (
@@ -457,7 +457,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
 
       {/* The coachings on the platform: a teacher who wants to join one calls its principal */}
       {coachings.length > 0 && (
-        <section id="coachings" className="scroll-mt-16 bg-[#16222d] pb-14">
+        <section id="coachings" className="scroll-mt-16 bg-[#0f172a] pb-14">
           <div className="max-w-6xl mx-auto px-4 sm:px-6">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-400">{'— '}{tr('Coachings on AcademiaOS')}{' —'}</p>
             <Reveal stagger className="mt-5 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -470,7 +470,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
       )}
 
       {/* How it works */}
-      <section id="how" className="scroll-mt-16 bg-[#1b2833] py-20">
+      <section id="how" className="scroll-mt-16 bg-[#111827] py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <SectionHead kicker="How it works" title={<>{tr('From registration to the first roll call ')}<span className="text-sky-400">{tr('in four steps')}</span></>} text="No long set up. This is how a coaching starts." />
           <Reveal stagger className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -486,7 +486,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
       </section>
 
       {/* Features */}
-      <section id="features" className="scroll-mt-16 bg-[#16222d] py-20">
+      <section id="features" className="scroll-mt-16 bg-[#0f172a] py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <SectionHead kicker="Features" title={<>{tr('Everything a coaching needs, ')}<span className="text-sky-400">{tr('in one app')}</span></>} text="Twelve areas of work, ready to use from the first day." />
           <Reveal stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -504,7 +504,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
       </section>
 
       {/* Roles */}
-      <section id="roles" className="scroll-mt-16 bg-[#1b2833] py-20">
+      <section id="roles" className="scroll-mt-16 bg-[#111827] py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <SectionHead kicker="Who uses it" title={<>{tr('One sign in, ')}<span className="text-sky-400">{tr('six kinds of people')}</span></>} text="Everybody sees only what belongs to them." />
           <Reveal stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -526,7 +526,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
       </section>
 
       {/* A day in a coaching: slider */}
-      <section className="bg-[#16222d] py-20">
+      <section className="bg-[#0f172a] py-20">
         <div className="max-w-3xl mx-auto px-4 sm:px-6">
           <SectionHead kicker="Where it is used" title={tr('A day in your coaching')} />
           <Carousel
@@ -543,7 +543,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
 
       {/* Screens of the real app */}
       {SCREENSHOTS.length > 0 && (
-        <section id="screens" className="scroll-mt-16 bg-[#1b2833] py-20">
+        <section id="screens" className="scroll-mt-16 bg-[#111827] py-20">
           <div className="max-w-5xl mx-auto px-4 sm:px-6">
             <SectionHead kicker="The app" title={tr('See the real app')} text="Screens of AcademiaOS, with sample data." />
             <Carousel
@@ -567,7 +567,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
 
       {/* Real words of customers (only when there are real ones) */}
       {TESTIMONIALS.length > 0 && (
-        <section className="bg-[#1b2833] py-20">
+        <section className="bg-[#111827] py-20">
           <div className="max-w-3xl mx-auto px-4 sm:px-6">
             <SectionHead kicker="What coachings say" title={tr('What coachings say')} />
             <Carousel
@@ -584,7 +584,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
       )}
 
       {/* Facts */}
-      <section className="bg-[#16222d] py-16">
+      <section className="bg-[#0f172a] py-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <SectionHead kicker="At a glance" title={<>{tr('What is inside, ')}<span className="text-sky-400">{tr('in short')}</span></>} />
           <Reveal stagger className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -607,7 +607,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
       </section>
 
       {/* Security */}
-      <section id="security" className="scroll-mt-16 bg-[#1b2833] py-20">
+      <section id="security" className="scroll-mt-16 bg-[#111827] py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <SectionHead kicker="Security and privacy" title={<>{tr('Your data is ')}<span className="text-sky-400">{tr('yours alone')}</span></>} text={"Students’ records and fee details are private. This is how they are protected."} />
           <Reveal stagger className="grid sm:grid-cols-2 gap-4">
@@ -627,7 +627,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
       </section>
 
       {/* FAQ */}
-      <section id="faq" className="scroll-mt-16 bg-[#16222d] py-20">
+      <section id="faq" className="scroll-mt-16 bg-[#0f172a] py-20">
         <div className="max-w-3xl mx-auto px-4 sm:px-6">
           <SectionHead kicker="FAQ" title={<>{tr('Questions ')}<span className="text-sky-400">{tr('people ask')}</span></>} />
           <Reveal stagger className="space-y-3">
@@ -651,7 +651,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
       <FloatingButtons onAddCoaching={openRegister} />
 
       {/* The menu of a phone: a bar at the bottom */}
-      <nav aria-label="Phone menu" className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-white/10 bg-[#0f1b26]/95 backdrop-blur grid grid-cols-5 pb-[env(safe-area-inset-bottom)]">
+      <nav aria-label="Phone menu" className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-white/10 bg-[#080f1e]/95 backdrop-blur grid grid-cols-5 pb-[env(safe-area-inset-bottom)]">
         {PHONE_BAR.map(n => {
           const on = here === n.href;
           return (
@@ -664,7 +664,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
       </nav>
 
       {/* Footer */}
-      <footer className="bg-[#16222d] border-t border-white/10">
+      <footer className="bg-[#0f172a] border-t border-white/10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 grid sm:grid-cols-2 lg:grid-cols-4 gap-10">
           <div>
             <Logo />

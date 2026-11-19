@@ -66,7 +66,7 @@ export const PayPage: React.FC = () => {
             <a
               href={upiLink}
               onClick={onPay}
-              className="mt-6 flex items-center justify-center gap-2 w-full py-3 text-base font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl"
+              className="mt-6 flex items-center justify-center gap-2 w-full py-3 text-base font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl"
             >
               <Smartphone className="w-5 h-5" />
               Pay ₹{amount.toLocaleString('en-IN')} now

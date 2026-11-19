@@ -352,6 +352,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return { key, label: monthLabel(key), total };
   });
   const maxMonthTotal = Math.max(...feeMonths.map(m => m.total), 0);
+
+  // the small charts of the big cards (the last 6 months, the last 7 days)
+  const sparkMonths = Array.from({ length: 6 }, (_, i) => shiftMonth(currentMonthStart, -(5 - i)));
+  const sparkStudents = sparkMonths.map(m => {
+    const end = `${monthKeyOf(m)}-31`;
+    return students.filter(s => (s.dateOfAdmission || '') !== '' && (s.dateOfAdmission || '') <= end).length;
+  });
+  const sparkRevenue = sparkMonths.map(m => transactions.filter(t => (t.date || '').startsWith(monthKeyOf(m))).reduce((acc, t) => acc + t.amount, 0));
+  const sparkExams = sparkMonths.map(m => exams.filter(e => (e.date || '').startsWith(monthKeyOf(m))).length);
+  const sparkAttendance = last7Days.map(d => d.rate).filter((r): r is number => r !== null);
   const rangeTotal = feeMonths.reduce((acc, m) => acc + m.total, 0);
   const rangeAverage = feeMonths.length > 0 ? Math.round(rangeTotal / feeMonths.length) : 0;
 
@@ -423,7 +433,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <GettingStarted onNavigate={onNavigate} onOpenAdmission={onOpenAdmission} />
 
       {/* Top banner: the greeting, the coaching and the quick shortcuts */}
-      <div className="relative overflow-hidden rounded-2xl p-6 sm:p-7 text-white shadow-lg bg-gradient-to-br from-[#1565c0] via-[#1b4aa8] to-[#0f1b26]">
+      <div className="relative overflow-hidden rounded-2xl p-6 sm:p-7 text-white shadow-lg bg-gradient-to-br from-[#f97316] via-[#c2410c] to-[#080f1e]">
         <span className="absolute -top-20 -right-12 w-64 h-64 rounded-full bg-sky-300/20 blur-3xl pointer-events-none" />
         <span className="absolute -bottom-24 left-1/3 w-72 h-72 rounded-full bg-indigo-400/15 blur-3xl pointer-events-none" />
         <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -497,6 +507,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           }
           footer={<>Across {batches.length} Batches</>}
           link={{ text: 'View Roster →', onClick: () => onNavigate('students') }}
+          spark={sparkStudents}
         />
         <KpiCard
           label="Attendance Today"
@@ -511,6 +522,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </>
           }
           link={{ text: 'History →', onClick: () => onNavigate('attendance') }}
+          spark={sparkAttendance}
         />
         <KpiCard
           label="Total Revenue Collected"
@@ -530,6 +542,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </>
           }
           link={{ text: 'Ledger →', onClick: () => onNavigate('fees') }}
+          spark={sparkRevenue}
         />
         <KpiCard
           label="Tests & Exams"
@@ -539,6 +552,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           note={<span className="text-xs text-slate-500 font-medium">{publishedExams} Published</span>}
           footer={<>{upcomingExamCount} Upcoming</>}
           link={{ text: 'Leaderboard →', onClick: () => onNavigate('exams') }}
+          spark={sparkExams}
         />
       </div>
 
@@ -635,8 +649,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           className={`w-full max-w-[28px] rounded-t transition-all ${
                             m.total > 0
                               ? m.key === thisMonthKey
-                                ? 'bg-indigo-600'
-                                : 'bg-indigo-400'
+                                ? 'bg-gradient-to-t from-orange-600 to-orange-400 shadow-[0_0_14px_-2px_rgb(249_115_22/0.6)]'
+                                : 'bg-gradient-to-t from-orange-700/80 to-orange-400/70'
                               : 'bg-slate-200'
                           }`}
                           style={{
@@ -770,7 +784,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="mt-2">
                 <button
                   onClick={() => onNavigate('attendance')}
-                  className="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
+                  className="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
                 >
                   Attendance History
                 </button>

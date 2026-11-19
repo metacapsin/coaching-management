@@ -159,7 +159,7 @@ export const LibraryView: React.FC = () => {
                     href={b.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg flex items-center gap-1.5"
+                    className="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-1.5"
                   >
                     <BookOpen className="w-3.5 h-3.5" />
                     Read

@@ -438,7 +438,7 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
           {notice.type === 'ok' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
           {notice.text}
           {notice.wa && (
-            <a href={notice.wa} target="_blank" rel="noopener noreferrer" className="ml-2 px-2.5 py-1 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-md whitespace-nowrap">
+            <a href={notice.wa} target="_blank" rel="noopener noreferrer" className="ml-2 px-2.5 py-1 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-md whitespace-nowrap">
               Send on WhatsApp
             </a>
           )}
@@ -498,7 +498,7 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
                 <div className="flex gap-2 shrink-0">
                   <button
                     onClick={() => decide('approve', o)}
-                    className="px-3.5 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg flex items-center gap-1.5"
+                    className="px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-1.5"
                   >
                     <Check className="w-4 h-4" />
                     Approve

@@ -690,7 +690,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number; handledSignal?: Rea
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => openApprove(req)}
-                    className="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors flex items-center gap-1"
+                    className="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-1"
                   >
                     <Check className="w-3.5 h-3.5" />
                     Approve
@@ -1287,7 +1287,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number; handledSignal?: Rea
             </button>
             <button
               onClick={handleApprove}
-              className="px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors flex items-center gap-1.5"
+              className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-1.5"
             >
               <Check className="w-4 h-4" />
               Approve

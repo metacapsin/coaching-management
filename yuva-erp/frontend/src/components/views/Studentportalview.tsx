@@ -160,7 +160,7 @@ export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }>
                 <p className="text-[11px] text-rose-700/80 mt-0.5">pending for {user?.isParent ? student.name : 'you'}</p>
               </div>
               {payLink ? (
-                <a href={payLink} target="_blank" rel="noopener noreferrer" className="px-5 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md shadow-emerald-900/20">
+                <a href={payLink} target="_blank" rel="noopener noreferrer" className="px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md shadow-emerald-900/20">
                   Pay now
                 </a>
               ) : (

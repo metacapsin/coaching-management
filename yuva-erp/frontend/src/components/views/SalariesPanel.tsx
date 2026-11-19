@@ -186,7 +186,7 @@ export const SalariesPanel: React.FC = () => {
                         ) : (
                           <button
                             onClick={() => paySalary(s.id, month)}
-                            className="px-2.5 py-1 text-[11px] font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-md"
+                            className="px-2.5 py-1 text-[11px] font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-md"
                           >
                             Pay {cur}
                             {formatINR(s.monthlySalary)}

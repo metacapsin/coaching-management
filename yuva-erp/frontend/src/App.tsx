@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { InstituteProvider, useInstitute } from './Context/InstituteContext';
 import { AuthProvider, useAuth, roleLabel, accountLabel } from './Context/AuthContext';
 import { canAccessTab, canManageInstitute } from './Context/Access';
@@ -154,6 +154,13 @@ function MainApp() {
   const dashboardLabel =
     user?.isParent ? 'Parent Portal' : role === 'student' ? 'My Portal' : role === 'teacher' ? 'My Dashboard' : 'Dashboard';
 
+  const NAV_GROUP: Record<string, 'main' | 'learn' | 'manage'> = {
+    dashboard: 'main', students: 'main', enquiries: 'main', attendance: 'main', fees: 'main', exams: 'main', batches: 'main',
+    notifications: 'learn', notices: 'learn', material: 'learn', leave: 'learn', library: 'learn',
+    rules: 'manage', reports: 'manage', expenses: 'manage', team: 'manage', settings: 'manage'
+  };
+  const NAV_GROUP_LABEL = { main: 'Main menu', learn: 'Learning & notices', manage: 'Management' } as const;
+
   const navItems: { id: TabId; label: string; icon: LucideIcon; badge?: number; fresh?: boolean }[] = [
     { id: 'dashboard', label: dashboardLabel, icon: LayoutDashboard },
     { id: 'students', label: 'Admissions & Students', icon: Users },
@@ -271,20 +278,20 @@ function MainApp() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row text-slate-900 font-sans antialiased">
+    <div className="min-h-screen bg-[#ffffff] dark:bg-[#0f172a] flex flex-col md:flex-row text-slate-900 font-sans antialiased">
       {/* Mobile Top Header (hidden on print) */}
-      <div className="theme-keep md:hidden bg-slate-900 text-white px-4 py-3 flex items-center justify-between border-b border-slate-800 print:hidden">
+      <div className="md:hidden bg-[#f8fafc] dark:bg-[#080f1e] text-slate-900 px-4 py-3 flex items-center justify-between border-b border-slate-200 print:hidden">
         <div className="flex items-center gap-2">
           <OrgLogo className="w-7 h-7 rounded-lg" fallbackClass="bg-blue-600 text-white font-bold text-xs" />
           <div>
             <div className="text-sm font-bold truncate max-w-48 leading-tight">{profile.name}</div>
-            <div className="text-[10px] text-slate-400">Session {profile.academicYear}</div>
+            <div className="text-[10px] text-slate-500">Session {profile.academicYear}</div>
           </div>
         </div>
 
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800"
+          className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100"
         >
           {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
@@ -292,20 +299,20 @@ function MainApp() {
 
       {/* Sidebar Navigation (hidden on print) */}
       <aside
-        className={`theme-keep fixed md:sticky top-0 h-screen z-40 w-64 bg-slate-900 text-slate-200 border-r border-slate-800 flex flex-col justify-between shrink-0 transition-transform duration-200 print:hidden ${
+        className={`fixed md:sticky top-0 h-screen z-40 w-64 bg-[#f8fafc] dark:bg-[#080f1e] text-slate-700 border-r border-slate-200 flex flex-col justify-between shrink-0 transition-transform duration-200 print:hidden ${
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
         <div>
           {/* Brand Header */}
-          <div className="p-5 border-b border-slate-800/80">
+          <div className="p-5 border-b border-slate-200">
             <div className="flex items-center gap-2.5">
               <OrgLogo className="w-8 h-8 rounded-lg shadow-sm" fallbackClass="bg-blue-600 text-white font-black text-sm" />
               <div className="overflow-hidden">
-                <h1 className="text-sm font-bold text-white tracking-tight truncate leading-tight">
+                <h1 className="text-sm font-bold text-slate-900 tracking-tight truncate leading-tight">
                   {profile.name}
                 </h1>
-                <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">
+                <p className="text-[10px] text-slate-500 font-medium truncate mt-0.5">
                   Academic Session {profile.academicYear}
                 </p>
               </div>
@@ -314,13 +321,13 @@ function MainApp() {
 
           {/* Quick Action Button (office only) */}
           {isManager && (
-            <div className="px-4 py-3 border-b border-slate-800/60">
+            <div className="px-4 py-3 border-b border-slate-200">
               <button
                 onClick={() => {
                   setIsAdmissionModalOpen(true);
                   setMobileMenuOpen(false);
                 }}
-                className="w-full px-3 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2"
+                className="w-full px-3 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2"
               >
                 <UserPlus className="w-3.5 h-3.5" />
                 New Student Admission
@@ -330,13 +337,17 @@ function MainApp() {
 
           {/* Nav List */}
           <nav className="p-3 space-y-1">
-            {visibleNavItems.map(item => {
+            {visibleNavItems.map((item, index) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
+              // a small heading where a new group of pages begins (Main menu, Learning and notices, Management)
+              const group = NAV_GROUP[item.id] ?? 'main';
+              const heading = index === 0 || (NAV_GROUP[visibleNavItems[index - 1].id] ?? 'main') !== group ? NAV_GROUP_LABEL[group] : null;
 
               return (
+                <Fragment key={item.id}>
+                {heading && <p className={`px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 ${index === 0 ? 'pt-1' : 'pt-4'}`}>{heading}</p>}
                 <a
-                  key={item.id}
                   href={tabPath(item.id)}
                   aria-current={isActive ? 'page' : undefined}
                   onClick={e => {
@@ -346,21 +357,22 @@ function MainApp() {
                     setActiveTab(item.id);
                     setMobileMenuOpen(false);
                   }}
-                  className={`w-full px-3 py-2 text-xs font-medium rounded-lg flex items-center justify-between transition-colors ${
+                  className={`relative w-full px-3 py-2 text-xs font-medium rounded-lg flex items-center justify-between transition-colors ${
                     isActive
-                      ? 'bg-blue-600/20 text-blue-400 font-semibold'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                      ? 'bg-orange-100 text-orange-700 dark:bg-[#7c2d12] dark:text-orange-300 font-semibold'
+                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
+                  {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-orange-500" />}
                   <div className="flex items-center gap-2.5">
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-blue-400' : 'text-slate-400'}`} />
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-orange-600 dark:text-orange-300' : 'text-slate-500'}`} />
                     <span>{t(item.label)}</span>
                   </div>
 
                   {(isManager || item.fresh) && typeof item.badge === 'number' && item.badge > 0 && (
                     <span
                       className={`font-mono text-[10px] px-1.5 py-0.2 rounded font-medium ${
-                        item.fresh ? 'bg-rose-600 text-white font-bold' : 'bg-slate-800 text-slate-300'
+                        item.fresh ? 'bg-rose-600 text-white font-bold' : 'bg-slate-200 text-slate-700'
                       }`}
                       title={item.fresh ? 'New' : undefined}
                     >
@@ -368,13 +380,14 @@ function MainApp() {
                     </span>
                   )}
                 </a>
+                </Fragment>
               );
             })}
           </nav>
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-slate-800/80 text-[11px] text-slate-400 space-y-3">
+        <div className="p-4 border-t border-slate-200 text-[11px] text-slate-500 space-y-3">
           {/* Signed-in user + Sign Out */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
@@ -382,7 +395,7 @@ function MainApp() {
                 {(user?.name || 'U').slice(0, 1).toUpperCase()}
               </span>
               <div className="min-w-0">
-                <div className="text-xs font-semibold text-slate-200 truncate">{user?.name}</div>
+                <div className="text-xs font-semibold text-slate-900 truncate">{user?.name}</div>
                 <div className="text-[10px] text-slate-500 truncate">{accountLabel(user)}</div>
               </div>
             </div>
@@ -392,7 +405,7 @@ function MainApp() {
                 signOut();
               }}
               title="Sign Out"
-              className="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors shrink-0"
+              className="p-2 rounded-lg text-slate-500 hover:text-rose-500 hover:bg-slate-100 transition-colors shrink-0"
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -405,7 +418,7 @@ function MainApp() {
               {syncStatus === 'connected' ? 'Connected to server' : 'Server not reachable'}
             </span>
           </div>
-          <p className="text-slate-400 truncate font-medium">{profile.address}</p>
+          <p className="text-slate-500 truncate font-medium">{profile.address}</p>
         </div>
       </aside>
 

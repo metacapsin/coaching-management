@@ -8,11 +8,47 @@ import type { LucideIcon } from 'lucide-react';
 export const ACCENTS = {
   blue: { bar: 'from-blue-500 to-sky-400', icon: 'bg-blue-50 text-blue-600', link: 'text-blue-600 hover:bg-blue-50' },
   emerald: { bar: 'from-emerald-500 to-teal-400', icon: 'bg-emerald-50 text-emerald-600', link: 'text-emerald-700 hover:bg-emerald-50' },
-  indigo: { bar: 'from-indigo-500 to-violet-400', icon: 'bg-indigo-50 text-indigo-600', link: 'text-indigo-600 hover:bg-indigo-50' },
-  amber: { bar: 'from-amber-500 to-orange-400', icon: 'bg-amber-50 text-amber-600', link: 'text-amber-700 hover:bg-amber-50' },
+  // (the blue and indigo of the screens are orange now; a cool teal keeps one card apart from the orange ones)
+  indigo: { bar: 'from-teal-500 to-cyan-400', icon: 'bg-teal-50 text-teal-600', link: 'text-teal-700 hover:bg-teal-50' },
+  amber: { bar: 'from-amber-400 to-yellow-300', icon: 'bg-amber-50 text-amber-600', link: 'text-amber-700 hover:bg-amber-50' },
   rose: { bar: 'from-rose-500 to-pink-400', icon: 'bg-rose-50 text-rose-600', link: 'text-rose-700 hover:bg-rose-50' }
 } as const;
 export type Accent = keyof typeof ACCENTS;
+
+// the colour of the glow in the corner of a card and of its sparkline
+const GLOW: Record<Accent, { glow: string; line: string }> = {
+  blue: { glow: 'bg-orange-400', line: '#f97316' },
+  emerald: { glow: 'bg-emerald-400', line: '#10b981' },
+  indigo: { glow: 'bg-teal-400', line: '#14b8a6' },
+  amber: { glow: 'bg-amber-300', line: '#f59e0b' },
+  rose: { glow: 'bg-rose-400', line: '#f43f5e' }
+};
+
+// A small line chart with a soft area under it (the last numbers of a card). Nothing is shown for fewer than two numbers.
+export const Sparkline: React.FC<{ values: number[]; color: string; id: string }> = ({ values, color, id }) => {
+  if (values.length < 2) return null;
+  const w = 96;
+  const h = 34;
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  const span = max - min || 1;
+  const pts = values.map((v, i) => [(i / (values.length - 1)) * w, h - 3 - ((v - min) / span) * (h - 8)] as const);
+  const line = pts.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  const area = `${line} L${w},${h} L0,${h} Z`;
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="shrink-0" aria-hidden="true">
+      <defs>
+        <linearGradient id={`spark-${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.35" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill={`url(#spark-${id})`} />
+      <path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={pts[pts.length - 1][0]} cy={pts[pts.length - 1][1]} r="2.6" fill={color} />
+    </svg>
+  );
+};
 
 // A big number: a coloured strip on top, an icon, the number, a line under it and (when there is one) a link
 export const KpiCard: React.FC<{
@@ -23,21 +59,27 @@ export const KpiCard: React.FC<{
   note?: React.ReactNode;
   footer?: React.ReactNode;
   link?: { text: string; onClick: () => void };
-}> = ({ label, icon: Icon, accent, value, note, footer, link }) => {
+  spark?: number[]; // the last numbers: a small chart on the right of the number
+}> = ({ label, icon: Icon, accent, value, note, footer, link, spark }) => {
   const c = ACCENTS[accent];
+  const g = GLOW[accent];
   return (
     <div className="group relative overflow-hidden bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
       <div className={`h-1 bg-gradient-to-r ${c.bar}`} />
-      <div className="p-5">
+      <span className={`absolute -top-12 -right-12 w-36 h-36 rounded-full opacity-[0.14] blur-2xl pointer-events-none ${g.glow}`} />
+      <div className="relative p-5">
         <div className="flex justify-between items-start gap-3">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 leading-snug">{label}</span>
           <span className={`p-2.5 rounded-xl ${c.icon} group-hover:scale-110 transition-transform`}>
             <Icon className="w-5 h-5" />
           </span>
         </div>
-        <div className="mt-3 flex items-baseline flex-wrap gap-x-2 gap-y-0.5">
-          {value}
-          {note}
+        <div className="mt-3 flex items-end justify-between gap-3">
+          <div className="flex items-baseline flex-wrap gap-x-2 gap-y-0.5 min-w-0">
+            {value}
+            {note}
+          </div>
+          {spark && <Sparkline values={spark} color={g.line} id={label.replace(/\W/g, '')} />}
         </div>
         {(footer || link) && (
           <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2 text-xs text-slate-500">
@@ -103,7 +145,7 @@ export const HomeBanner: React.FC<{
   photo?: string;
   children?: React.ReactNode;
 }> = ({ label, date, greeting, title, lines = [], photo, children }) => (
-  <div className="relative overflow-hidden rounded-2xl p-6 sm:p-7 text-white shadow-lg bg-gradient-to-br from-[#1565c0] via-[#1b4aa8] to-[#0f1b26]">
+  <div className="relative overflow-hidden rounded-2xl p-6 sm:p-7 text-white shadow-lg bg-gradient-to-br from-[#f97316] via-[#c2410c] to-[#080f1e]">
     <span className="absolute -top-20 -right-12 w-64 h-64 rounded-full bg-sky-300/20 blur-3xl pointer-events-none" />
     <span className="absolute -bottom-24 left-1/3 w-72 h-72 rounded-full bg-indigo-400/15 blur-3xl pointer-events-none" />
     <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-6">

@@ -180,7 +180,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-slate-200 print:hidden">
+    <header className="sticky top-0 z-30 bg-[#ffffff]/90 dark:bg-[#0f172a]/90 backdrop-blur border-b border-slate-200 print:hidden">
       <div className="flex items-center gap-3 px-4 sm:px-6 lg:px-8 h-16">
         {/* Page title */}
         <div className="hidden md:block min-w-0 mr-2 shrink-0 max-w-56">

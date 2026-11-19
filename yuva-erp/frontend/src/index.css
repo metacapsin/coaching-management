@@ -1,8 +1,72 @@
 @import "tailwindcss";
 
+/* ---------- The colours of AcademiaOS: orange on a dark slate ----------
+   The screens were written with the "blue" classes for the main colour. The blue scale is now the ORANGE scale (primary #F97316, hover #EA580C,
+   dark #C2410C / #7C2D12), so every button, link, tab, chip and chart follows without changing the screens. "sky" and "indigo" (the other
+   accents) follow it; "violet" and "purple" become amber. The neutral colours stay slate: main text #F8FAFC / secondary #94A3B8 / borders
+   #334155 in dark mode, and #FFFFFF / #F8FAFC / #F1F5F9 / #E2E8F0 in light mode. */
+@theme {
+  --color-blue-50: #fff7ed;
+  --color-blue-100: #ffedd5;
+  --color-blue-200: #fed7aa;
+  --color-blue-300: #fdba74;
+  --color-blue-400: #fb923c;
+  --color-blue-500: #f97316;
+  --color-blue-600: #f97316;
+  --color-blue-700: #ea580c;
+  --color-blue-800: #c2410c;
+  --color-blue-900: #7c2d12;
+  --color-blue-950: #431407;
+
+  --color-indigo-50: #fff7ed;
+  --color-indigo-100: #ffedd5;
+  --color-indigo-200: #fed7aa;
+  --color-indigo-300: #fdba74;
+  --color-indigo-400: #fb923c;
+  --color-indigo-500: #f97316;
+  --color-indigo-600: #ea580c;
+  --color-indigo-700: #c2410c;
+  --color-indigo-800: #9a3412;
+  --color-indigo-900: #7c2d12;
+  --color-indigo-950: #431407;
+
+  --color-sky-50: #f8fafc;
+  --color-sky-100: #f1f5f9;
+  --color-sky-200: #e2e8f0;
+  --color-sky-300: #fdba74;
+  --color-sky-400: #fb923c;
+  --color-sky-500: #f97316;
+  --color-sky-600: #ea580c;
+  --color-sky-700: #c2410c;
+  --color-sky-800: #9a3412;
+  --color-sky-900: #7c2d12;
+  --color-sky-950: #431407;
+
+  --color-violet-50: #fffbeb;
+  --color-violet-100: #fef3c7;
+  --color-violet-200: #fde68a;
+  --color-violet-300: #fcd34d;
+  --color-violet-400: #fbbf24;
+  --color-violet-500: #f59e0b;
+  --color-violet-600: #d97706;
+  --color-violet-700: #b45309;
+  --color-violet-800: #92400e;
+  --color-violet-900: #78350f;
+  --color-purple-50: #fffbeb;
+  --color-purple-100: #fef3c7;
+  --color-purple-200: #fde68a;
+  --color-purple-300: #fcd34d;
+  --color-purple-400: #fbbf24;
+  --color-purple-500: #f59e0b;
+  --color-purple-600: #d97706;
+  --color-purple-700: #b45309;
+  --color-purple-800: #92400e;
+  --color-purple-900: #78350f;
+}
+
 @layer base {
   body {
-    background-color: #f8fafc;
+    background-color: #ffffff;
     color: #0f172a;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
@@ -84,7 +148,7 @@
 }
 
 .dark body {
-  background-color: #0b1220;
+  background-color: #0f172a;
   color: #e2e8f0;
 }
 
@@ -151,26 +215,26 @@
   --color-slate-800: #f1f5f9;
   --color-slate-900: #f8fafc;
 }
-.auth-dark [class*="bg-white"]:not([class*="hover:bg-white"]) { background-color: #1f2b35; }
-.auth-dark .bg-slate-100 { background-color: #35414d; }
+.auth-dark [class*="bg-white"]:not([class*="hover:bg-white"]) { background-color: #1e293b; }
+.auth-dark .bg-slate-100 { background-color: #334155; }
 .auth-dark label { color: #ffffff; }
 .auth-dark input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
 .auth-dark select,
-.auth-dark textarea { background-color: #35414d; color: #ffffff; }
-.auth-dark input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([class*="border-rose"]) { border-color: rgb(106 169 224 / 0.65); }
+.auth-dark textarea { background-color: #334155; color: #ffffff; }
+.auth-dark input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([class*="border-rose"]) { border-color: rgb(251 146 60 / 0.55); }
 .auth-dark input::placeholder,
-.auth-dark textarea::placeholder { color: #6fa8dc; }
-.auth-dark .bg-blue-600 { background-color: #1565c0; }
-.auth-dark .hover\:bg-blue-700:hover { background-color: #0d47a1; }
-.auth-dark .text-blue-600, .auth-dark .text-blue-700 { color: #6ab7ff; }
-.auth-dark .text-blue-800, .auth-dark .text-blue-900 { color: #90caf9; }
-.auth-dark .bg-blue-50, .auth-dark [class*="bg-blue-50/"] { background-color: color-mix(in oklab, #1565c0 18%, #1f2b35); }
-.auth-dark .border-blue-100, .auth-dark .border-blue-200 { border-color: color-mix(in oklab, #1565c0 45%, #1f2b35); }
-.auth-dark .bg-rose-50, .auth-dark [class*="bg-rose-50/"] { background-color: color-mix(in oklab, var(--color-rose-500) 14%, #1f2b35); }
-.auth-dark .border-rose-200 { border-color: color-mix(in oklab, var(--color-rose-500) 35%, #1f2b35); }
+.auth-dark textarea::placeholder { color: #94a3b8; }
+.auth-dark .bg-blue-600 { background-color: #f97316; }
+.auth-dark .hover\:bg-blue-700:hover { background-color: #ea580c; }
+.auth-dark .text-blue-600, .auth-dark .text-blue-700 { color: #fdba74; }
+.auth-dark .text-blue-800, .auth-dark .text-blue-900 { color: #fed7aa; }
+.auth-dark .bg-blue-50, .auth-dark [class*="bg-blue-50/"] { background-color: color-mix(in oklab, #f97316 18%, #1e293b); }
+.auth-dark .border-blue-100, .auth-dark .border-blue-200 { border-color: color-mix(in oklab, #f97316 45%, #1e293b); }
+.auth-dark .bg-rose-50, .auth-dark [class*="bg-rose-50/"] { background-color: color-mix(in oklab, var(--color-rose-500) 14%, #1e293b); }
+.auth-dark .border-rose-200 { border-color: color-mix(in oklab, var(--color-rose-500) 35%, #1e293b); }
 .auth-dark .text-rose-600, .auth-dark .text-rose-700 { color: var(--color-rose-300); }
-.auth-dark .bg-emerald-50 { background-color: color-mix(in oklab, var(--color-emerald-500) 14%, #1f2b35); }
-.auth-dark .border-emerald-200 { border-color: color-mix(in oklab, var(--color-emerald-500) 35%, #1f2b35); }
+.auth-dark .bg-emerald-50 { background-color: color-mix(in oklab, var(--color-emerald-500) 14%, #1e293b); }
+.auth-dark .border-emerald-200 { border-color: color-mix(in oklab, var(--color-emerald-500) 35%, #1e293b); }
 .auth-dark .text-emerald-700, .auth-dark .text-emerald-800 { color: var(--color-emerald-300); }
 
 /* coloured chips and notices: dark tint instead of a light pastel */
@@ -307,3 +371,19 @@
   /* only the endless decoration stops; the movement that shows the content stays */
   .lp-blob, .lp-pulse { animation: none !important; }
 }
+
+
+/* ---------- Polish: cards and buttons ---------- */
+/* the big rounded cards of the home pages get a soft light from the top in dark mode (a little depth, like glass) */
+.dark .rounded-2xl[class*="bg-white"]:not([class*="hover:bg-white"]) {
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.045), rgb(255 255 255 / 0) 60%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 8px 24px -14px rgb(0 0 0 / 0.65);
+}
+/* the main (orange) buttons glow a little */
+button.bg-blue-600, a.bg-blue-600 {
+  box-shadow: 0 8px 18px -8px rgb(249 115 22 / 0.65);
+}
+button.bg-blue-600:hover, a.bg-blue-600:hover {
+  box-shadow: 0 10px 22px -8px rgb(249 115 22 / 0.8);
+}
+button.bg-blue-600:disabled { box-shadow: none; }

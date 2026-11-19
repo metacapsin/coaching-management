@@ -30,7 +30,7 @@ const STRENGTH_TEXT = ['Too weak', 'Weak', 'Fair', 'Good', 'Strong'];
 const STRENGTH_COLOR = ['bg-white/15', 'bg-rose-500', 'bg-amber-400', 'bg-lime-400', 'bg-emerald-400'];
 
 const inputBase =
-  'w-full rounded-xl bg-[#0f1b26] border text-sm text-white placeholder-slate-500 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-400/60 transition-colors';
+  'w-full rounded-xl bg-[#080f1e] border text-sm text-white placeholder-slate-500 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-400/60 transition-colors';
 
 // one input with an icon on the left, a label above and a line of help or error under it
 const Box: React.FC<{
@@ -166,13 +166,13 @@ export const AddCoachingModal: React.FC<{ onClose: () => void }> = ({ onClose })
   return createPortal(
     <div className="theme-keep fixed inset-0 z-[70] overflow-y-auto bg-[#060b11]/85 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="add-coaching-title">
       <div className="min-h-full flex items-center justify-center p-3 sm:p-6">
-        <div className="relative w-full max-w-4xl rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-black/50 grid md:grid-cols-[300px_1fr] bg-[#16222d] text-white">
+        <div className="relative w-full max-w-4xl rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-black/50 grid md:grid-cols-[300px_1fr] bg-[#0f172a] text-white">
           {/* the left side: what this is, the three steps */}
-          <aside className="relative hidden md:flex flex-col p-7 bg-gradient-to-b from-[#0d1721] to-[#16222d] border-r border-white/10 overflow-hidden">
+          <aside className="relative hidden md:flex flex-col p-7 bg-gradient-to-b from-[#080f1e] to-[#0f172a] border-r border-white/10 overflow-hidden">
             <span className="absolute -top-24 -left-20 w-64 h-64 rounded-full bg-sky-500/15 blur-3xl pointer-events-none" />
             <span className="absolute -bottom-24 -right-16 w-56 h-56 rounded-full bg-blue-600/15 blur-3xl pointer-events-none" />
             <div className="relative flex items-center gap-2.5">
-              <span className="w-9 h-9 rounded-xl bg-[#1565c0] flex items-center justify-center font-extrabold">A</span>
+              <span className="w-9 h-9 rounded-xl bg-[#f97316] flex items-center justify-center font-extrabold">A</span>
               <span className="font-bold text-lg tracking-tight">AcademiaOS</span>
             </div>
             <h2 className="relative mt-8 text-2xl font-bold leading-tight tracking-tight">{t('Add your coaching')}</h2>
@@ -185,7 +185,7 @@ export const AddCoachingModal: React.FC<{ onClose: () => void }> = ({ onClose })
                   <li key={s.title} className="flex items-start gap-3">
                     <span
                       className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-sm font-bold border transition-colors ${
-                        state === 'done' ? 'bg-emerald-500 border-emerald-400 text-white' : state === 'now' ? 'bg-sky-400 border-sky-300 text-[#0d1721]' : 'border-white/20 text-slate-400'
+                        state === 'done' ? 'bg-emerald-500 border-emerald-400 text-white' : state === 'now' ? 'bg-sky-400 border-sky-300 text-[#080f1e]' : 'border-white/20 text-slate-400'
                       }`}
                     >
                       {state === 'done' ? <Check className="w-4 h-4" /> : i + 1}
@@ -239,7 +239,7 @@ export const AddCoachingModal: React.FC<{ onClose: () => void }> = ({ onClose })
                     </li>
                   ))}
                 </ol>
-                <button type="button" onClick={onClose} className="mt-9 px-6 py-3 text-sm font-semibold text-white bg-[#1565c0] hover:bg-[#0d47a1] rounded-xl shadow-lg shadow-blue-900/30 transition-colors">
+                <button type="button" onClick={onClose} className="mt-9 px-6 py-3 text-sm font-semibold text-white bg-[#f97316] hover:bg-[#ea580c] rounded-xl shadow-lg shadow-blue-900/30 transition-colors">
                   {t('Back to the website')}
                 </button>
               </div>
@@ -308,7 +308,7 @@ export const AddCoachingModal: React.FC<{ onClose: () => void }> = ({ onClose })
                       <Box label={t('Confirm password')} icon={Lock} value={f.confirm} onChange={set('confirm')} error={errors.confirm && t(errors.confirm)} type="password" autoComplete="new-password" placeholder="Write it again" required />
 
                       {/* the own Gmail of the coaching (optional) */}
-                      <div className="rounded-xl border border-white/10 bg-[#0f1b26]/60">
+                      <div className="rounded-xl border border-white/10 bg-[#080f1e]/60">
                         <button type="button" onClick={() => setGmailOpen(o => !o)} className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left" aria-expanded={gmailOpen}>
                           <span>
                             <span className="block text-sm font-semibold text-slate-100">{t('Send the emails from my own Gmail')}</span>
@@ -329,7 +329,7 @@ export const AddCoachingModal: React.FC<{ onClose: () => void }> = ({ onClose })
                   )}
                 </div>
 
-                <div className="px-6 sm:px-10 py-5 border-t border-white/10 bg-[#101b25] flex items-center justify-between gap-3">
+                <div className="px-6 sm:px-10 py-5 border-t border-white/10 bg-[#0b1220] flex items-center justify-between gap-3">
                   {step > 0 ? (
                     <button type="button" onClick={() => setStep(s => s - 1)} className="px-4 py-2.5 text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 rounded-xl flex items-center gap-2 transition-colors">
                       <ArrowLeft className="w-4 h-4" />
@@ -343,7 +343,7 @@ export const AddCoachingModal: React.FC<{ onClose: () => void }> = ({ onClose })
                   <button
                     type="submit"
                     disabled={busy}
-                    className="px-6 py-2.5 text-sm font-semibold text-white bg-[#1565c0] hover:bg-[#0d47a1] disabled:opacity-60 rounded-xl shadow-lg shadow-blue-900/30 flex items-center gap-2 transition-colors"
+                    className="px-6 py-2.5 text-sm font-semibold text-white bg-[#f97316] hover:bg-[#ea580c] disabled:opacity-60 rounded-xl shadow-lg shadow-blue-900/30 flex items-center gap-2 transition-colors"
                   >
                     {busy && <Loader2 className="w-4 h-4 animate-spin" />}
                     {step < 2 ? t('Continue') : busy ? t('Sending...') : t('Send request')}

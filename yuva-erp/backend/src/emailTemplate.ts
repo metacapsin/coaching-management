@@ -1,7 +1,7 @@
 // The look of the emails of AcademiaOS: one clean card (HTML with inline CSS, because email programs ignore most other CSS)
 // and the same words as plain text for programs that cannot show HTML.
 
-const BLUE = '#1565c0';
+const BLUE = '#f97316'; // (the orange of AcademiaOS)
 export const GREEN = '#15803d';
 export const RED = '#b91c1c';
 
@@ -101,7 +101,7 @@ export function render(heading: string, lines: string[], opts: RenderOptions = {
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f1f5f9;">${hidden}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:28px 12px;"><tr><td align="center">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">
-    <tr><td style="background:#0f1b26;padding:20px 28px;border-bottom:4px solid ${accent};">
+    <tr><td style="background:#080f1e;padding:20px 28px;border-bottom:4px solid ${accent};">
       <span style="display:inline-block;width:34px;height:34px;line-height:34px;text-align:center;border-radius:8px;background:${BLUE};color:#ffffff;font-size:18px;font-weight:700;vertical-align:middle;">A</span>
       <span style="font-size:20px;font-weight:700;color:#ffffff;vertical-align:middle;margin-left:10px;letter-spacing:-0.3px;">AcademiaOS</span>
     </td></tr>

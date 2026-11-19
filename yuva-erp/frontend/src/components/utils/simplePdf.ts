@@ -19,8 +19,8 @@ const rgb = (hex: string): string => {
 };
 export const PDF_COLORS = {
   ink: '#0f172a',
-  dark: '#0f1b26',
-  blue: '#1565c0',
+  dark: '#080f1e',
+  blue: '#f97316',
   green: '#15803d',
   red: '#b91c1c',
   amber: '#b45309',

@@ -290,7 +290,7 @@ export const ExamsView: React.FC = () => {
                         setTimeout(() => setTestNotice(null), 6000);
                       }}
                       title="Yes, I take this test on this date"
-                      className="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors flex items-center gap-1.5"
+                      className="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-1.5"
                     >
                       Confirm: I take this test on {formatDate(currentExam.date)}
                     </button>

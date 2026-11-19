@@ -367,7 +367,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 {outstanding > 0 && (
                   <button
                     onClick={() => onCollectPayment(student.id)}
-                    className="px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
+                    className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
                   >
                     <CreditCard className="w-4 h-4" />
                     Fee Received from Parent

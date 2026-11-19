@@ -170,7 +170,7 @@ export const MaterialView: React.FC = () => {
                             confirmMaterial(m.id);
                             flash('Confirmed. The principal can tell the parents and the students now.');
                           }}
-                          className="px-2 py-1 text-[11px] font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg flex items-center gap-1"
+                          className="px-2 py-1 text-[11px] font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center gap-1"
                         >
                           <CheckCircle2 className="w-3 h-3" />
                           Confirm
