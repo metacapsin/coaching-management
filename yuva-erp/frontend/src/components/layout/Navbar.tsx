@@ -189,7 +189,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Global student search */}
-        <div ref={searchRef} className={`relative flex-1 max-w-xl ${canManage ? '' : 'hidden'}`}>
+        <div ref={searchRef} className={`relative flex-1 min-w-0 max-w-xl ${canManage ? '' : 'hidden'}`}>
           <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
           <input
             ref={inputRef}
