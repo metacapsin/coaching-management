@@ -62,6 +62,25 @@
   --color-purple-700: #b45309;
   --color-purple-800: #92400e;
   --color-purple-900: #78350f;
+
+  /* Palette: Error is red #EF4444 (the screens say "rose"), Info is blue #3B82F6 (a new "info" scale, because the blue scale is orange here) */
+  --color-rose-50: #fef2f2;
+  --color-rose-100: #fee2e2;
+  --color-rose-200: #fecaca;
+  --color-rose-300: #fca5a5;
+  --color-rose-400: #f87171;
+  --color-rose-500: #ef4444;
+  --color-rose-600: #dc2626;
+  --color-rose-700: #b91c1c;
+  --color-rose-800: #991b1b;
+  --color-rose-900: #7f1d1d;
+  --color-info-50: #eff6ff;
+  --color-info-100: #dbeafe;
+  --color-info-300: #93c5fd;
+  --color-info-400: #60a5fa;
+  --color-info-500: #3b82f6;
+  --color-info-600: #2563eb;
+  --color-info-700: #1d4ed8;
 }
 
 @layer base {
@@ -273,7 +292,10 @@
 .dark .border-sky-100, .dark .border-sky-200 { border-color: color-mix(in oklab, var(--color-sky-500) 35%, #0f172a); }
 .dark .text-sky-600, .dark .text-sky-700 { color: var(--color-sky-400); }
 .dark .text-sky-800, .dark .text-sky-900 { color: var(--color-sky-300); }
-.dark .bg-teal-50, .dark [class*="bg-teal-50/"] { background-color: color-mix(in oklab, var(--color-teal-500) 14%, #0f172a); }
+.dark .bg-info-50 { background-color: color-mix(in oklab, var(--color-info-500) 14%, #0f172a); }
+.dark .text-info-600, .dark .text-info-700 { color: var(--color-info-400); }
+.dark .hover\:bg-info-50:hover { background-color: color-mix(in oklab, var(--color-info-500) 14%, #0f172a); }
+.dark .bg-teal-50,.dark [class*="bg-teal-50/"] { background-color: color-mix(in oklab, var(--color-teal-500) 14%, #0f172a); }
 .dark .bg-teal-100 { background-color: color-mix(in oklab, var(--color-teal-500) 24%, #0f172a); }
 .dark .border-teal-100, .dark .border-teal-200 { border-color: color-mix(in oklab, var(--color-teal-500) 35%, #0f172a); }
 .dark .text-teal-600, .dark .text-teal-700 { color: var(--color-teal-400); }

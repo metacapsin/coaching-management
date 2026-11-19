@@ -8,10 +8,10 @@ import type { LucideIcon } from 'lucide-react';
 export const ACCENTS = {
   blue: { bar: 'from-blue-500 to-sky-400', icon: 'bg-blue-50 text-blue-600', link: 'text-blue-600 hover:bg-blue-50' },
   emerald: { bar: 'from-emerald-500 to-teal-400', icon: 'bg-emerald-50 text-emerald-600', link: 'text-emerald-700 hover:bg-emerald-50' },
-  // (the blue and indigo of the screens are orange now; a cool teal keeps one card apart from the orange ones)
-  indigo: { bar: 'from-teal-500 to-cyan-400', icon: 'bg-teal-50 text-teal-600', link: 'text-teal-700 hover:bg-teal-50' },
-  amber: { bar: 'from-amber-400 to-yellow-300', icon: 'bg-amber-50 text-amber-600', link: 'text-amber-700 hover:bg-amber-50' },
-  rose: { bar: 'from-rose-500 to-pink-400', icon: 'bg-rose-50 text-rose-600', link: 'text-rose-700 hover:bg-rose-50' }
+  // (the blue and indigo of the screens are orange now; the palette's Info blue #3B82F6 keeps one card apart from the orange ones)
+  indigo: { bar: 'from-info-500 to-info-400', icon: 'bg-info-50 text-info-500', link: 'text-info-600 hover:bg-info-50' },
+  amber: { bar: 'from-amber-500 to-amber-400', icon: 'bg-amber-50 text-amber-600', link: 'text-amber-700 hover:bg-amber-50' },
+  rose: { bar: 'from-rose-500 to-rose-400', icon: 'bg-rose-50 text-rose-600', link: 'text-rose-700 hover:bg-rose-50' }
 } as const;
 export type Accent = keyof typeof ACCENTS;
 
@@ -19,9 +19,9 @@ export type Accent = keyof typeof ACCENTS;
 const GLOW: Record<Accent, { glow: string; line: string }> = {
   blue: { glow: 'bg-orange-400', line: '#f97316' },
   emerald: { glow: 'bg-emerald-400', line: '#10b981' },
-  indigo: { glow: 'bg-teal-400', line: '#14b8a6' },
-  amber: { glow: 'bg-amber-300', line: '#f59e0b' },
-  rose: { glow: 'bg-rose-400', line: '#f43f5e' }
+  indigo: { glow: 'bg-info-400', line: '#3b82f6' },
+  amber: { glow: 'bg-amber-400', line: '#f59e0b' },
+  rose: { glow: 'bg-rose-400', line: '#ef4444' }
 };
 
 // A small line chart with a soft area under it (the last numbers of a card). Nothing is shown for fewer than two numbers.

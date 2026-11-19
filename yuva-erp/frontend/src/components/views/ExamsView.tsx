@@ -69,7 +69,7 @@ export const ExamsView: React.FC = () => {
     .sort((a, b) => (a.isGraded === b.isGraded ? b.score - a.score : a.isGraded ? -1 : 1));
 
   // all the tests together (a mark of an absent student is not counted)
-  const SUBJECT_COLORS = ['#f97316', '#22c55e', '#38bdf8', '#a855f7', '#f59e0b', '#f43f5e'];
+  const SUBJECT_COLORS = ['#f97316', '#10b981', '#3b82f6', '#ea580c', '#f59e0b', '#ef4444'];
   const { overall, subjectStats, topStudents } = (() => {
     let n = 0;
     let sum = 0;

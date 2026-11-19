@@ -379,9 +379,9 @@ export const AttendanceHistoryView: React.FC = () => {
           <div className="mt-3">
             <DonutChart
               segments={[
-                { value: totals.joined, color: '#22c55e' },
+                { value: totals.joined, color: '#10b981' },
                 { value: totals.late, color: '#f59e0b' },
-                { value: totals.notJoined, color: '#f43f5e' }
+                { value: totals.notJoined, color: '#ef4444' }
               ]}
               center={marked > 0 ? `${overall}%` : '—'}
               sub={marked > 0 ? 'joined' : 'nothing marked'}
