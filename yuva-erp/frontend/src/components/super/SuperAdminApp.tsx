@@ -1,6 +1,7 @@
 import { Select } from '../ui/Pickers';
 import React, { useEffect, useRef, useState } from 'react';
 import { PasswordInput } from '../ui/PasswordInput';
+import { KpiCard } from '../ui/HomeBlocks';
 import {
   Building2,
   Check,
@@ -365,21 +366,6 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
     };
   }, [pending.length]);
 
-  const stat = (label: string, value: number | string, cls = 'text-slate-900', onClick?: () => void, hot = false) => (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={!onClick}
-      className={`text-left bg-white border rounded-xl p-4 shadow-xs transition-shadow ${
-        onClick ? 'hover:shadow-md cursor-pointer' : 'cursor-default'
-      } ${hot ? 'border-amber-400 ring-2 ring-amber-200 animate-pulse' : 'border-slate-200'}`}
-    >
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{label}</div>
-      <div className={`text-2xl font-bold mt-1 ${cls}`}>{value}</div>
-      {onClick && <div className="text-[10px] text-slate-400 mt-1">Click to see</div>}
-    </button>
-  );
-
   return (
     <Shell
       right={
@@ -395,7 +381,7 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <div>
-          <h1 className="text-xl font-bold">Coachings</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Coachings</h1>
           <p className="text-xs text-slate-500">
             Each coaching has its own principal and its own data. You see who runs it and how big it is, never the data inside.
           </p>
@@ -446,25 +432,58 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
       )}
       {error && !loaded && <p className="mb-4 text-xs text-rose-600">{error}</p>}
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        {stat('Coachings', orgs.filter(o => o.status !== 'pending').length, 'text-slate-900', () => {
-          setFilter('all');
-          listRef.current?.scrollIntoView({ behavior: 'smooth' });
-        })}
-        {stat(
-          'Waiting for approval',
-          pending.length,
-          pending.length ? 'text-amber-700' : 'text-slate-900',
-          () => {
-            setFilter('pending');
-            pendingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          },
-          pending.length > 0
-        )}
-        {stat('Active', orgs.filter(isLive).length, 'text-emerald-700', () => {
-          setFilter('active');
-          listRef.current?.scrollIntoView({ behavior: 'smooth' });
-        })}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+        <KpiCard
+          label="Coachings"
+          icon={Building2}
+          accent="indigo"
+          value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{orgs.filter(o => o.status !== 'pending').length}</span>}
+          footer={<>{orgs.filter(isLive).length} active now</>}
+          link={{
+            text: 'View all →',
+            onClick: () => {
+              setFilter('all');
+              listRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }
+          }}
+        />
+        <div className={pending.length > 0 ? 'rounded-2xl ring-2 ring-amber-300 animate-pulse' : ''}>
+          <KpiCard
+            label="Waiting for approval"
+            icon={Clock}
+            accent="amber"
+            value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{pending.length}</span>}
+            footer={<>{pending.length ? 'Answer the requests' : 'Nothing to answer'}</>}
+            link={{
+              text: 'Open →',
+              onClick: () => {
+                setFilter('pending');
+                pendingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }}
+          />
+        </div>
+        <KpiCard
+          label="Active"
+          icon={CheckCircle2}
+          accent="emerald"
+          value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{orgs.filter(isLive).length}</span>}
+          footer={<>Principal signed in</>}
+          link={{
+            text: 'View →',
+            onClick: () => {
+              setFilter('active');
+              listRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }
+          }}
+        />
+        <KpiCard
+          label="Students in all"
+          icon={Users}
+          accent="blue"
+          value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{orgs.reduce((n, o) => n + (o.students || 0), 0)}</span>}
+          footer={<>{orgs.reduce((n, o) => n + (o.teachers || 0), 0)} teachers</>}
+        />
       </div>
 
       <div ref={pendingRef}>
@@ -559,8 +578,9 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
             const initials = principal.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]?.toUpperCase()).join('') || '?';
             const needsAction = o.status === 'pending' || o.status === 'suspended';
             return (
-              <div key={o.id} className={`bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden self-start ${o.status === 'active' ? '' : 'opacity-80'}`}>
-                <div className="p-5">
+              <div key={o.id} className={`relative bg-white border border-slate-200 rounded-2xl shadow-xs hover:shadow-lg hover:-translate-y-0.5 transition-all overflow-hidden self-start ${o.status === 'active' ? '' : 'opacity-80'}`}>
+                <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${isIdle(o) ? 'from-red-500 to-red-400' : o.status === 'active' ? 'from-emerald-500 to-teal-400' : o.status === 'pending' ? 'from-amber-500 to-amber-400' : 'from-slate-400 to-slate-300'}`} />
+                <div className="p-5 pt-6">
                   {/* the coaching: a letter, the name, where and since when; on the right the state and the delete */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
@@ -593,7 +613,7 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
 
                   {/* the principal */}
                   <div className="mt-4 rounded-xl bg-slate-50 border border-slate-100 p-3 flex items-center gap-3">
-                    <span className="w-10 h-10 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold shrink-0">{initials}</span>
+                    <span className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-amber-400 text-white flex items-center justify-center text-xs font-bold shrink-0">{initials}</span>
                     <div className="min-w-0">
                       <div className="text-[10px] uppercase tracking-wide text-slate-400">Principal</div>
                       <div className="text-sm font-semibold text-slate-900 truncate">{principal}</div>
@@ -620,8 +640,8 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
 
                   {/* how big it is */}
                   <div className="mt-3 grid grid-cols-3 gap-2">
-                    <div className="rounded-xl border border-slate-200 p-2.5 flex items-center gap-2">
-                      <span className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600">
+                    <div className="rounded-xl border border-orange-500/30 bg-orange-500/10 p-2.5 flex items-center gap-2">
+                      <span className="p-1.5 rounded-lg bg-orange-500/15 text-orange-600">
                         <Users className="w-4 h-4" />
                       </span>
                       <div>
@@ -629,8 +649,8 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
                         <div className="text-[11px] text-slate-500 mt-1">Students</div>
                       </div>
                     </div>
-                    <div className="rounded-xl border border-slate-200 p-2.5 flex items-center gap-2">
-                      <span className="p-1.5 rounded-lg bg-sky-50 text-sky-600">
+                    <div className="rounded-xl border border-[#3b82f6]/30 bg-[#3b82f6]/10 p-2.5 flex items-center gap-2">
+                      <span className="p-1.5 rounded-lg bg-[#3b82f6]/15 text-[#3b82f6]">
                         <GraduationCap className="w-4 h-4" />
                       </span>
                       <div>
@@ -638,8 +658,8 @@ You may write the reason (the principal gets it). Press Cancel to keep the reque
                         <div className="text-[11px] text-slate-500 mt-1">Teachers</div>
                       </div>
                     </div>
-                    <div className="rounded-xl border border-slate-200 p-2.5 flex items-center gap-2">
-                      <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600">
+                    <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-2.5 flex items-center gap-2">
+                      <span className="p-1.5 rounded-lg bg-emerald-500/15 text-emerald-600">
                         <KeyRound className="w-4 h-4" />
                       </span>
                       <div>
