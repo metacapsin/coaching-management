@@ -9,6 +9,7 @@ import { PrintableReportCardModal } from '../modals/PrintableReportCardModal';
 import { EditExamModal } from '../modals/EditExamModal';
 import { PrintableAdmitCardModal } from '../modals/PrintableAdmitCardModal';
 import { useAuth } from '../../Context/AuthContext';
+import { DonutChart, KpiCard } from '../ui/HomeBlocks';
 import { canManageInstitute } from '../../Context/Access';
 import { Award, Plus, FileText, Printer, Send, Pencil, Trash2, Ticket } from 'lucide-react';
 
@@ -66,6 +67,42 @@ export const ExamsView: React.FC = () => {
       };
     })
     .sort((a, b) => (a.isGraded === b.isGraded ? b.score - a.score : a.isGraded ? -1 : 1));
+
+  // all the tests together (a mark of an absent student is not counted)
+  const SUBJECT_COLORS = ['#f97316', '#22c55e', '#38bdf8', '#a855f7', '#f59e0b', '#f43f5e'];
+  const { overall, subjectStats, topStudents } = (() => {
+    let n = 0;
+    let sum = 0;
+    let passed = 0;
+    let top = 0;
+    const subj = new Map<string, { sum: number; n: number }>();
+    const stu = new Map<string, { sum: number; n: number }>();
+    for (const e of exams) {
+      if (!e.maxMarks) continue;
+      for (const [sid, r] of Object.entries(e.results)) {
+        if (r.absent) continue;
+        const pct = (r.marksObtained / e.maxMarks) * 100;
+        n++;
+        sum += pct;
+        if (r.marksObtained >= (e.passMarks || 0)) passed++;
+        top = Math.max(top, pct);
+        const sj = (e.subject || 'General').trim() || 'General';
+        const a = subj.get(sj) ?? { sum: 0, n: 0 };
+        subj.set(sj, { sum: a.sum + pct, n: a.n + 1 });
+        const b = stu.get(sid) ?? { sum: 0, n: 0 };
+        stu.set(sid, { sum: b.sum + pct, n: b.n + 1 });
+      }
+    }
+    return {
+      overall: { n, avg: n ? Math.round(sum / n) : 0, pass: n ? Math.round((passed / n) * 100) : 0, top: Math.round(top) },
+      subjectStats: Array.from(subj.entries()).map(([subject, v]) => ({ subject, avg: Math.round(v.sum / v.n) })).sort((a, b) => b.avg - a.avg).slice(0, 6),
+      topStudents: Array.from(stu.entries())
+        .map(([id, v]) => ({ id, name: students.find(x => x.id === id)?.name ?? '', avg: Math.round(v.sum / v.n) }))
+        .filter(x => x.name)
+        .sort((a, b) => b.avg - a.avg)
+        .slice(0, 5)
+    };
+  })();
 
   const handleBroadcastResults = async (exam: Exam) => {
     const template = templates.find(t => t.type === 'exam_result') || templates[0];
@@ -144,18 +181,11 @@ export const ExamsView: React.FC = () => {
       )}
 
       {/* Header */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-blue-600 text-white">
-              <Award className="w-5 h-5" />
-            </span>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-              Test Series & Exam Performance
-            </h1>
-          </div>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Exams & Reports</h1>
           <p className="text-xs text-slate-500 mt-1">
-            Conduct minor tests, All-India mocks, record marks, compute ranks & percentiles, and print official report cards.
+            Conduct tests and mocks, record marks, see the ranks and print the report cards.
           </p>
         </div>
 
@@ -167,6 +197,56 @@ export const ExamsView: React.FC = () => {
           Schedule New Exam
         </button>
       </div>
+
+      {/* All the tests together: numbers, subjects and the best students */}
+      {exams.length > 0 && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <KpiCard label="Total exams" icon={Award} accent="blue" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{exams.length}</span>} footer={<>{exams.filter(e => e.status === 'published').length} published</>} />
+            <KpiCard label="Average score" icon={FileText} accent="emerald" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{overall.n ? `${overall.avg}%` : '—'}</span>} footer={<>{overall.n} marks recorded</>} />
+            <KpiCard label="Pass rate" icon={Send} accent="amber" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{overall.n ? `${overall.pass}%` : '—'}</span>} footer={<>Of the students who wrote</>} />
+            <KpiCard label="Topper score" icon={Ticket} accent="rose" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{overall.n ? `${overall.top}%` : '—'}</span>} footer={<>{topStudents[0]?.name ?? 'No marks yet'}</>} />
+          </div>
+
+          {overall.n > 0 && (
+            <div className="grid gap-5 lg:grid-cols-2">
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5">
+                <h2 className="text-sm font-bold text-slate-900">Subject performance</h2>
+                <div className="mt-4 flex items-center gap-6 flex-wrap justify-center sm:justify-start">
+                  <DonutChart segments={subjectStats.map((x, i) => ({ value: x.avg, color: SUBJECT_COLORS[i % SUBJECT_COLORS.length] }))} center={`${overall.avg}%`} sub="average" size={140} />
+                  <div className="space-y-2 text-xs text-slate-600 min-w-[140px] flex-1">
+                    {subjectStats.map((x, i) => (
+                      <div key={x.subject} className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: SUBJECT_COLORS[i % SUBJECT_COLORS.length] }} />
+                        <span className="truncate">{x.subject}</span>
+                        <b className="ml-auto text-slate-900">{x.avg}%</b>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5">
+                <h2 className="text-sm font-bold text-slate-900">Top students</h2>
+                <ul className="mt-3 divide-y divide-slate-100">
+                  {topStudents.map((t, i) => (
+                    <li key={t.id} className="py-2.5 flex items-center gap-3">
+                      <span className={`w-6 text-center text-xs font-bold ${i === 0 ? 'text-amber-500' : 'text-slate-400'}`}>{i + 1}</span>
+                      <div className="w-8 h-8 shrink-0 rounded-full bg-gradient-to-br from-orange-500 to-amber-400 text-white text-[11px] font-bold flex items-center justify-center">
+                        {t.name.split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase()}
+                      </div>
+                      <span className="text-xs font-semibold text-slate-900 truncate">{t.name}</span>
+                      <div className="ml-auto flex items-center gap-2">
+                        <div className="h-1.5 w-20 rounded-full bg-slate-200 overflow-hidden"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${t.avg}%` }} /></div>
+                        <span className="text-xs font-mono font-bold text-slate-800 w-9 text-right">{t.avg}%</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       {/* Main Grid: Left Column Exam List + Right Column Exam Gradebook/Leaderboard */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

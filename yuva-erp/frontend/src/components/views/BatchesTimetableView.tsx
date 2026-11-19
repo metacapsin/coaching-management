@@ -1,4 +1,5 @@
 import { Select } from '../ui/Pickers';
+import { KpiCard } from '../ui/HomeBlocks';
 import React, { useState, useMemo } from 'react';
 import { useInstitute } from '../../Context/InstituteContext';
 import { useAuth } from '../../Context/AuthContext';
@@ -19,7 +20,8 @@ import {
   X,
   AlertTriangle,
   CheckCircle2,
-  UserCheck
+  UserCheck,
+  Users
 } from 'lucide-react';
 
 const STATUS_STYLE: Record<Batch['status'], string> = {
@@ -58,6 +60,10 @@ export const BatchesTimetableView: React.FC = () => {
     setNotice(text);
     setTimeout(() => setNotice(null), 4000);
   };
+
+  const enrolledTotal = students.filter(st => st.status !== 'inactive' && batches.some(b => b.id === st.batchId)).length;
+  const seatsTotal = batches.reduce((n, b) => n + (b.maxCapacity || 0), 0);
+  const seatsLeft = Math.max(0, seatsTotal - enrolledTotal);
 
   const filteredTimetable = useMemo(() => {
     return timetable.filter(slot => selectedBatchFilter === 'all' || slot.batchId === selectedBatchFilter);
@@ -108,18 +114,11 @@ export const BatchesTimetableView: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-indigo-600 text-white">
-              <Layers className="w-5 h-5" />
-            </span>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-              Batches & Master Schedule Timetable
-            </h1>
-          </div>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Courses & Batches</h1>
           <p className="text-xs text-slate-500 mt-1">
-            Organize academic batches, faculty allocations, classroom hall capacities, and weekly lecture schedules.
+            Organize batches, faculty, classrooms and the weekly lecture schedule.
           </p>
         </div>
 
@@ -150,6 +149,14 @@ export const BatchesTimetableView: React.FC = () => {
           <span>{notice}</span>
         </div>
       )}
+
+      {/* Numbers of the batches */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard label="Batches" icon={Layers} accent="blue" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{batches.length}</span>} footer={<>{batches.filter(b => b.status === 'ongoing').length} ongoing · {batches.filter(b => b.status === 'upcoming').length} upcoming</>} />
+        <KpiCard label="Enrolled students" icon={Users} accent="emerald" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{enrolledTotal}</span>} footer={<>Across all batches</>} />
+        <KpiCard label="Seats left" icon={GraduationCap} accent="amber" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{seatsLeft}</span>} footer={<>Of {seatsTotal} seats</>} />
+        <KpiCard label="Seats filled" icon={Calendar} accent="indigo" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{seatsTotal > 0 ? Math.round((enrolledTotal / seatsTotal) * 100) : 0}%</span>} footer={<>{timetable.length} weekly slots</>} />
+      </div>
 
       {/* Tabs */}
       <div className="flex border-b border-slate-200 text-xs font-medium text-slate-600 gap-6">
@@ -195,8 +202,9 @@ export const BatchesTimetableView: React.FC = () => {
             return (
               <div
                 key={batch.id}
-                className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between"
+                className="relative overflow-hidden bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:shadow-lg hover:-translate-y-0.5 transition-all flex flex-col justify-between"
               >
+                <span className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-orange-500 to-amber-400" />
                 <div>
                   <div className="flex justify-between items-start mb-2 gap-2">
                     <span className="font-mono text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded uppercase">

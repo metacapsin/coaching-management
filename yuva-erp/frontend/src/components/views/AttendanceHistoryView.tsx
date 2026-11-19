@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { CalendarCheck, ChevronDown, Search, X } from 'lucide-react';
+import { CalendarCheck, ChevronDown, Clock, Search, UserCheck, UserX, X } from 'lucide-react';
+import { AreaChart, DonutChart, KpiCard } from '../ui/HomeBlocks';
 import { useInstitute } from '../../Context/InstituteContext';
 import { useAuth } from '../../Context/AuthContext';
 import { DateInput, Select } from '../ui/Pickers';
@@ -147,6 +148,27 @@ export const AttendanceHistoryView: React.FC = () => {
     { joined: 0, notJoined: 0, late: 0 }
   );
 
+  // joined + late count as "in the class"; the % of the whole list and per day (for the small chart and the trend)
+  const marked = totals.joined + totals.notJoined + totals.late;
+  const overall = marked > 0 ? Math.round(((totals.joined + totals.late) / marked) * 100) : 0;
+  const trend = useMemo(() => {
+    const byDay = new Map<string, { here: number; all: number }>();
+    for (const r of sessions) {
+      const x = byDay.get(r.date) ?? { here: 0, all: 0 };
+      for (const st of Object.values(r.records || {})) {
+        if (st === 'excused') continue;
+        x.all++;
+        if (st === 'present' || st === 'late') x.here++;
+      }
+      byDay.set(r.date, x);
+    }
+    return Array.from(byDay.entries())
+      .filter(([, x]) => x.all > 0)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .slice(-14)
+      .map(([d, x]) => ({ label: formatDate(d).slice(0, 6), value: Math.round((x.here / x.all) * 100) }));
+  }, [sessions]);
+
   // One student: every class of the student in the chosen period, newest first
   const q = search.trim().toLowerCase();
   const studentRows = useMemo(() => {
@@ -195,17 +217,11 @@ export const AttendanceHistoryView: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-emerald-600 text-white">
-              <CalendarCheck className="w-5 h-5" />
-            </span>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Attendance History</h1>
-          </div>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Attendance</h1>
           <p className="text-xs text-slate-500 mt-1 max-w-2xl">
-            Every teacher marks the attendance of the own subject (online or offline). Here you see, for each class, who joined, who did not and who joined late. You do not
-            mark the attendance yourself.
+            Every teacher marks the attendance of the own subject (online or offline). Here you see, for each class, who joined, who did not and who joined late.
           </p>
         </div>
         <ExportMenu
@@ -330,23 +346,53 @@ export const AttendanceHistoryView: React.FC = () => {
       </div>
 
       {/* Totals */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-xs text-center">
-          <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-500">Classes marked</span>
-          <p className="text-xl font-bold text-slate-900 mt-0.5">{sessions.length}</p>
-          <span className="text-[10px] text-slate-400">{periodText}</span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard
+          label="Overall attendance"
+          icon={CalendarCheck}
+          accent="blue"
+          value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{marked > 0 ? `${overall}%` : '—'}</span>}
+          footer={<>{sessions.length} classes · {periodText}</>}
+          spark={trend.map(t => t.value)}
+        />
+        <KpiCard label="Joined" icon={UserCheck} accent="emerald" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{totals.joined}</span>} footer={<>Students who joined</>} />
+        <KpiCard label="Not joined" icon={UserX} accent="rose" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{totals.notJoined}</span>} footer={<>Students who did not join</>} />
+        <KpiCard label="Late join" icon={Clock} accent="amber" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{totals.late}</span>} footer={<>Students who joined late</>} />
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-slate-900">Attendance trend</h2>
+            <span className="text-[11px] text-slate-500">% who joined, by day</span>
+          </div>
+          <div className="mt-3">
+            {trend.length < 2 ? (
+              <p className="py-14 text-center text-xs text-slate-500">The trend shows when classes of two days are marked.</p>
+            ) : (
+              <AreaChart id="att-trend" data={trend} format={n => `${n}%`} color="#10b981" height={200} />
+            )}
+          </div>
         </div>
-        <div className="bg-white rounded-xl border border-emerald-200 p-3.5 shadow-xs text-center">
-          <span className="text-[11px] uppercase tracking-wider font-semibold text-emerald-700">Joined</span>
-          <p className="text-xl font-bold text-emerald-800 mt-0.5">{totals.joined}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-rose-200 p-3.5 shadow-xs text-center">
-          <span className="text-[11px] uppercase tracking-wider font-semibold text-rose-700">Not joined</span>
-          <p className="text-xl font-bold text-rose-800 mt-0.5">{totals.notJoined}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-amber-200 p-3.5 shadow-xs text-center">
-          <span className="text-[11px] uppercase tracking-wider font-semibold text-amber-700">Late join</span>
-          <p className="text-xl font-bold text-amber-800 mt-0.5">{totals.late}</p>
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5">
+          <h2 className="text-sm font-bold text-slate-900">Attendance overview</h2>
+          <div className="mt-3">
+            <DonutChart
+              segments={[
+                { value: totals.joined, color: '#22c55e' },
+                { value: totals.late, color: '#f59e0b' },
+                { value: totals.notJoined, color: '#f43f5e' }
+              ]}
+              center={marked > 0 ? `${overall}%` : '—'}
+              sub={marked > 0 ? 'joined' : 'nothing marked'}
+              size={150}
+            />
+          </div>
+          <div className="mt-4 space-y-2 text-xs text-slate-600">
+            <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-500" />Joined<b className="ml-auto text-slate-900">{totals.joined}</b></div>
+            <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-sm bg-rose-500" />Not joined<b className="ml-auto text-slate-900">{totals.notJoined}</b></div>
+            <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-sm bg-amber-500" />Late join<b className="ml-auto text-slate-900">{totals.late}</b></div>
+          </div>
         </div>
       </div>
 
