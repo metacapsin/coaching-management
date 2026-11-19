@@ -406,7 +406,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
             </ul>
           </div>
           <div id="signin" className="lp-slide w-full max-w-md mx-auto lg:ml-auto">
-            <div className="auth-dark rounded-2xl bg-[#334155] border border-sky-300/25 text-slate-900 shadow-2xl shadow-black/30 p-6 sm:p-8">
+            <div className="auth-dark login-tint rounded-2xl border text-slate-900 shadow-2xl shadow-black/30 p-6 sm:p-8">
               {signedIn && (
                 <div className="mb-5 p-3 rounded-lg border border-sky-300/30 bg-sky-400/10 text-xs text-sky-100">
                   <p>

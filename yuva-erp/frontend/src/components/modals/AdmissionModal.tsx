@@ -347,15 +347,15 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/70 backdrop-blur-sm overflow-y-auto">
       <div className="relative w-full max-w-5xl bg-slate-50 border border-slate-200 rounded-2xl shadow-2xl my-4 overflow-hidden text-slate-900 flex flex-col md:flex-row">
-        <aside className="md:w-64 shrink-0 p-5 md:p-6 bg-gradient-to-b from-orange-500 to-orange-700 text-white flex md:flex-col gap-4 items-center md:items-stretch">
+        <aside className="md:w-64 shrink-0 p-5 md:p-6 side-tint text-slate-900 flex md:flex-col gap-4 items-center md:items-stretch">
           <div className="flex md:flex-col items-center md:items-start gap-3 min-w-0">
-            <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-white/20 ring-1 ring-white/30 flex items-center justify-center text-lg md:text-2xl font-bold shrink-0">
+            <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-orange-500/15 text-orange-600 ring-1 ring-orange-500/30 flex items-center justify-center text-lg md:text-2xl font-bold shrink-0">
               {sideInitials || <UserPlus className="w-6 h-6" />}
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-white/70">New admission</p>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-orange-600">New admission</p>
               <p className="text-base font-bold leading-tight truncate">{sideName || 'New Student'}</p>
-              <p className="text-[11px] text-white/70 mt-0.5">{formatDate(toLocalISODate())}</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">{formatDate(toLocalISODate())}</p>
             </div>
           </div>
           <ol className="hidden md:block space-y-1 mt-2">
@@ -367,25 +367,25 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
                     e.preventDefault();
                     document.getElementById(st.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                   }}
-                  className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white/10 transition-colors"
+                  className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-orange-500/10 transition-colors"
                 >
-                  <span className={`w-6 h-6 rounded-full text-[11px] font-bold flex items-center justify-center shrink-0 ${st.done ? 'bg-white text-orange-600' : 'border border-white/50 text-white/80'}`}>
+                  <span className={`w-6 h-6 rounded-full text-[11px] font-bold flex items-center justify-center shrink-0 ${st.done ? 'bg-orange-500 text-white' : 'border border-orange-500/50 text-orange-600'}`}>
                     {st.done ? <Check className="w-3.5 h-3.5" /> : i + 1}
                   </span>
-                  <span className={`text-xs font-medium ${st.done ? 'text-white' : 'text-white/80'}`}>{st.label}</span>
+                  <span className={`text-xs font-medium ${st.done ? 'text-slate-900' : 'text-slate-500'}`}>{st.label}</span>
                 </a>
               </li>
             ))}
           </ol>
           <div className="hidden md:block mt-auto">
-            <div className="flex justify-between text-[11px] text-white/80 mb-1.5">
+            <div className="flex justify-between text-[11px] text-slate-500 mb-1.5">
               <span>Form filled</span>
               <span>{sideSteps.filter(x => x.done).length} / {sideSteps.length}</span>
             </div>
-            <div className="h-1.5 rounded-full bg-white/25 overflow-hidden">
-              <div className="h-full rounded-full bg-white transition-all" style={{ width: `${(sideSteps.filter(x => x.done).length / sideSteps.length) * 100}%` }} />
+            <div className="h-1.5 rounded-full bg-slate-200 overflow-hidden">
+              <div className="h-full rounded-full bg-orange-500 transition-all" style={{ width: `${(sideSteps.filter(x => x.done).length / sideSteps.length) * 100}%` }} />
             </div>
-            <p className="text-[11px] text-white/70 mt-3 leading-snug">Enroll the candidate, choose the batch, set the fee and the first receipt.</p>
+            <p className="text-[11px] text-slate-500 mt-3 leading-snug">Enroll the candidate, choose the batch, set the fee and the first receipt.</p>
           </div>
         </aside>
         <div className="flex-1 min-w-0 flex flex-col">
@@ -530,7 +530,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
                 {errors.email && <p className="text-xs text-rose-600 mt-1">{errors.email}</p>}
               </div>
 
-              <div className="md:col-span-2 p-3 rounded-lg bg-blue-50/60 border border-blue-100">
+              <div className="md:col-span-2 p-3 rounded-lg bg-slate-50 border border-slate-200">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={makeLogin} onChange={e => setMakeLogin(e.target.checked)} className="rounded border-slate-300 text-blue-600 w-4 h-4" />
                   <span className="text-xs font-medium text-slate-800">Create the student's login now (email above + this temporary password)</span>
@@ -741,7 +741,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
               </div>
 
               {newProgram && (
-                <div className="md:col-span-2 p-3.5 rounded-lg bg-blue-50/60 border border-blue-100 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                <div className="md:col-span-2 p-3.5 rounded-lg bg-slate-50 border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                   <div className="sm:col-span-1">
                     <label className="block text-xs font-medium text-slate-700 mb-1">New program name</label>
                     <input
@@ -774,7 +774,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
               )}
 
               {newBatch && (
-                <div className="md:col-span-2 p-3.5 rounded-lg bg-blue-50/60 border border-blue-100 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                <div className="md:col-span-2 p-3.5 rounded-lg bg-slate-50 border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                   <div>
                     <label className="block text-xs font-medium text-slate-700 mb-1">New batch name</label>
                     <input
@@ -941,7 +941,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
           )}
 
           {/* The rules and regulations of the coaching go to the student and the parent by email */}
-          <div className="p-3 rounded-lg bg-blue-50/60 border border-blue-100">
+          <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
             <label className="flex items-start gap-2 cursor-pointer">
               <input type="checkbox" checked={sendRules} onChange={e => setSendRules(e.target.checked)} className="mt-0.5 rounded border-slate-300 text-blue-600 w-4 h-4 shrink-0" />
               <span>

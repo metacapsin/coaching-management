@@ -235,11 +235,11 @@
   --color-slate-900: #f8fafc;
 }
 .auth-dark [class*="bg-white"]:not([class*="hover:bg-white"]) { background-color: #1e293b; }
-.auth-dark .bg-slate-100 { background-color: #334155; }
+.auth-dark .bg-slate-100 { background-color: #1e293b; }
 .auth-dark label { color: #ffffff; }
 .auth-dark input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
 .auth-dark select,
-.auth-dark textarea { background-color: #334155; color: #ffffff; }
+.auth-dark textarea { background-color: #0b1324; color: #ffffff; }
 .auth-dark input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([class*="border-rose"]) { border-color: rgb(251 146 60 / 0.55); }
 .auth-dark input::placeholder,
 .auth-dark textarea::placeholder { color: #94a3b8; }
@@ -432,3 +432,31 @@ button.bg-blue-600:disabled { box-shadow: none; }
 
 /* the page never scrolls sideways (clip, not hidden: the sticky top bar keeps working) */
 html, body { overflow-x: clip; }
+
+/* ---------- The side panel of the long forms (student, teacher): like the cards, a clean base with a soft orange light from the corner ---------- */
+.side-tint {
+  background-color: #fffaf5;
+  background-image:
+    radial-gradient(120% 70% at 0% 0%, color-mix(in oklab, #f97316 20%, white), transparent 70%),
+    linear-gradient(180deg, color-mix(in oklab, #f97316 5%, white), #ffffff);
+  border-right: 1px solid color-mix(in oklab, #f97316 22%, #e2e8f0);
+}
+.dark .side-tint {
+  background-color: #111a2c;
+  background-image:
+    radial-gradient(120% 70% at 0% 0%, color-mix(in oklab, #f97316 26%, transparent), transparent 70%),
+    linear-gradient(180deg, color-mix(in oklab, #f97316 6%, #141e32), #0f1729);
+  border-right-color: color-mix(in oklab, #f97316 26%, #1e293b);
+}
+@media (max-width: 767px) {
+  .side-tint { border-right: 0; border-bottom: 1px solid color-mix(in oklab, #f97316 22%, #e2e8f0); }
+}
+
+/* the sign in card of the home page: the same clean dark base with a soft orange light from the corner as the cards */
+.login-tint {
+  background-color: #111a2c;
+  background-image:
+    radial-gradient(110% 70% at 100% 0%, color-mix(in oklab, #f97316 24%, transparent), transparent 66%),
+    linear-gradient(180deg, color-mix(in oklab, #f97316 5%, #141e32), #0f1729);
+  border-color: color-mix(in oklab, #f97316 28%, #1e293b);
+}
