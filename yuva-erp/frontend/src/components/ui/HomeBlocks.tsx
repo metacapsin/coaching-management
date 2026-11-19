@@ -67,7 +67,11 @@ export const KpiCard: React.FC<{
   const c = ACCENTS[accent];
   const g = GLOW[accent];
   return (
-    <div className="group relative overflow-hidden bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
+    <div
+      data-kpi
+      style={{ '--tint': g.line } as React.CSSProperties}
+      className="group relative overflow-hidden bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
+    >
       <div className={`h-1 bg-gradient-to-r ${c.bar}`} />
       <span className={`absolute -top-12 -right-12 w-36 h-36 rounded-full opacity-[0.14] blur-2xl pointer-events-none ${g.glow}`} />
       <div className="relative p-5">
