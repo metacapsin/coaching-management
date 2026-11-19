@@ -5,6 +5,7 @@ import type { Course, FeeTransaction, Student } from '../../types';
 import { CourseModal } from '../modals/CourseModal';
 import { CancelReceiptModal } from '../modals/CancelReceiptModal';
 import { Pager } from '../ui/Pager';
+import { AreaChart, KpiCard } from '../ui/HomeBlocks';
 import { usePaged } from '../utils/usePaged';
 import { emailFeeNotice } from '../utils/api';
 import { ExportMenu, exportMoney } from '../ui/ExportMenu';
@@ -23,7 +24,9 @@ import {
   Pencil,
   Trash2,
   AlertTriangle,
-  Clock
+  Clock,
+  Wallet,
+  Percent
 } from 'lucide-react';
 
 interface FeesViewProps {
@@ -71,6 +74,18 @@ export const FeesView: React.FC<FeesViewProps> = ({
   const totalOutstanding = Math.max(0, totalAssessedFees - totalCollectedFees);
   const realizationPercentage = totalAssessedFees > 0 ? Math.round((totalCollectedFees / totalAssessedFees) * 100) : 0;
   const receiptCount = transactions.filter(t => t.status !== 'cancelled').length;
+
+  const money = (n: number) => `${profile.currencySymbol}${n.toLocaleString('en-IN')}`;
+  // the money received in each of the last 6 months (for the chart and the small chart of the card)
+  const collectedMonths = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() - (5 - i));
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const total = transactions.filter(t => t.status !== 'cancelled' && (t.date || '').startsWith(key)).reduce((n, t) => n + t.amount, 0);
+    return { label: d.toLocaleString('en-GB', { month: 'short' }), total };
+  });
+  const sparkCollected = collectedMonths.map(m => m.total);
 
   // Defaulters: overdue accounts first, then the biggest balance
   const defaultersList = useMemo<DefaulterRow[]>(() => {
@@ -245,22 +260,17 @@ export const FeesView: React.FC<FeesViewProps> = ({
   return (
     <div className="space-y-6">
       {/* View Header */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-emerald-600 text-white">
-              <CreditCard className="w-5 h-5" />
-            </span>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Fee Management & Invoicing</h1>
-          </div>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Fees & Payments</h1>
           <p className="text-xs text-slate-500 mt-1">
-            The fees that the parents paid: write how each parent paid (online or offline), make the receipt, and send it to the parent as a PDF.
+            Write how each parent paid (online or offline), make the receipt, and send it to the parent as a PDF.
           </p>
         </div>
 
         <button
           onClick={onOpenRecordPayment}
-          className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
+          className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors flex items-center gap-1.5 self-start md:self-auto"
         >
           <Plus className="w-4 h-4" />
           Fee Received from Parent
@@ -282,38 +292,86 @@ export const FeesView: React.FC<FeesViewProps> = ({
 
       {/* Financial Health Bar */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Course Fees</span>
-          <p className="text-2xl font-bold font-mono text-slate-900 mt-1">
-            {profile.currencySymbol}{totalAssessedFees.toLocaleString('en-IN')}
-          </p>
-          <span className="text-[11px] text-slate-400">Net after scholarships</span>
+        <KpiCard
+          label="Total Collected"
+          icon={Wallet}
+          accent="emerald"
+          value={<span className="text-2xl font-bold font-mono text-slate-900 tabular-nums">{money(totalCollectedFees)}</span>}
+          footer={<>{realizationPercentage}% of the fees realized</>}
+          spark={sparkCollected}
+        />
+        <KpiCard
+          label="Pending Dues"
+          icon={AlertTriangle}
+          accent="rose"
+          value={<span className="text-2xl font-bold font-mono text-slate-900 tabular-nums">{money(totalOutstanding)}</span>}
+          footer={<>{plural(defaultersList.length, 'student')}{overdueCount > 0 ? ` · ${overdueCount} overdue` : ''}</>}
+        />
+        <KpiCard
+          label="Total Fees"
+          icon={CreditCard}
+          accent="blue"
+          value={<span className="text-2xl font-bold font-mono text-slate-900 tabular-nums">{money(totalAssessedFees)}</span>}
+          footer={<>Net after scholarships</>}
+        />
+        <KpiCard
+          label="Collection Rate"
+          icon={Percent}
+          accent="amber"
+          value={<span className="text-2xl font-bold text-slate-900 tabular-nums">{realizationPercentage}%</span>}
+          footer={<>{receiptCount} receipts{transactions.length - receiptCount > 0 ? ` · ${transactions.length - receiptCount} cancelled` : ''}</>}
+        />
+      </div>
+
+      {/* Collection overview and the biggest dues */}
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-slate-900">Collection overview</h2>
+            <span className="text-[11px] text-slate-500">Last 6 months · {money(sparkCollected.reduce((a, b) => a + b, 0))}</span>
+          </div>
+          <div className="mt-3">
+            <AreaChart
+              id="fees-overview"
+              data={collectedMonths.map(m => ({ label: m.label, value: m.total }))}
+              format={n => money(n)}
+              height={210}
+            />
+          </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-emerald-200 bg-emerald-50/20 p-4 shadow-xs">
-          <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Collected Revenue</span>
-          <p className="text-2xl font-bold font-mono text-emerald-800 mt-1">
-            {profile.currencySymbol}{totalCollectedFees.toLocaleString('en-IN')}
-          </p>
-          <span className="text-[11px] text-emerald-600 font-medium">{realizationPercentage}% of total realized</span>
-        </div>
-
-        <div className="bg-white rounded-xl border border-rose-200 bg-rose-50/20 p-4 shadow-xs">
-          <span className="text-xs font-semibold uppercase tracking-wider text-rose-700">Pending Dues</span>
-          <p className="text-2xl font-bold font-mono text-rose-700 mt-1">
-            {profile.currencySymbol}{totalOutstanding.toLocaleString('en-IN')}
-          </p>
-          <span className="text-[11px] text-rose-600">
-            {plural(defaultersList.length, 'student')} with balance{overdueCount > 0 ? ` · ${overdueCount} overdue` : ''}
-          </span>
-        </div>
-
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Transactions</span>
-          <p className="text-2xl font-bold text-slate-900 mt-1">{receiptCount} Receipts</p>
-          <span className="text-[11px] text-slate-400">
-            {transactions.length - receiptCount > 0 ? `${transactions.length - receiptCount} cancelled` : 'Vouchers in digital ledger'}
-          </span>
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 flex flex-col">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-slate-900">Pending dues</h2>
+            <button onClick={() => setActiveTab('defaulters')} className="text-[11px] font-medium text-blue-600 hover:underline">View all →</button>
+          </div>
+          {defaultersList.length === 0 ? (
+            <p className="mt-6 text-xs text-slate-500 text-center">No pending dues. Every account is clear.</p>
+          ) : (
+            <ul className="mt-3 mb-4 divide-y divide-slate-100">
+              {defaultersList.slice(0, 5).map(d => (
+                <li key={d.student.id} className="py-2.5 flex items-center gap-3">
+                  <div className="w-8 h-8 shrink-0 rounded-full bg-gradient-to-br from-orange-500 to-amber-400 text-white text-[11px] font-bold flex items-center justify-center">
+                    {d.student.name.split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-slate-900 truncate">{d.student.name}</p>
+                    <p className="text-[11px] text-slate-500 truncate">
+                      {d.batchName || 'No batch'}
+                      {d.overdueDays > 0 ? ` · ${d.overdueDays}d overdue` : ''}
+                    </p>
+                  </div>
+                  <span className="text-xs font-bold font-mono text-rose-600 tabular-nums">{money(d.due)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <button
+            onClick={onOpenRecordPayment}
+            className="mt-auto w-full px-3 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+          >
+            Collect Payment
+          </button>
         </div>
       </div>
 
