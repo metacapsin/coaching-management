@@ -147,7 +147,7 @@ const TeacherShell: React.FC<{
           </div>
         </aside>
         <div className="flex-1 min-w-0 flex flex-col min-h-0">
-          <div className="px-6 py-4 flex items-center justify-between border-b border-slate-200 bg-white shrink-0">
+          <div className="px-6 py-4 flex items-center justify-between border-b border-orange-500/25 bg-transparent shrink-0">
             <div>
               <h2 className="text-lg font-bold text-slate-900">Add Teacher</h2>
               <p className="text-xs text-slate-500 mt-0.5">Create a login for a teacher with the details of the registration.</p>
