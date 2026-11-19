@@ -23,7 +23,11 @@ import {
   Trash2,
   X,
   AlertTriangle,
-  CheckCircle2
+  CheckCircle2,
+  Phone,
+  Mail,
+  CalendarDays,
+  Receipt
 } from 'lucide-react';
 
 interface AdmissionsViewProps {
@@ -32,6 +36,17 @@ interface AdmissionsViewProps {
 }
 
 type StatusFilter = 'current' | 'pending' | 'archived' | 'all';
+
+// the photo of a student; with no photo (or a broken link) the initials are shown on an orange circle
+const Avatar: React.FC<{ name: string; src?: string; className: string }> = ({ name, src, className }) => {
+  const [bad, setBad] = useState(false);
+  const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+  return src && !bad ? (
+    <img src={src} alt={name} onError={() => setBad(true)} className={`${className} object-cover`} />
+  ) : (
+    <div className={`${className} bg-gradient-to-br from-orange-500 to-amber-400 text-white font-bold flex items-center justify-center`}>{initials}</div>
+  );
+};
 
 export const AdmissionsView: React.FC<AdmissionsViewProps> = ({
   onOpenAdmission,
@@ -60,6 +75,7 @@ export const AdmissionsView: React.FC<AdmissionsViewProps> = ({
   const [confirmMode, setConfirmMode] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Student | null>(null);
   const [confirmed, setConfirmed] = useState(false);
+  const [pickedId, setPickedId] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const showNotice = (type: 'success' | 'error', text: string) => {
@@ -200,6 +216,32 @@ export const AdmissionsView: React.FC<AdmissionsViewProps> = ({
     showNotice('success', `${name} was permanently deleted.`);
   };
 
+  // attendance of every student in %, from the marks of the teachers (present and late count as present; excused days are left out)
+  const attendancePct = useMemo(() => {
+    const tally: Record<string, { seen: number; here: number }> = {};
+    for (const a of attendance) {
+      for (const [sid, st] of Object.entries(a.records)) {
+        if (st === 'excused') continue;
+        const t = (tally[sid] ||= { seen: 0, here: 0 });
+        t.seen += 1;
+        if (st === 'present' || st === 'late') t.here += 1;
+      }
+    }
+    const out: Record<string, number | null> = {};
+    for (const [sid, t] of Object.entries(tally)) out[sid] = t.seen ? Math.round((t.here / t.seen) * 100) : null;
+    return out;
+  }, [attendance]);
+
+  // the student shown in the profile panel: the one that was clicked, else the first of the list
+  const picked = filteredStudents.find(s => s.id === pickedId) ?? paged.items[0] ?? null;
+  const money = (n: number) => `${profile.currencySymbol}${n.toLocaleString('en-IN')}`;
+  const feeState = (s: Student) => {
+    const net = Math.max(0, s.totalFees - s.discount);
+    const balance = Math.max(0, net - s.feePaid);
+    const pct = net ? Math.min(100, Math.round((s.feePaid / net) * 100)) : 100;
+    return { net, balance, pct };
+  };
+
   return (
     <div className="space-y-6">
       {/* View Header */}
@@ -322,174 +364,185 @@ export const AdmissionsView: React.FC<AdmissionsViewProps> = ({
         </div>
       </div>
 
-      {/* Students Table */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
-        {filteredStudents.length === 0 ? (
-          <div className="py-12 text-center text-slate-500">
-            <Users className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-            <p className="text-sm font-medium text-slate-700">No students found</p>
-            <p className="text-xs text-slate-400 mt-1">Try clearing search filters or add a new admission.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-semibold uppercase">
-                <tr>
-                  <th className="p-3.5">Roll No & Student</th>
-                  <th className="p-3.5">Enrolled Batch & Target</th>
-                  <th className="p-3.5">Parent / Contact</th>
-                  <th className="p-3.5 text-right">Fee Status</th>
-                  <th className="p-3.5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {paged.items.map(student => {
-                  const batch = batches.find(b => b.id === student.batchId);
-                  const net = Math.max(0, student.totalFees - student.discount);
-                  const balance = Math.max(0, net - student.feePaid);
-                  const archived = student.status === 'inactive';
-
-                  return (
-                    <tr
-                      key={student.id}
-                      onClick={() => onSelectStudent(student.id)}
-                      className={`hover:bg-slate-50/70 transition-colors cursor-pointer group ${
-                        archived ? 'opacity-60' : ''
-                      }`}
-                    >
-                      <td className="p-3.5">
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={student.photoUrl}
-                            alt={student.name}
-                            className="w-9 h-9 rounded-full object-cover border border-slate-200"
-                          />
-                          <div>
-                            <div className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors flex items-center gap-1.5">
-                              {student.name}
-                              {archived && (
-                                <span className="text-[10px] font-semibold text-slate-600 bg-slate-200 px-1.5 py-0.5 rounded">
-                                  Archived
-                                </span>
-                              )}
-                              {student.status === 'trial' && (
-                                <span className="text-[10px] font-semibold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
-                                  Awaiting confirmation
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-[11px] text-slate-500 mt-0.5">
-                              <span className="font-mono">{student.rollNo}</span>
-                              <span className="mx-1 text-slate-300">·</span>
-                              <span>{student.grade}</span>
+      {/* Students: the list on the left, the profile of the chosen student on the right */}
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px] items-start">
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+          {filteredStudents.length === 0 ? (
+            <div className="py-12 text-center text-slate-500">
+              <Users className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+              <p className="text-sm font-medium text-slate-700">No students found</p>
+              <p className="text-xs text-slate-400 mt-1">Try clearing search filters or add a new admission.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead className="border-b border-slate-200 text-slate-500 font-semibold uppercase text-[10px] tracking-wider">
+                  <tr>
+                    <th className="px-4 py-3">Student</th>
+                    <th className="px-4 py-3 hidden md:table-cell">Batch</th>
+                    <th className="px-4 py-3 hidden lg:table-cell">Parent</th>
+                    <th className="px-4 py-3">Fees</th>
+                    <th className="px-4 py-3 hidden sm:table-cell">Attendance</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {paged.items.map(student => {
+                    const batch = batches.find(b => b.id === student.batchId);
+                    const { balance, pct } = feeState(student);
+                    const att = attendancePct[student.id];
+                    const archived = student.status === 'inactive';
+                    const active = picked?.id === student.id;
+                    return (
+                      <tr
+                        key={student.id}
+                        onClick={() => setPickedId(student.id)}
+                        className={`cursor-pointer transition-colors ${archived ? 'opacity-60' : ''} ${
+                          active ? 'bg-orange-500/10 shadow-[inset_3px_0_0_#f97316]' : 'hover:bg-slate-50/70'
+                        }`}
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <Avatar name={student.name} src={student.photoUrl} className="w-9 h-9 rounded-full text-[11px] shrink-0" />
+                            <div className="min-w-0">
+                              <div className="font-semibold text-slate-900 flex items-center gap-1.5 flex-wrap">
+                                {student.name}
+                                {archived && <span className="text-[10px] font-semibold text-slate-600 bg-slate-200 px-1.5 py-0.5 rounded">Archived</span>}
+                                {student.status === 'trial' && <span className="text-[10px] font-semibold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">Awaiting confirmation</span>}
+                              </div>
+                              <div className="text-[11px] text-slate-500 mt-0.5">
+                                <span className="font-mono">{student.rollNo}</span>
+                                <span className="mx-1 text-slate-300">·</span>
+                                {student.grade}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
-
-                      <td className="p-3.5">
-                        <div className="font-medium text-slate-900">{batch?.name || 'Assigned Batch'}</div>
-                        <div className="text-[11px] text-slate-500 mt-0.5">
-                          <span>Target: {student.targetExam}</span>
-                          <span className="mx-1 text-slate-300">·</span>
-                          <span>Adm: {student.dateOfAdmission}</span>
-                        </div>
-                      </td>
-
-                      <td className="p-3.5">
-                        <div className="text-slate-800 font-medium">{student.parentName}</div>
-                        <div className="text-[11px] text-slate-500 font-mono mt-0.5">{student.parentPhone}</div>
-                      </td>
-
-                      <td className="p-3.5 text-right">
-                        <div className={`font-mono font-bold ${balance > 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
-                          {balance > 0
-                            ? `Due: ${profile.currencySymbol}${balance.toLocaleString('en-IN')}`
-                            : 'Fully Paid'}
-                        </div>
-                        <div className="text-[11px] text-slate-400 mt-0.5">
-                          Paid: {profile.currencySymbol}
-                          {student.feePaid.toLocaleString('en-IN')} / {profile.currencySymbol}
-                          {net.toLocaleString('en-IN')}
-                        </div>
-                      </td>
-
-                      <td className="p-3.5 text-right">
-                        <div
-                          className="flex items-center justify-end gap-1.5 flex-wrap"
-                          onClick={e => e.stopPropagation()}
-                        >
-                          <button
-                            onClick={e => handleWhatsAppParent(e, student)}
-                            className="p-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors"
-                            title="WhatsApp Parent"
-                          >
-                            <MessageSquare className="w-3.5 h-3.5" />
-                          </button>
-                          {balance > 0 && !archived && (
-                            <button
-                              onClick={e => handleFeeNotice(e, student)}
-                              className="px-2 py-1 text-[11px] font-semibold text-white bg-amber-500 hover:bg-amber-600 rounded-md transition-colors flex items-center gap-1"
-                              title="Email the parent that the fee is not fully paid (the notice is in the parent login too)"
-                            >
-                              <Bell className="w-3 h-3" />
-                              Send notice
-                            </button>
+                        </td>
+                        <td className="px-4 py-3 hidden md:table-cell">
+                          <div className="font-medium text-slate-800">{batch?.name || 'Assigned Batch'}</div>
+                          <div className="text-[11px] text-slate-500 mt-0.5">{student.targetExam}</div>
+                        </td>
+                        <td className="px-4 py-3 hidden lg:table-cell">
+                          <div className="text-slate-800">{student.parentName}</div>
+                          <div className="text-[11px] text-slate-500 font-mono mt-0.5">{student.parentPhone}</div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${balance > 0 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                            {balance > 0 ? `Due ${money(balance)}` : 'Paid'}
+                          </span>
+                          <div className="mt-1.5 h-1 w-24 rounded-full bg-slate-200 overflow-hidden">
+                            <div className={`h-full rounded-full ${balance > 0 ? 'bg-orange-500' : 'bg-emerald-500'}`} style={{ width: `${pct}%` }} />
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 hidden sm:table-cell">
+                          {att == null ? (
+                            <span className="text-slate-400">—</span>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <div className="h-1.5 w-16 rounded-full bg-slate-200 overflow-hidden">
+                                <div className={`h-full rounded-full ${att >= 75 ? 'bg-emerald-500' : att >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${att}%` }} />
+                              </div>
+                              <span className="font-mono text-slate-700">{att}%</span>
+                            </div>
                           )}
-                          {student.status === 'trial' && (
-                            <button
-                              onClick={() => {
-                                setConfirmMode(true);
-                                setEditing(student);
-                              }}
-                              className="px-2 py-1 text-[11px] font-semibold text-white bg-amber-500 hover:bg-amber-600 rounded-md transition-colors"
-                            >
-                              Confirm
-                            </button>
-                          )}
-                          <button
-                            onClick={() => onSelectStudent(student.id)}
-                            className="px-2 py-1 text-[11px] font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors"
-                          >
-                            Dossier
-                          </button>
-                          <button
-                            onClick={() => {
-                              setConfirmMode(false);
-                              setEditing(student);
-                            }}
-                            className="px-2 py-1 text-[11px] font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md transition-colors flex items-center gap-1"
-                            title="Edit student"
-                          >
-                            <Pencil className="w-3 h-3" />
-                            Edit
-                          </button>
-                          <button
-                            onClick={e => handleToggleArchive(e, student)}
-                            className="p-1.5 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors"
-                            title={archived ? 'Restore student' : 'Archive student'}
-                          >
-                            {archived ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
-                          </button>
-                          {isAdmin && (
-                            <button
-                              onClick={e => openDelete(e, student)}
-                              className="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors"
-                              title="Delete permanently"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <Pager {...paged} onPage={paged.setPage} />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <Pager {...paged} onPage={paged.setPage} />
+        </div>
+
+        {/* Student profile */}
+        {picked && (() => {
+          const batch = batches.find(b => b.id === picked.batchId);
+          const { net, balance, pct } = feeState(picked);
+          const att = attendancePct[picked.id];
+          const archived = picked.status === 'inactive';
+          return (
+            <aside className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 xl:sticky xl:top-4">
+              <div className="flex items-start justify-between">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Student profile</p>
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${archived ? 'bg-slate-200 text-slate-600' : picked.status === 'trial' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                  {archived ? 'Archived' : picked.status === 'trial' ? 'Awaiting' : 'Active'}
+                </span>
+              </div>
+              <div className="mt-3 flex flex-col items-center text-center">
+                <Avatar name={picked.name} src={picked.photoUrl} className="w-20 h-20 rounded-full text-xl ring-4 ring-orange-500/20" />
+                <h3 className="mt-3 text-base font-bold text-slate-900">{picked.name}</h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  <span className="font-mono">{picked.rollNo}</span> · {picked.grade} · {batch?.name || 'No batch'}
+                </p>
+              </div>
+
+              <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-xl bg-slate-50 py-2">
+                  <p className="text-[10px] text-slate-500">Attendance</p>
+                  <p className="text-sm font-bold text-slate-900">{att == null ? '—' : `${att}%`}</p>
+                </div>
+                <div className="rounded-xl bg-slate-50 py-2">
+                  <p className="text-[10px] text-slate-500">Paid</p>
+                  <p className="text-sm font-bold text-slate-900">{pct}%</p>
+                </div>
+                <div className="rounded-xl bg-slate-50 py-2">
+                  <p className="text-[10px] text-slate-500">Target</p>
+                  <p className="text-sm font-bold text-slate-900 truncate px-1">{picked.targetExam || '—'}</p>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-xl border border-slate-200 p-3">
+                <div className="flex items-center justify-between text-[11px] text-slate-500">
+                  <span>Fee balance</span>
+                  <span>{money(picked.feePaid)} / {money(net)}</span>
+                </div>
+                <p className={`mt-1 text-lg font-bold font-mono ${balance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{balance > 0 ? money(balance) : 'Fully paid'}</p>
+                <div className="mt-2 h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                  <div className={`h-full rounded-full ${balance > 0 ? 'bg-orange-500' : 'bg-emerald-500'}`} style={{ width: `${pct}%` }} />
+                </div>
+                {picked.nextDueDate && balance > 0 && <p className="mt-2 text-[11px] text-slate-500">Next due: {formatDate(picked.nextDueDate)}</p>}
+              </div>
+
+              <dl className="mt-4 space-y-2 text-xs">
+                <div className="flex items-center gap-2 text-slate-700"><Users className="w-3.5 h-3.5 text-slate-400" /><span className="text-slate-500">Parent</span><span className="ml-auto font-medium">{picked.parentName}</span></div>
+                <div className="flex items-center gap-2 text-slate-700"><Phone className="w-3.5 h-3.5 text-slate-400" /><span className="text-slate-500">Parent phone</span><span className="ml-auto font-mono">{picked.parentPhone}</span></div>
+                {picked.parentEmail && <div className="flex items-center gap-2 text-slate-700"><Mail className="w-3.5 h-3.5 text-slate-400" /><span className="text-slate-500">Email</span><span className="ml-auto truncate max-w-[60%]">{picked.parentEmail}</span></div>}
+                <div className="flex items-center gap-2 text-slate-700"><CalendarDays className="w-3.5 h-3.5 text-slate-400" /><span className="text-slate-500">Admitted</span><span className="ml-auto">{formatDate(picked.dateOfAdmission)}</span></div>
+              </dl>
+
+              <div className="mt-5 grid grid-cols-2 gap-2">
+                <button onClick={() => onSelectStudent(picked.id)} className="col-span-2 px-3 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center justify-center gap-1.5">
+                  <Receipt className="w-3.5 h-3.5" /> Open dossier
+                </button>
+                {balance > 0 && !archived && (
+                  <button onClick={e => handleFeeNotice(e, picked)} className="px-3 py-2 text-xs font-semibold text-amber-800 bg-amber-100 hover:bg-amber-200 rounded-lg flex items-center justify-center gap-1.5" title="Email the parent that the fee is not fully paid">
+                    <Bell className="w-3.5 h-3.5" /> Send notice
+                  </button>
+                )}
+                <button onClick={e => handleWhatsAppParent(e, picked)} className="px-3 py-2 text-xs font-semibold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 rounded-lg flex items-center justify-center gap-1.5">
+                  <MessageSquare className="w-3.5 h-3.5" /> WhatsApp
+                </button>
+                {picked.status === 'trial' && (
+                  <button onClick={() => { setConfirmMode(true); setEditing(picked); }} className="col-span-2 px-3 py-2 text-xs font-semibold text-white bg-amber-500 hover:bg-amber-600 rounded-lg">
+                    Confirm admission
+                  </button>
+                )}
+                <button onClick={() => { setConfirmMode(false); setEditing(picked); }} className="px-3 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center gap-1.5">
+                  <Pencil className="w-3.5 h-3.5" /> Edit
+                </button>
+                <button onClick={e => handleToggleArchive(e, picked)} className="px-3 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center gap-1.5">
+                  {archived ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />} {archived ? 'Restore' : 'Archive'}
+                </button>
+                {isAdmin && (
+                  <button onClick={e => openDelete(e, picked)} className="col-span-2 px-3 py-2 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg flex items-center justify-center gap-1.5">
+                    <Trash2 className="w-3.5 h-3.5" /> Delete permanently
+                  </button>
+                )}
+              </div>
+            </aside>
+          );
+        })()}
       </div>
 
       {/* Edit modal */}
