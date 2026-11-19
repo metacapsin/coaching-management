@@ -415,9 +415,9 @@ button.bg-blue-600:disabled { box-shadow: none; }
 /* light mode: the same idea, very soft: a faint light of the own colour from the corner on white, and a faint border of the colour */
 [data-kpi] {
   background-image:
-    radial-gradient(120% 95% at 100% 0%, color-mix(in oklab, var(--tint) 11%, white), transparent 62%),
-    linear-gradient(180deg, color-mix(in oklab, var(--tint) 3%, white), #ffffff);
-  border-color: color-mix(in oklab, var(--tint) 16%, #e2e8f0);
+    radial-gradient(120% 95% at 100% 0%, color-mix(in oklab, var(--tint) 26%, white), transparent 68%),
+    linear-gradient(180deg, color-mix(in oklab, var(--tint) 8%, white), color-mix(in oklab, var(--tint) 2%, white));
+  border-color: color-mix(in oklab, var(--tint) 34%, #e2e8f0);
 }
 
 /* ---------- The big number cards in dark mode: a clean dark base, a soft light of the own colour from the corner (no muddy grey glow) ---------- */
