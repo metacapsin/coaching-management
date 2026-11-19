@@ -341,16 +341,16 @@ export const AdmissionsView: React.FC<AdmissionsViewProps> = ({
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
             {(
               [
-                { id: 'all', label: 'All', style: 'text-slate-900' },
-                { id: 'due', label: 'Dues Pending', style: 'text-rose-700' },
-                { id: 'paid', label: 'Clear', style: 'text-emerald-700' }
+                { id: 'all', label: 'All', on: 'bg-orange-500/20 text-orange-600 ring-1 ring-orange-500/40', hover: 'hover:bg-orange-500/10 hover:text-orange-500' },
+                { id: 'due', label: 'Dues Pending', on: 'bg-rose-500/20 text-rose-600 ring-1 ring-rose-500/40', hover: 'hover:bg-rose-500/10 hover:text-rose-500' },
+                { id: 'paid', label: 'Clear', on: 'bg-emerald-500/20 text-emerald-600 ring-1 ring-emerald-500/40', hover: 'hover:bg-emerald-500/10 hover:text-emerald-500' }
               ] as const
             ).map(f => (
               <button
                 key={f.id}
                 onClick={() => setFeeFilter(f.id)}
                 className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                  feeFilter === f.id ? `bg-white ${f.style} shadow-xs font-semibold` : 'text-slate-600 hover:text-slate-900'
+                  feeFilter === f.id ? `${f.on} font-semibold` : `text-slate-600 ${f.hover}`
                 }`}
               >
                 {f.label}
