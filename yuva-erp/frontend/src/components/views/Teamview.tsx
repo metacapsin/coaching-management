@@ -301,7 +301,7 @@ const MyDetails: React.FC<{ onDone: (type: 'success' | 'error', text: string) =>
 };
 
 // addTeacherSignal: each time it grows, the Add Teacher window opens for a new teacher (from the Dashboard / top bar). handledSignal keeps the last press that was answered.
-export const TeamView: React.FC<{ addTeacherSignal?: number; handledSignal?: React.MutableRefObject<number> }> = ({ addTeacherSignal = 0, handledSignal }) => {
+export const TeamView: React.FC<{ addTeacherSignal?: number; handledSignal?: React.MutableRefObject<number>; onAddClosed?: () => void }> = ({ addTeacherSignal = 0, handledSignal, onAddClosed }) => {
   const {
     user,
     users,
@@ -320,6 +320,15 @@ export const TeamView: React.FC<{ addTeacherSignal?: number; handledSignal?: Rea
 
   // Add account
   const [showAdd, setShowAdd] = useState(false);
+  // the window was opened by an Add Teacher button of another page (Dashboard, top bar): closing it without adding goes back to that page
+  const openedFromOutside = useRef(false);
+  const closeAdd = () => {
+    setShowAdd(false);
+    if (openedFromOutside.current) {
+      openedFromOutside.current = false;
+      onAddClosed?.();
+    }
+  };
   const [aRole, setARole] = useState<UserRole | 'parent'>('teacher');
   const [aName, setAName] = useState('');
   const [aEmail, setAEmail] = useState('');
@@ -436,6 +445,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number; handledSignal?: Rea
 
   // ----- Add account -----
   const openAdd = () => {
+    openedFromOutside.current = false;
     setARole('teacher');
     setAName('');
     setAEmail('');
@@ -457,6 +467,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number; handledSignal?: Rea
     if (addTeacherSignal > (handledSignal?.current ?? 0) && isAdmin) {
       if (handledSignal) handledSignal.current = addTeacherSignal;
       openAdd();
+      openedFromOutside.current = true;
       setARole('teacher');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -534,6 +545,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number; handledSignal?: Rea
         return;
       }
       setShowAdd(false);
+      openedFromOutside.current = false;
       setCopied(false);
       setCredentials({
         name: fullName,
@@ -1084,7 +1096,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number; handledSignal?: Rea
             { id: 'tsec-terms', label: 'Agreement & terms', done: aAgree },
             { id: 'tsec-login', label: 'Login', done: !!aPassword }
           ]}
-          onClose={() => setShowAdd(false)}
+          onClose={closeAdd}
         >
           <form onSubmit={handleAdd} className="space-y-5">
             {aError && (
@@ -1324,7 +1336,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number; handledSignal?: Rea
             <div className="sticky -bottom-5 sm:-bottom-6 -mx-5 sm:-mx-6 -mb-5 sm:-mb-6 px-5 sm:px-6 py-3 bg-white/90 backdrop-blur border-t border-slate-200 flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setShowAdd(false)}
+                onClick={closeAdd}
                 className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
               >
                 Cancel

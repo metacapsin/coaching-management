@@ -113,9 +113,17 @@ function MainApp() {
   const [addTeacherSignal, setAddTeacherSignal] = useState(0);
   // the last press of an Add Teacher button that the Team page already answered (the Team page opens the form once for each press, not again each time it is opened)
   const handledTeacherSignal = useRef(0);
+  // the page the principal pressed the button on: when the Add Teacher window is closed without adding, the principal goes back to it
+  const returnTabRef = useRef<typeof activeTab | null>(null);
   const openAddTeacher = () => {
+    returnTabRef.current = activeTab !== 'team' ? activeTab : null; // (pressed on the Team page itself: nothing to go back to)
     setActiveTab('team');
     setAddTeacherSignal(n => n + 1);
+  };
+  const backFromAddTeacher = () => {
+    const back = returnTabRef.current;
+    returnTabRef.current = null;
+    if (back) setActiveTab(back);
   };
 
   // Modal states
@@ -269,7 +277,7 @@ function MainApp() {
       case 'rules':
         return <RulesView />;
       case 'team':
-        return <TeamView addTeacherSignal={addTeacherSignal} handledSignal={handledTeacherSignal} />;
+        return <TeamView addTeacherSignal={addTeacherSignal} handledSignal={handledTeacherSignal} onAddClosed={backFromAddTeacher} />;
       case 'settings':
         return <SettingsView />;
       default:
