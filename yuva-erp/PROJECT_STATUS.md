@@ -87,6 +87,7 @@ Which modules are complete, which screens (UI) exist, what is still missing, and
 | 70 | **Teacher Mark Attendance layout (new)**: four cards (turnout, joined, not joined, late), roll call with initials avatars, a segmented Joined / Not joined / Late / Excused control and a "Mark all joined" button. Same saving and parent alerts. | Done |
 | 71 | **Add Teacher and New Student Admission forms (new layout)**: an orange side panel (name preview, steps with a tick, progress bar) and the form in section cards with a sticky footer. Same fields, checks and saving. | Done |
 | 72 | **Super Admin Coachings page (new layout)**: four number cards like the principal dashboard (coachings, waiting for approval, active, students in all), and the coaching cards with a state strip on top and coloured Students / Teachers / Accounts tiles. | Done |
+| 73 | **Home page: "Coachings on AcademiaOS"**: the page shows the first 4 coachings; with more than 4 a "See all coachings (N)" button opens a window with all of them and a search box. | Done |
 
 ## 2. Not built / still missing
 

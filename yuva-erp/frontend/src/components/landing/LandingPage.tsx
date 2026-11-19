@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useEscape } from '../ui/useEscape';
 import {
   GraduationCap,
   Home,
@@ -18,6 +20,9 @@ import {
   Layers,
   Building2,
   Phone,
+  ArrowRight,
+  Search,
+  X,
   Mail,
   ChevronDown,
   Check,
@@ -209,6 +214,50 @@ const CoachingCard: React.FC<{ co: PublicCoaching; showRules: boolean }> = ({ co
   );
 };
 
+// The home page shows the first few coachings; when there are more, a link opens this window with all of them (and a search box)
+const FEATURED_COACHINGS = 4;
+
+const AllCoachingsWindow: React.FC<{ coachings: PublicCoaching[]; onClose: () => void }> = ({ coachings, onClose }) => {
+  const [query, setQuery] = useState('');
+  useEscape(onClose);
+  const q = query.trim().toLowerCase();
+  const shown = coachings.filter(c => !q || `${c.name} ${c.city ?? ''} ${c.principalName ?? ''}`.toLowerCase().includes(q));
+  return createPortal(
+    <div className="fixed inset-0 z-[70] flex items-start justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm overflow-y-auto" role="dialog" aria-modal="true" aria-label="All coachings" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <div className="relative w-full max-w-6xl my-4 rounded-2xl border border-white/10 bg-[#0f172a] p-5 sm:p-7 shadow-2xl shadow-black/60">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h2 className="text-xl font-bold text-white">All coachings</h2>
+            <p className="text-xs text-slate-400 mt-0.5">{coachings.length} coachings on AcademiaOS</p>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close" className="p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-lg">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="relative mt-4 max-w-md">
+          <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
+          <input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search by coaching, city or owner..."
+            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg bg-white/5 border border-white/15 text-white placeholder:text-slate-500 focus:outline-none focus:border-orange-400/60"
+          />
+        </div>
+        {shown.length === 0 ? (
+          <p className="mt-8 text-center text-sm text-slate-400">No coaching found.</p>
+        ) : (
+          <div className="mt-5 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {shown.map(co => (
+              <CoachingCard key={co.id} co={co} showRules />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>,
+    document.body
+  );
+};
+
 const WHY_CARDS = [
   { icon: Building2, title: 'Built for coachings', text: 'Programs, batches, test series, ranks and fee receipts are the way a coaching works.' },
   { icon: ShieldCheck, title: 'Private by design', text: 'Each coaching, its own data. Roles are checked by the server.' },
@@ -289,6 +338,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
   };
   const [tab, setTab] = useState(WHY_TABS[0].id);
   const [coachings, setCoachings] = useState<PublicCoaching[]>([]);
+  const [allCoachings, setAllCoachings] = useState(false);
   useEffect(() => {
     listCoachings().then(setCoachings).catch(() => setCoachings([]));
   }, []);
@@ -491,10 +541,23 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
           <div className="max-w-6xl mx-auto px-4 sm:px-6">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-400">{'— '}{tr('Coachings on AcademiaOS')}{' —'}</p>
             <Reveal stagger className="mt-5 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {coachings.map(co => (
+              {coachings.slice(0, FEATURED_COACHINGS).map(co => (
                 <CoachingCard key={co.id} co={co} showRules={coachings.length > 1} />
               ))}
             </Reveal>
+            {coachings.length > FEATURED_COACHINGS && (
+              <div className="mt-6">
+                <button
+                  type="button"
+                  onClick={() => setAllCoachings(true)}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-orange-300 border border-orange-400/40 hover:bg-orange-500/10 rounded-xl transition-colors"
+                >
+                  See all coachings ({coachings.length})
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+            {allCoachings && <AllCoachingsWindow coachings={coachings} onClose={() => setAllCoachings(false)} />}
           </div>
         </section>
       )}
