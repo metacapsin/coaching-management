@@ -460,3 +460,32 @@ html, body { overflow-x: clip; }
     linear-gradient(180deg, color-mix(in oklab, #f97316 5%, #141e32), #0f1729);
   border-color: color-mix(in oklab, #f97316 28%, #1e293b);
 }
+
+/* ---------- Neon forms: every pop-up form (and the cards inside the long forms) has the glow of the cards: an orange edge, a soft light from the corner ---------- */
+@media screen {
+  /* the window of a pop-up form (all of them have a rounded border, shadow-2xl and a slate border) */
+  [class*="shadow-2xl"][class*="border-slate-200"] {
+    background-image: radial-gradient(120% 55% at 100% 0%, color-mix(in oklab, #f97316 10%, white), transparent 62%);
+    border-color: color-mix(in oklab, #f97316 42%, #e2e8f0);
+    box-shadow: 0 0 0 1px rgb(249 115 22 / 0.18), 0 0 34px -8px rgb(249 115 22 / 0.38), 0 28px 56px -18px rgb(15 23 42 / 0.35);
+  }
+  .dark [class*="shadow-2xl"][class*="border-slate-200"] {
+    background-color: #101828;
+    background-image:
+      radial-gradient(120% 55% at 100% 0%, color-mix(in oklab, #f97316 20%, transparent), transparent 62%),
+      linear-gradient(180deg, color-mix(in oklab, #f97316 5%, #141e32), #0e1626);
+    border-color: color-mix(in oklab, #f97316 55%, #1e293b);
+    box-shadow: 0 0 0 1px rgb(249 115 22 / 0.28), 0 0 38px -6px rgb(249 115 22 / 0.42), 0 30px 60px -20px rgb(0 0 0 / 0.85);
+  }
+  /* the cards (sections) inside the long forms */
+  .neon-card {
+    border-color: color-mix(in oklab, #f97316 26%, #e2e8f0);
+    box-shadow: 0 0 22px -12px rgb(249 115 22 / 0.5);
+  }
+  .dark .neon-card {
+    background-color: #131d31;
+    background-image: radial-gradient(110% 80% at 100% 0%, color-mix(in oklab, #f97316 12%, transparent), transparent 60%);
+    border-color: color-mix(in oklab, #f97316 34%, #1e293b);
+    box-shadow: 0 0 26px -12px rgb(249 115 22 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.04);
+  }
+}

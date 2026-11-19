@@ -417,7 +417,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
             </div>
           )}
           {/* Section 1: Student Information */}
-          <div id="ssec-1" className="rounded-2xl border border-slate-200 bg-white p-5 scroll-mt-2">
+          <div id="ssec-1" className="neon-card rounded-2xl border border-slate-200 bg-white p-5 scroll-mt-2">
             <h3 className="text-sm font-bold text-slate-900 mb-4">
               1. Student Demographics
             </h3>
@@ -577,7 +577,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
           </div>
 
           {/* Section 2: Parent / Guardian Details (For Automated Notifications) */}
-          <div id="ssec-2" className="rounded-2xl border border-slate-200 bg-white p-5 scroll-mt-2">
+          <div id="ssec-2" className="neon-card rounded-2xl border border-slate-200 bg-white p-5 scroll-mt-2">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-bold text-slate-900">
                 2. Guardian Details (Recipient for Attendance & Fee Alerts)
@@ -681,7 +681,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
           </div>
 
           {/* Section 3: Course & Batch Allocation */}
-          <div id="ssec-3" className="rounded-2xl border border-slate-200 bg-white p-5 scroll-mt-2">
+          <div id="ssec-3" className="neon-card rounded-2xl border border-slate-200 bg-white p-5 scroll-mt-2">
             <h3 className="text-sm font-bold text-slate-900 mb-4">
               3. Course & Batch
             </h3>
@@ -810,7 +810,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
           </div>
 
           {/* Section 4: Fees, Scholarship Discount & Payment Deposit */}
-          <div id="ssec-4" className="rounded-2xl border border-slate-200 bg-white p-5 scroll-mt-2">
+          <div id="ssec-4" className="neon-card rounded-2xl border border-slate-200 bg-white p-5 scroll-mt-2">
             <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center justify-between">
               <span>4. Fee Structure & Admission Receipt</span>
               <span className="text-slate-500 font-normal">Currency: {profile.currencySymbol}</span>
@@ -916,7 +916,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
           </div>
 
           {/* Section 5: Internal Academic Notes */}
-          <div id="ssec-5" className="rounded-2xl border border-slate-200 bg-white p-5 scroll-mt-2">
+          <div id="ssec-5" className="neon-card rounded-2xl border border-slate-200 bg-white p-5 scroll-mt-2">
             <label className="block text-xs font-medium text-slate-700 mb-1">
               Internal Counselor / Academic Notes
             </label>

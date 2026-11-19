@@ -175,7 +175,7 @@ const SectionHead: React.FC<{ icon: React.ElementType; title: string; hint?: str
   </div>
 );
 
-const sectionClass = 'rounded-2xl border border-slate-200 bg-white p-5 space-y-4 scroll-mt-2';
+const sectionClass = 'neon-card rounded-2xl border border-slate-200 bg-white p-5 space-y-4 scroll-mt-2';
 
 const Modal: React.FC<{ title: string; subtitle?: string; onClose: () => void; children: React.ReactNode; wide?: boolean; aside?: React.ReactNode }> = ({
   title,
