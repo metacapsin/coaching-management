@@ -5,7 +5,7 @@ import { useEscape } from '../ui/useEscape';
 import { useInstitute, DEFAULT_PHOTO } from '../../Context/InstituteContext';
 import type { PaymentMethod, Student } from '../../types';
 import { resizeImageToDataUrl } from '../utils/Imageutils';
-import { normalizePhone, toLocalISODate } from '../utils/helpers';
+import { formatDate, normalizePhone, toLocalISODate } from '../utils/helpers';
 import { nextRollNumber } from '../utils/rollNo';
 import { X, UserPlus, Check, ImagePlus, Trash2 } from 'lucide-react';
 import { StudentLoginCard, generatePassword } from './StudentLoginCard';
@@ -334,20 +334,67 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
 
   const netPayable = Math.max(0, formData.totalFees - (formData.discount || 0));
 
+  // the side panel: the name that is typed and the steps with a tick when they are filled
+  const sideName = [formData.firstName, formData.middleName, formData.lastName].filter(Boolean).join(' ');
+  const sideInitials = sideName.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+  const sideSteps = [
+    { id: 'ssec-1', label: 'Student details', done: !!(formData.firstName.trim() && formData.phone.length === 10) },
+    { id: 'ssec-2', label: 'Parent / guardian', done: !!(formData.parentName.trim() && formData.parentPhone.length === 10) },
+    { id: 'ssec-3', label: 'Program & batch', done: !!formData.batchId },
+    { id: 'ssec-4', label: 'Fees & receipt', done: formData.totalFees > 0 }
+  ];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-      <div className="relative w-full max-w-3xl bg-white border border-slate-200 rounded-xl shadow-2xl my-8 overflow-hidden text-slate-900">
-        {/* Header */}
-        <div className="px-6 py-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-blue-600 text-white">
-                <UserPlus className="w-5 h-5" />
-              </span>
-              <h2 className="text-xl font-semibold text-slate-900 tracking-tight">New Student Admission</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/70 backdrop-blur-sm overflow-y-auto">
+      <div className="relative w-full max-w-5xl bg-slate-50 border border-slate-200 rounded-2xl shadow-2xl my-4 overflow-hidden text-slate-900 flex flex-col md:flex-row">
+        <aside className="md:w-64 shrink-0 p-5 md:p-6 bg-gradient-to-b from-orange-500 to-orange-700 text-white flex md:flex-col gap-4 items-center md:items-stretch">
+          <div className="flex md:flex-col items-center md:items-start gap-3 min-w-0">
+            <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-white/20 ring-1 ring-white/30 flex items-center justify-center text-lg md:text-2xl font-bold shrink-0">
+              {sideInitials || <UserPlus className="w-6 h-6" />}
             </div>
-            <p className="text-xs text-slate-500 mt-1">
-              Enroll candidate into academic program, assign batch, configure fee ledger & initial receipt.
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-white/70">New admission</p>
+              <p className="text-base font-bold leading-tight truncate">{sideName || 'New Student'}</p>
+              <p className="text-[11px] text-white/70 mt-0.5">{formatDate(toLocalISODate())}</p>
+            </div>
+          </div>
+          <ol className="hidden md:block space-y-1 mt-2">
+            {sideSteps.map((st, i) => (
+              <li key={st.id}>
+                <a
+                  href={`#${st.id}`}
+                  onClick={e => {
+                    e.preventDefault();
+                    document.getElementById(st.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white/10 transition-colors"
+                >
+                  <span className={`w-6 h-6 rounded-full text-[11px] font-bold flex items-center justify-center shrink-0 ${st.done ? 'bg-white text-orange-600' : 'border border-white/50 text-white/80'}`}>
+                    {st.done ? <Check className="w-3.5 h-3.5" /> : i + 1}
+                  </span>
+                  <span className={`text-xs font-medium ${st.done ? 'text-white' : 'text-white/80'}`}>{st.label}</span>
+                </a>
+              </li>
+            ))}
+          </ol>
+          <div className="hidden md:block mt-auto">
+            <div className="flex justify-between text-[11px] text-white/80 mb-1.5">
+              <span>Form filled</span>
+              <span>{sideSteps.filter(x => x.done).length} / {sideSteps.length}</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-white/25 overflow-hidden">
+              <div className="h-full rounded-full bg-white transition-all" style={{ width: `${(sideSteps.filter(x => x.done).length / sideSteps.length) * 100}%` }} />
+            </div>
+            <p className="text-[11px] text-white/70 mt-3 leading-snug">Enroll the candidate, choose the batch, set the fee and the first receipt.</p>
+          </div>
+        </aside>
+        <div className="flex-1 min-w-0 flex flex-col">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-white">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 tracking-tight">New Student Admission</h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Enroll the candidate into a program, assign the batch, set the fee and the first receipt.
             </p>
           </div>
           <button aria-label="Close"
@@ -359,7 +406,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-5 max-h-[calc(100dvh-9rem)] overflow-y-auto overscroll-contain scroll-smooth">
           {(courses.length === 0 || batches.length === 0) && (
             <div className="p-3.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-900">
               <p className="font-semibold">A student needs a program and a batch.</p>
@@ -370,8 +417,8 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
             </div>
           )}
           {/* Section 1: Student Information */}
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
+          <div id="ssec-1" className="rounded-2xl border border-slate-200 bg-white p-5 scroll-mt-2">
+            <h3 className="text-sm font-bold text-slate-900 mb-4">
               1. Student Demographics
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -530,9 +577,9 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
           </div>
 
           {/* Section 2: Parent / Guardian Details (For Automated Notifications) */}
-          <div className="pt-2 border-t border-slate-100">
+          <div id="ssec-2" className="rounded-2xl border border-slate-200 bg-white p-5 scroll-mt-2">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <h3 className="text-sm font-bold text-slate-900">
                 2. Guardian Details (Recipient for Attendance & Fee Alerts)
               </h3>
               <span className="text-xs text-blue-600">SMS & WhatsApp Primary</span>
@@ -634,8 +681,8 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
           </div>
 
           {/* Section 3: Course & Batch Allocation */}
-          <div className="pt-2 border-t border-slate-100">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
+          <div id="ssec-3" className="rounded-2xl border border-slate-200 bg-white p-5 scroll-mt-2">
+            <h3 className="text-sm font-bold text-slate-900 mb-4">
               3. Course & Batch
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -763,8 +810,8 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
           </div>
 
           {/* Section 4: Fees, Scholarship Discount & Payment Deposit */}
-          <div className="pt-2 border-t border-slate-100 bg-slate-50/60 p-4 rounded-xl border border-slate-200">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-700 mb-3 flex items-center justify-between">
+          <div id="ssec-4" className="rounded-2xl border border-slate-200 bg-white p-5 scroll-mt-2">
+            <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center justify-between">
               <span>4. Fee Structure & Admission Receipt</span>
               <span className="text-slate-500 font-normal">Currency: {profile.currencySymbol}</span>
             </h3>
@@ -869,7 +916,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
           </div>
 
           {/* Section 5: Internal Academic Notes */}
-          <div>
+          <div id="ssec-5" className="rounded-2xl border border-slate-200 bg-white p-5 scroll-mt-2">
             <label className="block text-xs font-medium text-slate-700 mb-1">
               Internal Counselor / Academic Notes
             </label>
@@ -907,7 +954,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
           </div>
 
           {/* Footer Actions */}
-          <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
+          <div className="sticky -bottom-5 sm:-bottom-6 -mx-5 sm:-mx-6 -mb-5 sm:-mb-6 px-5 sm:px-6 py-3 bg-white/90 backdrop-blur border-t border-slate-200 flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
@@ -917,13 +964,14 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
             </button>
             <button
               type="submit"
-              className="px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors flex items-center gap-2"
+              className="px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm transition-colors flex items-center gap-2"
             >
               <Check className="w-4 h-4" />
               Complete Admission
             </button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   );

@@ -30,7 +30,10 @@ import {
   Clock,
   Layers,
   History,
-  Plus
+  Plus,
+  User,
+  GraduationCap,
+  FileText
 } from 'lucide-react';
 
 // ---------- Helpers ----------
@@ -74,7 +77,7 @@ const formatDate = (iso?: string) => {
 };
 
 const inputClass =
-  'w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500';
+  'w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow';
 
 const ROLE_BADGE: Record<UserRole, string> = {
   super: 'bg-indigo-50 text-indigo-700 border-indigo-200',
@@ -88,6 +91,91 @@ const RoleBadge: React.FC<{ role: UserRole; parent?: boolean }> = ({ role, paren
     {parent ? 'Parent' : roleLabel(role)}
   </span>
 );
+
+// The frame of the "Add Teacher" window: a dark side panel (who is being added, the steps with a tick when done) and the form in cards on the right
+const TeacherShell: React.FC<{
+  name: string;
+  date: string;
+  steps: { id: string; label: string; done: boolean }[];
+  onClose: () => void;
+  children: React.ReactNode;
+}> = ({ name, date, steps, onClose, children }) => {
+  const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+  const doneCount = steps.filter(x => x.done).length;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/70 backdrop-blur-sm">
+      <div className="relative w-full max-w-5xl bg-slate-50 border border-slate-200 rounded-2xl shadow-2xl flex flex-col md:flex-row max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] overflow-hidden text-slate-900">
+        <aside className="md:w-64 shrink-0 p-5 md:p-6 bg-gradient-to-b from-orange-500 to-orange-700 text-white flex md:flex-col gap-4 items-center md:items-stretch">
+          <div className="flex md:flex-col items-center md:items-start gap-3 min-w-0">
+            <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-white/20 ring-1 ring-white/30 flex items-center justify-center text-lg md:text-2xl font-bold shrink-0">
+              {initials || <UserPlus className="w-6 h-6" />}
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-white/70">New teacher</p>
+              <p className="text-base font-bold leading-tight truncate">{name.trim() || 'Add Teacher'}</p>
+              <p className="text-[11px] text-white/70 mt-0.5">Registered {date}</p>
+            </div>
+          </div>
+          <ol className="hidden md:block space-y-1 mt-2">
+            {steps.map((st, i) => (
+              <li key={st.id}>
+                <a
+                  href={`#${st.id}`}
+                  onClick={e => {
+                    e.preventDefault();
+                    document.getElementById(st.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white/10 transition-colors"
+                >
+                  <span className={`w-6 h-6 rounded-full text-[11px] font-bold flex items-center justify-center shrink-0 ${st.done ? 'bg-white text-orange-600' : 'border border-white/50 text-white/80'}`}>
+                    {st.done ? <Check className="w-3.5 h-3.5" /> : i + 1}
+                  </span>
+                  <span className={`text-xs font-medium ${st.done ? 'text-white' : 'text-white/80'}`}>{st.label}</span>
+                </a>
+              </li>
+            ))}
+          </ol>
+          <div className="hidden md:block mt-auto">
+            <div className="flex justify-between text-[11px] text-white/80 mb-1.5">
+              <span>Form filled</span>
+              <span>{doneCount} / {steps.length}</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-white/25 overflow-hidden">
+              <div className="h-full rounded-full bg-white transition-all" style={{ width: `${(doneCount / steps.length) * 100}%` }} />
+            </div>
+            <p className="text-[11px] text-white/70 mt-3 leading-snug">The logins of a student and of a parent are made from the student (Dossier).</p>
+          </div>
+        </aside>
+        <div className="flex-1 min-w-0 flex flex-col min-h-0">
+          <div className="px-6 py-4 flex items-center justify-between border-b border-slate-200 bg-white shrink-0">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">Add Teacher</h2>
+              <p className="text-xs text-slate-500 mt-0.5">Create a login for a teacher with the details of the registration.</p>
+            </div>
+            <button onClick={onClose} aria-label="Close" className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="p-5 sm:p-6 overflow-y-auto overscroll-contain scroll-smooth">{children}</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const SectionHead: React.FC<{ icon: React.ElementType; title: string; hint?: string; extra?: React.ReactNode }> = ({ icon: Icon, title, hint, extra }) => (
+  <div className="flex items-center gap-3 pb-1">
+    <span className="w-9 h-9 rounded-xl bg-orange-500/15 text-orange-600 flex items-center justify-center shrink-0">
+      <Icon className="w-4.5 h-4.5" />
+    </span>
+    <div className="min-w-0">
+      <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">{title}{extra}</h3>
+      {hint && <p className="text-[11px] text-slate-500">{hint}</p>}
+    </div>
+  </div>
+);
+
+const sectionClass = 'rounded-2xl border border-slate-200 bg-white p-5 space-y-4 scroll-mt-2';
 
 const Modal: React.FC<{ title: string; subtitle?: string; onClose: () => void; children: React.ReactNode; wide?: boolean; aside?: React.ReactNode }> = ({
   title,
@@ -987,19 +1075,18 @@ export const TeamView: React.FC<{ addTeacherSignal?: number; handledSignal?: Rea
 
       {/* Add account modal */}
       {showAdd && (
-        <Modal
-          title="Add Teacher"
-          wide
-          aside={
-            <div className="text-right">
-              <div className="text-[10px] uppercase tracking-wider text-slate-400">Registration date</div>
-              <div className="text-xs font-semibold text-slate-700">{formatDate(toLocalISODate())}</div>
-            </div>
-          }
-          subtitle="Create a login for a teacher. The logins of a student and of a parent are made from the student (Dossier)."
+        <TeacherShell
+          name={[aDetails.firstName, aDetails.middleName, aDetails.lastName].filter(Boolean).join(' ')}
+          date={formatDate(toLocalISODate())}
+          steps={[
+            { id: 'tsec-personal', label: 'Personal & contact', done: !!(aDetails.firstName && aDetails.lastName && aPhone.length === 10 && aEmail) },
+            { id: 'tsec-work', label: 'Qualifications & batches', done: !!((aDegrees[0] ?? '').trim() && aSubject.trim()) },
+            { id: 'tsec-terms', label: 'Agreement & terms', done: aAgree },
+            { id: 'tsec-login', label: 'Login', done: !!aPassword }
+          ]}
           onClose={() => setShowAdd(false)}
         >
-          <form onSubmit={handleAdd} className="space-y-4">
+          <form onSubmit={handleAdd} className="space-y-5">
             {aError && (
               <div className="p-2.5 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
@@ -1007,7 +1094,8 @@ export const TeamView: React.FC<{ addTeacherSignal?: number; handledSignal?: Rea
               </div>
             )}
 
-            <h3 className="text-[11px] font-bold uppercase tracking-wider text-blue-700 pt-1 border-b border-slate-200 pb-1.5">Personal &amp; contact</h3>
+            <section id="tsec-personal" className={sectionClass}>
+            <SectionHead icon={User} title="Personal & contact" hint="Name, phone, email and the address of the teacher" />
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">First Name</label>
@@ -1118,15 +1206,17 @@ export const TeamView: React.FC<{ addTeacherSignal?: number; handledSignal?: Rea
                 {postalNote && <p className={`text-[11px] mt-1 ${postalNote.startsWith('The place') ? 'text-amber-600' : 'text-emerald-600'}`}>{postalNote}</p>}
               </div>
             </div>
-            <div className="flex items-center gap-2 pt-1 border-b border-slate-200 pb-1.5">
-              <h3 className="text-[11px] font-bold uppercase tracking-wider text-blue-700">Academic &amp; professional qualifications</h3>
+            </section>
+            <section id="tsec-work" className={sectionClass}>
+            <div className="flex items-center gap-2">
+              <SectionHead icon={GraduationCap} title="Qualifications & teaching" hint="Degrees, subject, work history and the batches" extra={null} />
               <button
                 type="button"
                 onClick={() => setADegrees(prev => (prev.length < 8 ? [...prev, ''] : prev))}
                 disabled={aDegrees.length >= 8}
                 title="Add another degree"
                 aria-label="Add another degree"
-                className="w-5 h-5 shrink-0 flex items-center justify-center text-blue-600 border border-blue-400 hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed rounded-full transition-colors"
+                className="ml-auto w-7 h-7 shrink-0 flex items-center justify-center text-blue-600 border border-blue-400 hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed rounded-full transition-colors"
               >
                 <Plus className="w-3 h-3" />
               </button>
@@ -1166,7 +1256,9 @@ export const TeamView: React.FC<{ addTeacherSignal?: number; handledSignal?: Rea
               <label className="block text-xs font-medium text-slate-700 mb-1">Assign Batches</label>
               <BatchPicker batches={batches} selected={aBatchIds} onChange={setABatchIds} />
             </div>
-            <h3 className="text-[11px] font-bold uppercase tracking-wider text-blue-700 pt-1 border-b border-slate-200 pb-1.5">Agreement &amp; management terms</h3>
+            </section>
+            <section id="tsec-terms" className={sectionClass}>
+            <SectionHead icon={FileText} title="Agreement & management terms" hint="Pay, notes and the rules the teacher agrees to" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Remuneration / Honorarium</label>
@@ -1195,7 +1287,9 @@ export const TeamView: React.FC<{ addTeacherSignal?: number; handledSignal?: Rea
                 . The teacher has read and agrees to follow the rules and regulations of this coaching. When you add the teacher, all the rules are sent to the teacher by email, and the teacher agrees to them again at the first sign in.
               </span>
             </label>
-            <h3 className="text-[11px] font-bold uppercase tracking-wider text-blue-700 pt-1 border-b border-slate-200 pb-1.5">Login</h3>
+            </section>
+            <section id="tsec-login" className={sectionClass}>
+            <SectionHead icon={KeyRound} title="Login" hint="A temporary password; the teacher chooses an own one at the first sign in" />
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-xs font-medium text-slate-700">Temporary Password</label>
@@ -1225,7 +1319,9 @@ export const TeamView: React.FC<{ addTeacherSignal?: number; handledSignal?: Rea
               </div>
             </div>
 
-            <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
+            </section>
+
+            <div className="sticky -bottom-5 sm:-bottom-6 -mx-5 sm:-mx-6 -mb-5 sm:-mb-6 px-5 sm:px-6 py-3 bg-white/90 backdrop-blur border-t border-slate-200 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setShowAdd(false)}
@@ -1236,14 +1332,14 @@ export const TeamView: React.FC<{ addTeacherSignal?: number; handledSignal?: Rea
               <button
                 type="submit"
                 disabled={aBusy}
-                className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-lg transition-colors flex items-center gap-1.5"
+                className="px-5 py-2.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-xl transition-colors flex items-center gap-1.5"
               >
                 <UserPlus className="w-4 h-4" />
                 {aBusy ? 'Creating...' : 'Add Teacher'}
               </button>
             </div>
           </form>
-        </Modal>
+        </TeacherShell>
       )}
 
       {detailsOf && <TeacherDetailsModal teacher={detailsOf} onClose={() => setDetailsOf(null)} />}
