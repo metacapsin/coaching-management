@@ -84,6 +84,7 @@ Which modules are complete, which screens (UI) exist, what is still missing, and
 | 67 | **Students page layout (new)**: the list on the left (initials avatar, batch, parent, fee pill with a bar, attendance bar) and a "Student profile" panel on the right (fee balance, contact, and all the actions: dossier, send notice, WhatsApp, edit, archive, delete). Click a row to change the profile. Same filters, search and pager as before. | Done |
 | 68 | **Fees page layout (new)**: four cards with small charts (collected, pending, total, rate), a "Collection overview" area chart of the last 6 months and a "Pending dues" list (top 5, Collect Payment button) above the same receipts / defaulters / programs tabs. | Done |
 | 69 | **Attendance, Courses & Batches, Exams & Reports layouts (new)**: Attendance (principal): four cards + trend chart + ring chart; Batches: four number cards and batch cards with an accent bar; Exams: four cards (total, average, pass rate, topper) with a subject ring and a Top students list above the same test list and marks. | Done |
+| 70 | **Teacher Mark Attendance layout (new)**: four cards (turnout, joined, not joined, late), roll call with initials avatars, a segmented Joined / Not joined / Late / Excused control and a "Mark all joined" button. Same saving and parent alerts. | Done |
 
 ## 2. Not built / still missing
 

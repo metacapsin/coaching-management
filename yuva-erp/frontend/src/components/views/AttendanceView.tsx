@@ -6,7 +6,19 @@ import type { AttendanceStatus } from '../../types';
 import { AttendanceAbsentAlertModal } from '../modals/AttendanceAbsentAlertModal';
 import { ExportMenu } from '../ui/ExportMenu';
 import { formatDate, toLocalISODate } from '../utils/helpers';
-import { CalendarCheck, Send, Save, Check, Download } from 'lucide-react';
+import { KpiCard } from '../ui/HomeBlocks';
+import { CalendarCheck, Send, Save, Check, Clock, UserCheck, UserX } from 'lucide-react';
+
+// the photo of a student; with no photo (or a broken link) the initials are shown on an orange circle
+const Avatar: React.FC<{ name: string; src?: string }> = ({ name, src }) => {
+  const [bad, setBad] = useState(false);
+  const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+  return src && !bad ? (
+    <img src={src} alt={name} onError={() => setBad(true)} className="w-8 h-8 rounded-full object-cover shrink-0" />
+  ) : (
+    <div className="w-8 h-8 rounded-full shrink-0 bg-gradient-to-br from-orange-500 to-amber-400 text-white text-[11px] font-bold flex items-center justify-center">{initials}</div>
+  );
+};
 
 export const AttendanceView: React.FC = () => {
   const { 
@@ -103,15 +115,10 @@ export const AttendanceView: React.FC = () => {
       )}
 
       {/* Top Header */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-emerald-600 text-white">
-              <CalendarCheck className="w-5 h-5" />
-            </span>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Class Attendance</h1>
-          </div>
-          <p className="text-xs text-slate-500 mt-1">
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Mark Attendance</h1>
+          <p className="text-xs text-slate-500 mt-1 max-w-xl">
             Mark who joined your class (online or offline), who did not and who was late. Every subject has its own attendance; the principal sees it in the history.
           </p>
         </div>
@@ -227,41 +234,16 @@ export const AttendanceView: React.FC = () => {
       </div>
 
       {/* Stats Summary Bar */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-xs text-center">
-          <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-500">Total Enrolled</span>
-          <p className="text-xl font-bold text-slate-900 mt-0.5">{totalCount}</p>
-          <span className="text-[10px] text-slate-400">{showAll ? 'Students in all batches' : 'Students in batch'}</span>
-        </div>
-
-        <div className="bg-white rounded-xl border border-emerald-200 bg-emerald-50/20 p-3.5 shadow-xs text-center">
-          <span className="text-[11px] uppercase tracking-wider font-semibold text-emerald-700">Joined</span>
-          <p className="text-xl font-bold text-emerald-800 mt-0.5">{presentCount - lateCount}</p>
-          <span className="text-[10px] text-emerald-600">Joined on time</span>
-        </div>
-
-        <div className="bg-white rounded-xl border border-rose-200 bg-rose-50/20 p-3.5 shadow-xs text-center">
-          <span className="text-[11px] uppercase tracking-wider font-semibold text-rose-700">Not joined</span>
-          <p className="text-xl font-bold text-rose-800 mt-0.5">{absentCount}</p>
-          <span className="text-[10px] text-rose-600">Did not join</span>
-        </div>
-
-        <div className="bg-white rounded-xl border border-amber-200 bg-amber-50/20 p-3.5 shadow-xs text-center">
-          <span className="text-[11px] uppercase tracking-wider font-semibold text-amber-700">Late join</span>
-          <p className="text-xl font-bold text-amber-800 mt-0.5">{lateCount}</p>
-          <span className="text-[10px] text-amber-600">Joined after the start</span>
-        </div>
-
-        <div className="bg-white rounded-xl border border-blue-200 bg-blue-50/20 p-3.5 shadow-xs text-center col-span-2 md:col-span-1">
-          <span className="text-[11px] uppercase tracking-wider font-semibold text-blue-700">Turnout Rate</span>
-          <p className="text-xl font-bold text-blue-900 mt-0.5">{attendanceRate}%</p>
-          <span className="text-[10px] text-blue-600">Joined or late, of all</span>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard label="Turnout" icon={CalendarCheck} accent="blue" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{attendanceRate}%</span>} footer={<>{presentCount} of {totalCount} students</>} />
+        <KpiCard label="Joined" icon={UserCheck} accent="emerald" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{presentCount - lateCount}</span>} footer={<>Joined on time</>} />
+        <KpiCard label="Not joined" icon={UserX} accent="rose" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{absentCount}</span>} footer={<>Did not join</>} />
+        <KpiCard label="Late join" icon={Clock} accent="amber" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{lateCount}</span>} footer={<>Joined after the start</>} />
       </div>
 
       {/* Attendance Roster Table */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
-        <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+        <div className="p-4 border-b border-slate-200 flex flex-wrap gap-2 justify-between items-center">
           <div>
             <h3 className="text-sm font-semibold text-slate-900">
               {showAll ? `Roll Call ${subject ? `(${subject})` : ''}: all students` : `Batch Roll Call${subject ? ` (${subject})` : ''}: ${currentBatch?.name}`}
@@ -272,9 +254,13 @@ export const AttendanceView: React.FC = () => {
                 : `${currentBatch?.classroom ? `Room: ${currentBatch.classroom} · ` : ''}Timings: ${currentBatch?.startTime} - ${currentBatch?.endTime}`}
             </p>
           </div>
-          <span className="text-xs text-slate-500">
-            Joined, Not joined, Late join or Excused: press the button for each student
-          </span>
+          <button
+            type="button"
+            onClick={() => setLocalRecords(Object.fromEntries(batchStudents.map(st => [st.id, 'present' as AttendanceStatus])))}
+            className="px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-lg transition-colors"
+          >
+            Mark all joined
+          </button>
         </div>
 
         {batchStudents.length === 0 ? (
@@ -305,11 +291,7 @@ export const AttendanceView: React.FC = () => {
 
                       <td className="p-3.5">
                         <div className="flex items-center gap-3">
-                          <img
-                            src={student.photoUrl}
-                            alt={student.name}
-                            className="w-8 h-8 rounded-full object-cover border border-slate-200"
-                          />
+                          <Avatar name={student.name} src={student.photoUrl} />
                           <div>
                             <span className="font-semibold text-slate-900 block">{student.name}</span>
                             <span className="font-mono text-[11px] text-slate-500">
@@ -327,15 +309,15 @@ export const AttendanceView: React.FC = () => {
                       </td>
 
                       <td className="p-3.5">
-                        <div className="flex items-center justify-center gap-1.5">
+                        <div className="flex items-center justify-center gap-1 p-1 rounded-xl bg-slate-100 w-fit mx-auto">
                           {/* Present button */}
                           <button
                             type="button"
                             onClick={() => setStatus(student.id, 'present')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
                               currentStatus === 'present'
                                 ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-600/30'
-                                : 'bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700'
+                                : 'text-slate-600 hover:bg-emerald-500/10 hover:text-emerald-600'
                             }`}
                           >
                             Joined
@@ -345,10 +327,10 @@ export const AttendanceView: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => setStatus(student.id, 'absent')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
                               currentStatus === 'absent'
                                 ? 'bg-rose-600 text-white shadow-xs ring-2 ring-rose-600/30'
-                                : 'bg-slate-100 text-slate-600 hover:bg-rose-50 hover:text-rose-700'
+                                : 'text-slate-600 hover:bg-rose-500/10 hover:text-rose-600'
                             }`}
                           >
                             Not joined
@@ -358,10 +340,10 @@ export const AttendanceView: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => setStatus(student.id, 'late')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
                               currentStatus === 'late'
                                 ? 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-500/30'
-                                : 'bg-slate-100 text-slate-600 hover:bg-amber-50 hover:text-amber-700'
+                                : 'text-slate-600 hover:bg-amber-500/10 hover:text-amber-600'
                             }`}
                           >
                             Late join
@@ -371,10 +353,10 @@ export const AttendanceView: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => setStatus(student.id, 'excused')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
                               currentStatus === 'excused'
                                 ? 'bg-slate-700 text-white shadow-xs ring-2 ring-slate-700/30'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                : 'text-slate-600 hover:bg-slate-200'
                             }`}
                           >
                             Excused
