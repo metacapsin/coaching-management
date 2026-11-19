@@ -152,10 +152,10 @@ export const BatchesTimetableView: React.FC = () => {
 
       {/* Numbers of the batches */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard label="Batches" icon={Layers} accent="blue" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{batches.length}</span>} footer={<>{batches.filter(b => b.status === 'ongoing').length} ongoing · {batches.filter(b => b.status === 'upcoming').length} upcoming</>} />
-        <KpiCard label="Enrolled students" icon={Users} accent="emerald" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{enrolledTotal}</span>} footer={<>Across all batches</>} />
+        <KpiCard label="Batches" icon={Layers} accent="indigo" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{batches.length}</span>} footer={<>{batches.filter(b => b.status === 'ongoing').length} ongoing · {batches.filter(b => b.status === 'upcoming').length} upcoming</>} />
+        <KpiCard label="Enrolled students" icon={Users} accent="blue" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{enrolledTotal}</span>} footer={<>Across all batches</>} />
         <KpiCard label="Seats left" icon={GraduationCap} accent="amber" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{seatsLeft}</span>} footer={<>Of {seatsTotal} seats</>} />
-        <KpiCard label="Seats filled" icon={Calendar} accent="indigo" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{seatsTotal > 0 ? Math.round((enrolledTotal / seatsTotal) * 100) : 0}%</span>} footer={<>{timetable.length} weekly slots</>} />
+        <KpiCard label="Seats filled" icon={Calendar} accent="emerald" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{seatsTotal > 0 ? Math.round((enrolledTotal / seatsTotal) * 100) : 0}%</span>} footer={<>{timetable.length} weekly slots</>} />
       </div>
 
       {/* Tabs */}

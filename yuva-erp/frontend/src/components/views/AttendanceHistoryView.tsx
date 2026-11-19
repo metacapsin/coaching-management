@@ -350,7 +350,7 @@ export const AttendanceHistoryView: React.FC = () => {
         <KpiCard
           label="Overall attendance"
           icon={CalendarCheck}
-          accent="blue"
+          accent="indigo"
           value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{marked > 0 ? `${overall}%` : '—'}</span>}
           footer={<>{sessions.length} classes · {periodText}</>}
           spark={trend.map(t => t.value)}

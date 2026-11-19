@@ -235,7 +235,7 @@ export const AttendanceView: React.FC = () => {
 
       {/* Stats Summary Bar */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard label="Turnout" icon={CalendarCheck} accent="blue" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{attendanceRate}%</span>} footer={<>{presentCount} of {totalCount} students</>} />
+        <KpiCard label="Turnout" icon={CalendarCheck} accent="indigo" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{attendanceRate}%</span>} footer={<>{presentCount} of {totalCount} students</>} />
         <KpiCard label="Joined" icon={UserCheck} accent="emerald" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{presentCount - lateCount}</span>} footer={<>Joined on time</>} />
         <KpiCard label="Not joined" icon={UserX} accent="rose" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{absentCount}</span>} footer={<>Did not join</>} />
         <KpiCard label="Late join" icon={Clock} accent="amber" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{lateCount}</span>} footer={<>Joined after the start</>} />

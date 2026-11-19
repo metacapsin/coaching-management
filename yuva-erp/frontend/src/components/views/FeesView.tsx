@@ -310,7 +310,7 @@ export const FeesView: React.FC<FeesViewProps> = ({
         <KpiCard
           label="Total Fees"
           icon={CreditCard}
-          accent="blue"
+          accent="indigo"
           value={<span className="text-2xl font-bold font-mono text-slate-900 tabular-nums">{money(totalAssessedFees)}</span>}
           footer={<>Net after scholarships</>}
         />

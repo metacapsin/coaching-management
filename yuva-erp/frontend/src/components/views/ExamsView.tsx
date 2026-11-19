@@ -202,10 +202,10 @@ export const ExamsView: React.FC = () => {
       {exams.length > 0 && (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <KpiCard label="Total exams" icon={Award} accent="blue" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{exams.length}</span>} footer={<>{exams.filter(e => e.status === 'published').length} published</>} />
-            <KpiCard label="Average score" icon={FileText} accent="emerald" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{overall.n ? `${overall.avg}%` : '—'}</span>} footer={<>{overall.n} marks recorded</>} />
-            <KpiCard label="Pass rate" icon={Send} accent="amber" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{overall.n ? `${overall.pass}%` : '—'}</span>} footer={<>Of the students who wrote</>} />
-            <KpiCard label="Topper score" icon={Ticket} accent="rose" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{overall.n ? `${overall.top}%` : '—'}</span>} footer={<>{topStudents[0]?.name ?? 'No marks yet'}</>} />
+            <KpiCard label="Total exams" icon={Award} accent="amber" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{exams.length}</span>} footer={<>{exams.filter(e => e.status === 'published').length} published</>} />
+            <KpiCard label="Average score" icon={FileText} accent="indigo" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{overall.n ? `${overall.avg}%` : '—'}</span>} footer={<>{overall.n} marks recorded</>} />
+            <KpiCard label="Pass rate" icon={Send} accent="blue" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{overall.n ? `${overall.pass}%` : '—'}</span>} footer={<>Of the students who wrote</>} />
+            <KpiCard label="Topper score" icon={Ticket} accent="emerald" value={<span className="text-3xl font-bold text-slate-900 tabular-nums">{overall.n ? `${overall.top}%` : '—'}</span>} footer={<>{topStudents[0]?.name ?? 'No marks yet'}</>} />
           </div>
 
           {overall.n > 0 && (
