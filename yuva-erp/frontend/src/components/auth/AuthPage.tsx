@@ -523,7 +523,7 @@ export const AuthPage: React.FC<{ embedded?: boolean; registerSignal?: number }>
                   type="button"
                   onClick={() => choosePortal(p.id)}
                   className={`py-2 px-1 text-[11px] sm:text-xs leading-tight text-center font-medium rounded-md transition-colors flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 ${
-                    portal === p.id ? 'bg-white text-slate-900 shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
+                    portal === p.id ? 'bg-orange-500/25 text-orange-300 ring-1 ring-orange-400/50 font-semibold' : 'text-slate-600 hover:bg-orange-500/15 hover:text-orange-200'
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
