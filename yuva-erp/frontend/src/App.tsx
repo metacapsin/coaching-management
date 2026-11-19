@@ -303,9 +303,9 @@ function MainApp() {
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
-        <div>
+        <div className="flex-1 min-h-0 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {/* Brand Header */}
-          <div className="p-5 border-b border-slate-200">
+          <div className="px-5 py-[clamp(6px,1.8vh,20px)] border-b border-slate-200">
             <div className="flex items-center gap-2.5">
               <OrgLogo className="w-8 h-8 rounded-lg shadow-sm" fallbackClass="bg-blue-600 text-white font-black text-sm" />
               <div className="overflow-hidden">
@@ -321,7 +321,7 @@ function MainApp() {
 
           {/* Quick Action Button (office only) */}
           {isManager && (
-            <div className="px-4 py-3 border-b border-slate-200">
+            <div className="px-4 py-[clamp(6px,1.2vh,12px)] border-b border-slate-200">
               <button
                 onClick={() => {
                   setIsAdmissionModalOpen(true);
@@ -336,7 +336,7 @@ function MainApp() {
           )}
 
           {/* Nav List */}
-          <nav className="p-3 space-y-1">
+          <nav className="px-3 py-[clamp(4px,1vh,12px)] space-y-[clamp(0px,0.3vh,4px)]">
             {visibleNavItems.map((item, index) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -346,7 +346,7 @@ function MainApp() {
 
               return (
                 <Fragment key={item.id}>
-                {heading && <p className={`px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 ${index === 0 ? 'pt-1' : 'pt-4'}`}>{heading}</p>}
+                {heading && <p className={`px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 ${index === 0 ? 'pt-0.5' : 'pt-[clamp(4px,1.2vh,12px)]'}`}>{heading}</p>}
                 <a
                   href={tabPath(item.id)}
                   aria-current={isActive ? 'page' : undefined}
@@ -357,7 +357,7 @@ function MainApp() {
                     setActiveTab(item.id);
                     setMobileMenuOpen(false);
                   }}
-                  className={`relative w-full px-3 py-2 text-xs font-medium rounded-lg flex items-center justify-between transition-colors ${
+                  className={`relative w-full px-3 h-[clamp(19px,3.5vh,38px)] text-xs font-medium rounded-lg flex items-center justify-between transition-colors ${
                     isActive
                       ? 'bg-orange-100 text-orange-700 dark:bg-[#7c2d12] dark:text-orange-300 font-semibold'
                       : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
@@ -387,7 +387,7 @@ function MainApp() {
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-slate-200 text-[11px] text-slate-500 space-y-3">
+        <div className="shrink-0 px-4 py-[clamp(8px,1.6vh,16px)] border-t border-slate-200 text-[11px] text-slate-500 space-y-[clamp(4px,1vh,12px)]">
           {/* Signed-in user + Sign Out */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
@@ -411,14 +411,14 @@ function MainApp() {
             </button>
           </div>
 
-          <div className="flex justify-between items-center text-slate-500 text-[10px]">
+          <div className="flex justify-between items-center text-slate-500 text-[10px] [@media(max-height:760px)]:hidden">
             <span>COACHING SAAS v2.4</span>
             <span className="text-emerald-500 flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               {syncStatus === 'connected' ? 'Connected to server' : 'Server not reachable'}
             </span>
           </div>
-          <p className="text-slate-500 truncate font-medium">{profile.address}</p>
+          <p className="text-slate-500 truncate font-medium [@media(max-height:860px)]:hidden">{profile.address}</p>
         </div>
       </aside>
 

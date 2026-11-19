@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 
 // The building blocks of the home pages (the principal, the teacher, the student and the parent): a banner, big cards with a coloured strip on top,
@@ -180,3 +180,140 @@ export const BannerButton: React.FC<{ icon: LucideIcon; onClick: () => void; chi
     {children}
   </button>
 );
+
+
+// A smooth line with a soft area under it, grid lines, labels, and a tooltip that follows the mouse (the fee collection of each month...).
+export const AreaChart: React.FC<{
+  data: { label: string; value: number }[];
+  format: (n: number) => string;
+  color?: string;
+  height?: number;
+  id: string;
+}> = ({ data, format, color = '#f97316', height = 230, id }) => {
+  const [hover, setHover] = useState<number | null>(null);
+  const box = useRef<SVGSVGElement>(null);
+  const W = 640;
+  const H = height;
+  const left = 46;
+  const right = 14;
+  const top = 18;
+  const bottom = 28;
+  const max = Math.max(...data.map(d => d.value), 1);
+  // a round top for the grid (1, 2, 5 times a power of ten)
+  const pow = Math.pow(10, Math.floor(Math.log10(max)));
+  const niceTop = [1, 2, 2.5, 5, 10].map(m => m * pow).find(v => v >= max) ?? max;
+  const x = (i: number) => left + (data.length === 1 ? (W - left - right) / 2 : (i / (data.length - 1)) * (W - left - right));
+  const y = (v: number) => top + (1 - v / niceTop) * (H - top - bottom);
+  const pts = data.map((d, i) => [x(i), y(d.value)] as const);
+  // a smooth curve through the points (Catmull-Rom turned into Bezier curves)
+  const curve = pts.length < 2 ? '' : pts.reduce((path, p, i, a) => {
+    if (i === 0) return `M${p[0].toFixed(1)},${p[1].toFixed(1)}`;
+    const p0 = a[i - 2] ?? a[i - 1];
+    const p1 = a[i - 1];
+    const p3 = a[i + 1] ?? p;
+    const c1x = p1[0] + (p[0] - p0[0]) / 6;
+    const c1y = p1[1] + (p[1] - p0[1]) / 6;
+    const c2x = p[0] - (p3[0] - p1[0]) / 6;
+    const c2y = p[1] - (p3[1] - p1[1]) / 6;
+    return `${path} C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p[0].toFixed(1)},${p[1].toFixed(1)}`;
+  }, '');
+  const area = pts.length < 2 ? '' : `${curve} L${pts[pts.length - 1][0].toFixed(1)},${H - bottom} L${pts[0][0].toFixed(1)},${H - bottom} Z`;
+  const step = Math.ceil(data.length / 9);
+  const move = (e: React.MouseEvent<SVGSVGElement>) => {
+    const r = box.current?.getBoundingClientRect();
+    if (!r || data.length === 0) return;
+    const px = ((e.clientX - r.left) / r.width) * W;
+    let best = 0;
+    pts.forEach((p, i) => {
+      if (Math.abs(p[0] - px) < Math.abs(pts[best][0] - px)) best = i;
+    });
+    setHover(best);
+  };
+  const hp = hover !== null ? pts[hover] : null;
+  return (
+    <svg ref={box} viewBox={`0 0 ${W} ${H}`} className="w-full h-auto block" onMouseMove={move} onMouseLeave={() => setHover(null)} role="img" aria-label="Chart of the fees collected in each month">
+      <defs>
+        <linearGradient id={`area-${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.42" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {[0, 0.25, 0.5, 0.75, 1].map(f => (
+        <g key={f}>
+          <line x1={left} x2={W - right} y1={y(niceTop * f)} y2={y(niceTop * f)} stroke="currentColor" className="text-slate-200" strokeWidth="1" strokeDasharray={f === 0 ? undefined : '3 4'} />
+          <text x={left - 8} y={y(niceTop * f) + 4} textAnchor="end" fontSize="11" className="fill-slate-400">
+            {format(niceTop * f)}
+          </text>
+        </g>
+      ))}
+      {data.map((d, i) =>
+        i % step === 0 || i === data.length - 1 ? (
+          <text key={d.label + i} x={x(i)} y={H - 8} textAnchor="middle" fontSize="11" className="fill-slate-400">
+            {d.label}
+          </text>
+        ) : null
+      )}
+      {area && <path d={area} fill={`url(#area-${id})`} />}
+      {curve && <path d={curve} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
+      {pts.map((p, i) => (
+        <circle key={i} cx={p[0]} cy={p[1]} r={hover === i ? 6 : i === pts.length - 1 ? 5 : 3} fill={color} className="stroke-white dark:stroke-[#1e293b]" strokeWidth="2.5" />
+      ))}
+      {hp && hover !== null && (
+        <g pointerEvents="none">
+          <line x1={hp[0]} x2={hp[0]} y1={top} y2={H - bottom} stroke={color} strokeWidth="1" strokeDasharray="3 3" opacity="0.6" />
+          <g transform={`translate(${Math.min(Math.max(hp[0] - 52, left), W - right - 104)},${Math.max(hp[1] - 46, 2)})`}>
+            <rect width="104" height="36" rx="9" fill={color} />
+            <text x="52" y="15" textAnchor="middle" fontSize="10.5" fill="#ffffff" opacity="0.9">
+              {data[hover].label}
+            </text>
+            <text x="52" y="29" textAnchor="middle" fontSize="12.5" fontWeight="700" fill="#ffffff">
+              {format(data[hover].value)}
+            </text>
+          </g>
+        </g>
+      )}
+    </svg>
+  );
+};
+
+// A ring chart: the parts of a whole (joined, not joined, late), with a number in the middle.
+export const DonutChart: React.FC<{ segments: { value: number; color: string }[]; center: React.ReactNode; sub?: string; size?: number }> = ({ segments, center, sub, size = 170 }) => {
+  const total = segments.reduce((a, s) => a + s.value, 0);
+  const r = size / 2 - 14;
+  const c = 2 * Math.PI * r;
+  let offset = 0;
+  return (
+    <div className="relative mx-auto" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Ring chart">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" className="text-slate-200" strokeWidth="16" />
+        {total > 0 &&
+          segments.map((s, i) => {
+            const len = (s.value / total) * c;
+            const gap = segments.filter(x => x.value > 0).length > 1 ? 4 : 0;
+            const el = (
+              <circle
+                key={i}
+                cx={size / 2}
+                cy={size / 2}
+                r={r}
+                fill="none"
+                stroke={s.color}
+                strokeWidth="16"
+                strokeLinecap="round"
+                strokeDasharray={`${Math.max(len - gap, 0)} ${c}`}
+                strokeDashoffset={-offset}
+                transform={`rotate(-90 ${size / 2} ${size / 2})`}
+                style={{ display: s.value > 0 ? undefined : 'none' }}
+              />
+            );
+            offset += len;
+            return el;
+          })}
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-3xl font-bold text-slate-900 tracking-tight">{center}</span>
+        {sub && <span className="text-[11px] text-slate-500 mt-0.5">{sub}</span>}
+      </div>
+    </div>
+  );
+};

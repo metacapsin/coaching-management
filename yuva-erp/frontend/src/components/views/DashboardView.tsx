@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { GettingStarted, FollowUpsCard, NoticesCard } from '../ui/HomeCards';
 import { useInstitute } from '../../Context/InstituteContext';
 import { useAuth } from '../../Context/AuthContext';
-import { KpiCard, MonthCard, TodayTile } from '../ui/HomeBlocks';
+import { AreaChart, DonutChart, KpiCard, TodayTile } from '../ui/HomeBlocks';
 import type { TimetableSlot, Student } from '../../types';
 import {
   Users,
@@ -230,6 +230,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const todayAttendanceRecords = attendance.filter(a => a.date === todayStr);
   let totalMarkedToday = 0;
   let presentToday = 0;
+  let lateToday = 0;
   let absentToday = 0;
 
   const absentIdsToday = new Set<string>();
@@ -238,6 +239,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     Object.entries(records).forEach(([sid, status]) => {
       totalMarkedToday++;
       if (status === 'present' || status === 'late') presentToday++;
+      if (status === 'late') lateToday++;
       if (status === 'absent') absentIdsToday.add(sid);
     });
   });
@@ -432,53 +434,36 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     <div className="space-y-6">
       <GettingStarted onNavigate={onNavigate} onOpenAdmission={onOpenAdmission} />
 
-      {/* Top banner: the greeting, the coaching and the quick shortcuts */}
-      <div className="relative overflow-hidden rounded-2xl p-6 sm:p-7 text-white shadow-lg bg-gradient-to-br from-[#f97316] via-[#c2410c] to-[#080f1e]">
-        <span className="absolute -top-20 -right-12 w-64 h-64 rounded-full bg-sky-300/20 blur-3xl pointer-events-none" />
-        <span className="absolute -bottom-24 left-1/3 w-72 h-72 rounded-full bg-indigo-400/15 blur-3xl pointer-events-none" />
-        <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-[rgb(255_255_255/0.16)] text-white">
-                Academic Session {profile.academicYear}
-              </span>
-              <span className="text-xs text-sky-100/85">
-                {now.toLocaleDateString('en-IN', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
-              </span>
-            </div>
-            <p className="mt-4 text-sm text-sky-100/90">
-              {greeting}
-              {user?.name ? `, ${user.name}` : ''}
-            </p>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mt-0.5 truncate">{profile.name}</h1>
-            <p className="text-xs text-sky-100/75 mt-2 max-w-xl">
-              Institute Management Command Center · Real-time admissions, attendance, fees & exam analytics.
-            </p>
-          </div>
-
-          {/* Quick Launch Buttons (New Admission lives in the sidebar and top navbar) */}
-          <div className="grid grid-cols-2 gap-2.5 shrink-0 sm:min-w-[22rem]">
-            {[
-              { label: 'Attendance History', icon: CalendarCheck, onClick: () => onNavigate('attendance') },
-              { label: 'Fee Received', icon: CreditCard, onClick: onOpenRecordPayment },
-              { label: 'Broadcast Alert', icon: Bell, onClick: () => onNavigate('notifications') },
-              ...(onAddTeacher ? [{ label: 'Add Teacher', icon: UserPlus, onClick: onAddTeacher }] : [])
-            ].map(b => (
-              <button
-                key={b.label}
-                onClick={b.onClick}
-                className="px-3.5 py-2.5 text-xs font-semibold text-white bg-[rgb(255_255_255/0.12)] hover:bg-[rgb(255_255_255/0.22)] border border-[rgb(255_255_255/0.22)] rounded-xl backdrop-blur-sm transition-colors flex items-center gap-2"
-              >
-                <b.icon className="w-4 h-4 text-sky-200" />
-                {b.label}
-              </button>
-            ))}
-          </div>
+      {/* Header: the greeting, and the quick shortcuts (New Admission lives in the sidebar and top navbar) */}
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+            {greeting}
+            {user?.name ? `, ${user.name.split(' ')[0]}` : ''}
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Here is what is happening at <span className="font-semibold text-slate-700">{profile.name}</span> today.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-slate-500 border border-slate-200 bg-white rounded-xl px-3 py-2.5">
+            {now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          </span>
+          {[
+            { label: 'Attendance History', icon: CalendarCheck, onClick: () => onNavigate('attendance') },
+            { label: 'Fee Received', icon: CreditCard, onClick: onOpenRecordPayment },
+            { label: 'Broadcast Alert', icon: Bell, onClick: () => onNavigate('notifications') },
+            ...(onAddTeacher ? [{ label: 'Add Teacher', icon: UserPlus, onClick: onAddTeacher }] : [])
+          ].map(b => (
+            <button
+              key={b.label}
+              onClick={b.onClick}
+              className="px-3.5 py-2.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-colors flex items-center gap-2"
+            >
+              <b.icon className="w-4 h-4 text-blue-600" />
+              {b.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -556,34 +541,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         />
       </div>
 
-      {/* This Month Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <MonthCard
-          label={`New Admissions · ${monthName}`}
-          icon={UserPlus}
-          accent="blue"
-          value={<span className="text-2xl font-bold text-slate-900">{admissionsThisMonth}</span>}
-          trend={<TrendLabel current={admissionsThisMonth} previous={admissionsPrevMonth} />}
-        />
-        <MonthCard
-          label={`Fees Collected · ${monthName}`}
-          icon={Wallet}
-          accent="emerald"
-          value={
-            <span className="text-2xl font-bold font-mono text-slate-900">
-              {profile.currencySymbol}
-              {formatINR(collectedThisMonth)}
-            </span>
-          }
-          trend={<TrendLabel current={collectedThisMonth} previous={collectedPrevMonth} />}
-        />
-        <MonthCard
-          label={`Receipts Issued · ${monthName}`}
-          icon={CreditCard}
-          accent="indigo"
-          value={<span className="text-2xl font-bold text-slate-900">{txThisMonth.length}</span>}
-          trend={<TrendLabel current={txThisMonth.length} previous={txPrevMonth.length} />}
-        />
+      {/* This Month Summary: one card, three parts */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+        <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+          <Activity className="w-4 h-4 text-blue-600" />
+          This month · {monthName}
+        </h3>
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 sm:divide-x divide-slate-200 gap-y-5">
+          {[
+            { label: 'New admissions', icon: UserPlus, value: <span className="text-2xl font-bold text-slate-900">{admissionsThisMonth}</span>, trend: <TrendLabel current={admissionsThisMonth} previous={admissionsPrevMonth} /> },
+            { label: 'Fees collected', icon: Wallet, value: <span className="text-2xl font-bold font-mono text-slate-900">{profile.currencySymbol}{formatINR(collectedThisMonth)}</span>, trend: <TrendLabel current={collectedThisMonth} previous={collectedPrevMonth} /> },
+            { label: 'Receipts issued', icon: CreditCard, value: <span className="text-2xl font-bold text-slate-900">{txThisMonth.length}</span>, trend: <TrendLabel current={txThisMonth.length} previous={txPrevMonth.length} /> }
+          ].map(m => (
+            <div key={m.label} className="sm:px-6 first:sm:pl-0 last:sm:pr-0 flex items-center gap-3.5 min-w-0">
+              <span className="w-11 h-11 shrink-0 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                <m.icon className="w-5 h-5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate">{m.label}</span>
+                <div className="mt-1 flex items-center justify-between gap-2 flex-wrap">
+                  {m.value}
+                  {m.trend}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Charts Row: Fee Collection + Attendance Trend */}
@@ -633,124 +616,63 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 No fee payments recorded in this period.
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <div className="flex items-end gap-2 min-w-max sm:min-w-0 sm:w-full">
-                  {feeMonths.map(m => (
-                    <div
-                      key={m.key}
-                      className="flex-1 min-w-[38px] flex flex-col items-center gap-1"
-                      title={`${m.label}: ${profile.currencySymbol}${formatINR(m.total)}`}
-                    >
-                      <div className="w-full flex flex-col items-center justify-end" style={{ height: MAX_BAR_PX + 20 }}>
-                        <span className="text-[10px] font-mono text-slate-500 mb-0.5 h-3.5">
-                          {m.total > 0 ? `${profile.currencySymbol}${formatCompactINR(m.total)}` : ''}
-                        </span>
-                        <div
-                          className={`w-full max-w-[28px] rounded-t transition-all ${
-                            m.total > 0
-                              ? m.key === thisMonthKey
-                                ? 'bg-gradient-to-t from-orange-600 to-orange-400 shadow-[0_0_14px_-2px_rgb(249_115_22/0.6)]'
-                                : 'bg-gradient-to-t from-orange-700/80 to-orange-400/70'
-                              : 'bg-slate-200'
-                          }`}
-                          style={{
-                            height:
-                              m.total > 0
-                                ? Math.max(4, Math.round((m.total / maxMonthTotal) * MAX_BAR_PX))
-                                : 2
-                          }}
-                        />
-                      </div>
-                      <span
-                        className={`text-[10px] whitespace-nowrap ${
-                          m.key === thisMonthKey ? 'font-semibold text-slate-700' : 'text-slate-400'
-                        }`}
-                      >
-                        {m.label}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <AreaChart
+                id="fees"
+                data={feeMonths.map(m => ({ label: m.label, value: m.total }))}
+                format={n => `${profile.currencySymbol}${formatCompactINR(n)}`}
+              />
             )}
           </div>
         </div>
 
-        {/* Attendance Trend (last 7 days) */}
+        {/* Attendance overview: today as a ring, the last 7 days as small bars */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
             <div className="flex items-center gap-2">
               <Activity className="w-4 h-4 text-emerald-600" />
-              <h3 className="text-sm font-semibold text-slate-900">Attendance · Last 7 Days</h3>
+              <h3 className="text-sm font-semibold text-slate-900">Attendance overview</h3>
             </div>
-            <button
-              onClick={() => onNavigate('attendance')}
-              className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
-            >
+            <button onClick={() => onNavigate('attendance')} className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors">
               Open →
             </button>
           </div>
 
-          <div className="p-4">
-            <div className="text-xs text-slate-500 mb-4">
-              {weekAverage !== null ? (
-                <>
-                  Average turnout:{' '}
-                  <strong className="font-mono text-slate-900">{weekAverage}%</strong>
-                  <span className="text-slate-400"> · {daysWithData.length} of 7 days marked</span>
-                </>
-              ) : (
-                'No attendance marked in the last 7 days.'
-              )}
+          <div className="p-5">
+            <DonutChart
+              segments={[
+                { value: presentToday - lateToday, color: '#22c55e' },
+                { value: lateToday, color: '#f59e0b' },
+                { value: totalMarkedToday - presentToday, color: '#f43f5e' }
+              ]}
+              center={totalMarkedToday > 0 ? `${todayAttendanceRate}%` : '—'}
+              sub={totalMarkedToday > 0 ? 'joined today' : 'not marked yet'}
+            />
+            <div className="mt-5 space-y-2.5 text-xs text-slate-600">
+              <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-500" />Joined<b className="ml-auto text-slate-900">{presentToday - lateToday}</b></div>
+              <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-sm bg-rose-500" />Not joined<b className="ml-auto text-slate-900">{totalMarkedToday - presentToday}</b></div>
+              <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-sm bg-amber-500" />Late join<b className="ml-auto text-slate-900">{lateToday}</b></div>
             </div>
-
-            <div className="flex items-end gap-2">
-              {last7Days.map(day => {
-                const barColor =
-                  day.rate === null
-                    ? 'bg-slate-200'
-                    : day.rate >= 85
-                    ? 'bg-emerald-500'
-                    : day.rate >= LOW_ATTENDANCE_THRESHOLD
-                    ? 'bg-amber-400'
-                    : 'bg-rose-500';
-                return (
-                  <div
-                    key={day.iso}
-                    className="flex-1 flex flex-col items-center gap-1"
-                    title={day.rate === null ? `${day.iso}: not marked` : `${day.iso}: ${day.rate}% present`}
-                  >
-                    <div className="w-full flex flex-col items-center justify-end" style={{ height: MAX_BAR_PX + 20 }}>
-                      <span className="text-[10px] font-mono text-slate-500 mb-0.5 h-3.5">
-                        {day.rate !== null ? `${day.rate}%` : '–'}
-                      </span>
-                      <div
-                        className={`w-full max-w-[24px] rounded-t transition-all ${barColor}`}
-                        style={{
-                          height: day.rate !== null ? Math.max(4, Math.round((day.rate / 100) * MAX_BAR_PX)) : 2
-                        }}
-                      />
-                    </div>
-                    <span
-                      className={`text-[10px] ${day.isToday ? 'font-semibold text-slate-700' : 'text-slate-400'}`}
-                    >
-                      {day.isToday ? 'Today' : day.label}
-                    </span>
+            <div className="mt-5 pt-4 border-t border-slate-100">
+              <div className="text-[11px] text-slate-500 mb-2">
+                {weekAverage !== null ? (
+                  <>
+                    Last 7 days: average <strong className="font-mono text-slate-900">{weekAverage}%</strong>
+                    <span className="text-slate-400"> · {daysWithData.length} of 7 days marked</span>
+                  </>
+                ) : (
+                  'No attendance marked in the last 7 days.'
+                )}
+              </div>
+              <div className="flex items-end gap-1.5 h-12">
+                {last7Days.map(day => (
+                  <div key={day.iso} className="flex-1 flex flex-col justify-end h-full" title={day.rate === null ? `${day.iso}: not marked` : `${day.iso}: ${day.rate}% joined`}>
+                    <div
+                      className={`w-full rounded-t ${day.rate === null ? 'bg-slate-200' : day.rate >= 85 ? 'bg-emerald-500' : day.rate >= LOW_ATTENDANCE_THRESHOLD ? 'bg-amber-400' : 'bg-rose-500'}`}
+                      style={{ height: day.rate !== null ? `${Math.max(8, day.rate)}%` : '6%' }}
+                    />
                   </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-slate-400">
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-sm bg-emerald-500" /> 85%+
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-sm bg-amber-400" /> {LOW_ATTENDANCE_THRESHOLD}-84%
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-sm bg-rose-500" /> Below {LOW_ATTENDANCE_THRESHOLD}%
-              </span>
+                ))}
+              </div>
             </div>
           </div>
         </div>
