@@ -23,10 +23,6 @@ import {
   Check,
   Lock,
   Eye,
-  Facebook,
-  Twitter,
-  Linkedin,
-  Instagram,
   Star
 } from 'lucide-react';
 import { AuthPage } from '../auth/AuthPage';
@@ -220,13 +216,47 @@ const WHY_CARDS = [
   { icon: BarChart3, title: 'Numbers at a glance', text: 'Today’s absentees, pending fees, new admissions and profit on one dashboard.' }
 ];
 
+// The real signs of the sites, in their own colours (they sit on a white round button): Facebook blue, X black, LinkedIn blue, Instagram's
+// gradient, Medium black, and a gold star for the reviews.
 const SOCIAL_ICON: Record<string, React.ReactNode> = {
-  facebook: <Facebook className="w-5 h-5" />,
-  x: <Twitter className="w-5 h-5" />,
-  linkedin: <Linkedin className="w-5 h-5" />,
-  instagram: <Instagram className="w-5 h-5" />,
-  medium: <span className="font-serif font-bold text-lg leading-none">M</span>,
-  reviews: <Star className="w-5 h-5" />
+  facebook: (
+    <svg viewBox="0 0 24 24" className="w-7 h-7" aria-hidden="true">
+      <path
+        fill="#1877F2"
+        d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a8.68 8.68 0 0 1 1.141.195v3.325a8.623 8.623 0 0 0-.653-.036 26.805 26.805 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.686 1.686 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647Z"
+      />
+    </svg>
+  ),
+  x: (
+    <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden="true">
+      <path fill="#000000" d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z" />
+    </svg>
+  ),
+  linkedin: (
+    <svg viewBox="0 0 24 24" className="w-6 h-6" aria-hidden="true">
+      <path
+        fill="#0A66C2"
+        d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"
+      />
+    </svg>
+  ),
+  instagram: (
+    <svg viewBox="0 0 24 24" className="w-6 h-6" aria-hidden="true">
+      <defs>
+        <linearGradient id="ig-grad" x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0" stopColor="#FEDA75" />
+          <stop offset="0.35" stopColor="#FA7E1E" />
+          <stop offset="0.65" stopColor="#D62976" />
+          <stop offset="1" stopColor="#4F5BD5" />
+        </linearGradient>
+      </defs>
+      <rect x="2.6" y="2.6" width="18.8" height="18.8" rx="5.4" fill="none" stroke="url(#ig-grad)" strokeWidth="2.2" />
+      <circle cx="12" cy="12" r="4.2" fill="none" stroke="url(#ig-grad)" strokeWidth="2.2" />
+      <circle cx="17.3" cy="6.7" r="1.3" fill="#D62976" />
+    </svg>
+  ),
+  medium: <span className="font-serif font-bold text-xl leading-none text-black">M</span>,
+  reviews: <Star className="w-6 h-6" fill="#FBBC05" stroke="#F59E0B" strokeWidth={1.5} />
 };
 
 const Logo: React.FC<{ className?: string }> = ({ className = '' }) => (
@@ -681,7 +711,7 @@ export const LandingPage: React.FC<{ signedIn?: { text: string; onContinue: () =
                     rel="noopener noreferrer"
                     aria-label={x.label}
                     title={x.label}
-                    className="w-11 h-11 rounded-full bg-white/10 hover:bg-sky-400/25 text-sky-300 hover:text-white flex items-center justify-center shadow-md shadow-black/20 transition-colors"
+                    className="w-11 h-11 rounded-full bg-white hover:bg-white hover:scale-110 flex items-center justify-center shadow-md shadow-black/30 ring-1 ring-white/20 transition-transform"
                   >
                     {SOCIAL_ICON[x.key]}
                   </a>
