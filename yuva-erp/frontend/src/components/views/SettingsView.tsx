@@ -173,89 +173,125 @@ export const SettingsView: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Profile form */}
-        <form onSubmit={handleSaveProfile} className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-6 shadow-xs space-y-5 self-start">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-2 flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-blue-600" />
-            Institute Profile & Official Voucher Letterhead
-          </h3>
+        {/* Left: the profile, and under it the sample data (so both columns end together) */}
+        <div className="lg:col-span-2 space-y-6">
+          <form onSubmit={handleSaveProfile} className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs space-y-5">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-2 flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-blue-600" />
+              Institute Profile & Official Voucher Letterhead
+            </h3>
 
-          <div className="flex items-center gap-4 p-3 rounded-lg border border-dashed border-slate-300 bg-slate-50/60">
-            {formData.logo ? (
-              <img src={formData.logo} alt="Logo" className="w-16 h-16 object-contain bg-white rounded-lg border border-slate-200" />
-            ) : (
-              <div className="w-16 h-16 rounded-lg bg-slate-200 text-slate-400 flex items-center justify-center text-2xl font-bold">
-                {formData.name.slice(0, 1)}
-              </div>
-            )}
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-slate-700">Logo of the coaching</p>
-              <p className="text-[11px] text-slate-500">Shown in the side menu, on fee receipts and on report cards. Press Save after choosing it.</p>
-              <div className="mt-2 flex gap-2">
-                <label className="px-3 py-1.5 text-[11px] font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md cursor-pointer">
-                  {formData.logo ? 'Change logo' : 'Upload logo'}
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    className="hidden"
-                    onChange={async e => {
-                      const file = e.target.files?.[0];
-                      e.target.value = '';
-                      if (!file) return;
-                      if (file.size > 3 * 1024 * 1024) return flash('error', 'The picture is too big. Choose one below 3 MB.');
-                      try {
-                        setFormData({ ...formData, logo: await resizeLogoToDataUrl(file) });
-                      } catch {
-                        flash('error', 'This picture could not be read.');
-                      }
-                    }}
-                  />
-                </label>
-                {formData.logo && (
-                  <button type="button" onClick={() => setFormData({ ...formData, logo: undefined })} className="px-3 py-1.5 text-[11px] font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-md">
-                    Remove
-                  </button>
-                )}
+            <div className="flex items-center gap-4 p-3 rounded-lg border border-dashed border-slate-300 bg-slate-50/60">
+              {formData.logo ? (
+                <img src={formData.logo} alt="Logo" className="w-16 h-16 object-contain bg-white rounded-lg border border-slate-200" />
+              ) : (
+                <div className="w-16 h-16 rounded-lg bg-slate-200 text-slate-400 flex items-center justify-center text-2xl font-bold">
+                  {formData.name.slice(0, 1)}
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-slate-700">Logo of the coaching</p>
+                <p className="text-[11px] text-slate-500">Shown in the side menu, on fee receipts and on report cards. Press Save after choosing it.</p>
+                <div className="mt-2 flex gap-2">
+                  <label className="px-3 py-1.5 text-[11px] font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md cursor-pointer">
+                    {formData.logo ? 'Change logo' : 'Upload logo'}
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="hidden"
+                      onChange={async e => {
+                        const file = e.target.files?.[0];
+                        e.target.value = '';
+                        if (!file) return;
+                        if (file.size > 3 * 1024 * 1024) return flash('error', 'The picture is too big. Choose one below 3 MB.');
+                        try {
+                          setFormData({ ...formData, logo: await resizeLogoToDataUrl(file) });
+                        } catch {
+                          flash('error', 'This picture could not be read.');
+                        }
+                      }}
+                    />
+                  </label>
+                  {formData.logo && (
+                    <button type="button" onClick={() => setFormData({ ...formData, logo: undefined })} className="px-3 py-1.5 text-[11px] font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-md">
+                      Remove
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
 
-          <label className="flex items-start gap-2 text-xs text-slate-700 cursor-pointer p-3 rounded-lg border border-slate-200 bg-slate-50/60">
-            <input
-              type="checkbox"
-              checked={!!formData.autoFeeReminders}
-              onChange={e => setFormData({ ...formData, autoFeeReminders: e.target.checked })}
-              className="mt-0.5"
-            />
-            <span>
-              <strong>Queue fee reminders by itself, once a day.</strong> When you open the app, a reminder for every fee that is past its due date
-              goes to Parent Broadcasts, "Waiting to be sent". You press Send now on each one. Press Save after changing this.
-            </span>
-          </label>
+            <label className="flex items-start gap-2 text-xs text-slate-700 cursor-pointer p-3 rounded-lg border border-slate-200 bg-slate-50/60">
+              <input
+                type="checkbox"
+                checked={!!formData.autoFeeReminders}
+                onChange={e => setFormData({ ...formData, autoFeeReminders: e.target.checked })}
+                className="mt-0.5"
+              />
+              <span>
+                <strong>Queue fee reminders by itself, once a day.</strong> When you open the app, a reminder for every fee that is past its due date
+                goes to Parent Broadcasts, "Waiting to be sent". You press Send now on each one. Press Save after changing this.
+              </span>
+            </label>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {PROFILE_FIELDS.map(f => (
-              <div key={f.key} className={f.wide ? 'md:col-span-2' : ''}>
-                <label className="block text-xs font-medium text-slate-700 mb-1">{f.label}</label>
-                <input
-                  type={f.type || 'text'}
-                  value={(formData as unknown as Record<string, string>)[f.key] ?? ''}
-                  onChange={e => setFormData({ ...formData, [f.key]: f.key === 'name' ? cleanName(e.target.value) : e.target.value })}
-                  className={`${inputCls} ${f.mono ? 'font-mono' : ''}`}
-                />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {PROFILE_FIELDS.map(f => (
+                <div key={f.key} className={f.wide ? 'md:col-span-2' : ''}>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">{f.label}</label>
+                  <input
+                    type={f.type || 'text'}
+                    value={(formData as unknown as Record<string, string>)[f.key] ?? ''}
+                    onChange={e => setFormData({ ...formData, [f.key]: f.key === 'name' ? cleanName(e.target.value) : e.target.value })}
+                    className={`${inputCls} ${f.mono ? 'font-mono' : ''}`}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex justify-end">
+              <button
+                type="submit"
+                className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-1.5"
+              >
+                <Check className="w-4 h-4" />
+                Update Institute Profile
+              </button>
+            </div>
+          </form>
+
+            <div className="bg-white rounded-xl border border-rose-100 p-6 shadow-xs space-y-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-rose-600 border-b border-slate-100 pb-2 flex items-center gap-2">
+                <RefreshCw className="w-4 h-4" />
+                Sample data & clean start
+              </h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Fill the institute with demonstration data, or delete every student, fee, exam and message to start with an empty institute.
+                Login accounts are not removed.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm('Replace all institute records with the default sample data?')) resetToDemoData();
+                  }}
+                  className="px-3.5 py-2 text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors"
+                >
+                  Reset to Sample Data
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConfirmClear(true);
+                    setConfirmText('');
+                  }}
+                  className="px-3.5 py-2 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Delete all data
+                </button>
               </div>
-            ))}
-          </div>
-
-          <div className="pt-3 border-t border-slate-100 flex justify-end">
-            <button
-              type="submit"
-              className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-1.5"
-            >
-              <Check className="w-4 h-4" />
-              Update Institute Profile
-            </button>
-          </div>
-        </form>
+            </div>
+        </div>
 
         {/* Backup & data */}
         <div className="space-y-6">
@@ -342,39 +378,6 @@ export const SettingsView: React.FC = () => {
                 ))}
               </ul>
             )}
-          </div>
-
-          <div className="bg-white rounded-xl border border-rose-100 p-6 shadow-xs space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-rose-600 border-b border-slate-100 pb-2 flex items-center gap-2">
-              <RefreshCw className="w-4 h-4" />
-              Sample data & clean start
-            </h3>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Fill the institute with demonstration data, or delete every student, fee, exam and message to start with an empty institute.
-              Login accounts are not removed.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  if (window.confirm('Replace all institute records with the default sample data?')) resetToDemoData();
-                }}
-                className="px-3.5 py-2 text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors"
-              >
-                Reset to Sample Data
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setConfirmClear(true);
-                  setConfirmText('');
-                }}
-                className="px-3.5 py-2 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors flex items-center gap-1.5"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                Delete all data
-              </button>
-            </div>
           </div>
         </div>
       </div>
