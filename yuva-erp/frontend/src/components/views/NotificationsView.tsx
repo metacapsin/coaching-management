@@ -4,9 +4,9 @@ import { useInstitute } from '../../Context/InstituteContext';
 import type { Student } from '../../types';
 import { fillTemplate, openWhatsApp, toLocalISODate, formatDate } from '../utils/helpers';
 import { Pager } from '../ui/Pager';
-import { emailBroadcast } from '../utils/api';
+import { ApiError, emailBroadcast } from '../utils/api';
 import { usePaged } from '../utils/usePaged';
-import { Bell, MessageSquare, Send, CheckCircle2, Edit3, Trash2 } from 'lucide-react';
+import { AlertCircle, Bell, MessageSquare, Send, CheckCircle2, Edit3, Trash2 } from 'lucide-react';
 
 export const NotificationsView: React.FC = () => {
   const {
@@ -34,7 +34,8 @@ export const NotificationsView: React.FC = () => {
   const [selectedStudentId, setSelectedStudentId] = useState(activeStudents[0]?.id || '');
   const [selectedBatchId, setSelectedBatchId] = useState(batches[0]?.id || '');
   const [customBody, setCustomBody] = useState(templates[0]?.templateBody || '');
-  const [dispatchSuccessMsg, setDispatchSuccessMsg] = useState('');
+  // what happened to the message, one line for each way it goes (the parent login, the email): a tick when it went, a cross when it did not
+  const [dispatchLines, setDispatchLines] = useState<{ ok: boolean; text: string }[]>([]);
 
   // Editing a template in the library
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
@@ -134,29 +135,42 @@ export const NotificationsView: React.FC = () => {
     });
 
     const n = targets.length;
-    const base =
-      n === 0
-        ? 'No students match this audience.'
-        : `${n} message${n === 1 ? '' : 's'} sent to the parent${n === 1 ? '' : 's'}: it is in the bell and on the Notice Board of the parent login. To send it on WhatsApp too, open "Audit Logs" and press "Send now".`;
-    setDispatchSuccessMsg(base);
+    if (n === 0) {
+      setDispatchLines([{ ok: false, text: 'No students match this audience, so nothing was sent.' }]);
+      setTimeout(() => setDispatchLines([]), 9000);
+      return;
+    }
+    const who = `${n} parent${n === 1 ? '' : 's'}`;
+    const inLogin = { ok: true, text: `In the parent login: sent to ${who} (it shows in the bell and on the Notice Board).` };
+    setDispatchLines([inLogin, { ok: true, text: 'Email: sending...' }]);
 
     // and the parents get it by EMAIL too (the parents with an email address)
-    if (n > 0) {
-      setDispatching(true);
-      try {
-        const r = await emailBroadcast(currentTemplate.title, items.map(({ st, message }) => ({ studentId: st.id, message })));
-        setDispatchSuccessMsg(
-          `${base} ${r.sent > 0 ? `It was also emailed to ${r.sent} parent${r.sent === 1 ? '' : 's'}` : 'No email was sent'}${r.noEmail ? ` (${r.noEmail} without an email address)` : ''}.`
-        );
-      } catch (err) {
-        setDispatchSuccessMsg(`${base} The email could not be sent${err instanceof Error ? `: ${err.message}` : '.'}`);
-      } finally {
-        setDispatching(false);
-      }
+    setDispatching(true);
+    try {
+      const r = await emailBroadcast(currentTemplate.title, items.map(({ st, message }) => ({ studentId: st.id, message })));
+      const emailLine =
+        r.sent > 0
+          ? { ok: true, text: `Email: sent to ${r.sent} parent${r.sent === 1 ? '' : 's'}${r.noEmail ? `. ${r.noEmail} parent${r.noEmail === 1 ? ' has' : 's have'} no email address, so no email went to ${r.noEmail === 1 ? 'that parent' : 'them'}.` : '.'}` }
+          : { ok: false, text: `Email: NOT sent. ${r.noEmail ? `${r.noEmail === 1 ? 'This parent has' : `These ${r.noEmail} parents have`} no email address. Add it in the student's Edit and send again.` : 'No parent could be reached.'}` };
+      setDispatchLines([inLogin, emailLine]);
+    } catch (err) {
+      const old = err instanceof ApiError && err.status === 404;
+      setDispatchLines([
+        inLogin,
+        {
+          ok: false,
+          text: old
+            ? 'Email: NOT sent. The server is running an old version that cannot send this email. Restart the backend (Ctrl+C, then npm start) and send again.'
+            : `Email: NOT sent. ${err instanceof Error ? err.message : 'Something went wrong.'}`
+        }
+      ]);
+    } finally {
+      setDispatching(false);
     }
-    setTimeout(() => setDispatchSuccessMsg(''), 9000);
+    setTimeout(() => setDispatchLines([]), 20000);
   };
 
+  // WhatsApp stays as it was: the message waits in "Audit Logs" for "Send now" (or the Launch WhatsApp button)
   // the lines that only the bell shows (a new student or teacher) are not messages to the parents
   const parentLogs = notificationLogs.filter(l => l.channel !== 'app' && l.channel !== 'student');
 
@@ -374,10 +388,16 @@ export const NotificationsView: React.FC = () => {
               </div>
             </div>
 
-            {dispatchSuccessMsg && (
-              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-800 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>{dispatchSuccessMsg}</span>
+            {dispatchLines.length > 0 && (
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1.5" role="status">
+                <p className="font-semibold text-slate-800">Result</p>
+                {dispatchLines.map((l, k) => (
+                  <div key={k} className={`flex items-start gap-2 ${l.ok ? 'text-emerald-700' : 'text-rose-700'}`}>
+                    {l.ok ? <CheckCircle2 className="w-4 h-4 shrink-0 mt-px" /> : <AlertCircle className="w-4 h-4 shrink-0 mt-px" />}
+                    <span>{l.text}</span>
+                  </div>
+                ))}
+                <p className="text-[11px] text-slate-500 pt-1">WhatsApp: open "Audit Logs" and press "Send now" to send it on WhatsApp.</p>
               </div>
             )}
 
