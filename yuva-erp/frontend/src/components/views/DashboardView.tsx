@@ -876,8 +876,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Main Grid: Left Column (Timetable & Dues) + Right Column (Admissions, Receipts, Tests) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols */}
-        <div className="lg:col-span-2 space-y-6">
+        {/* Left 2 Cols (the last card grows to the bottom of the right column, so both columns end together) */}
+        <div className="lg:col-span-2 flex flex-col gap-6">
           {/* Today's Class Schedule */}
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
             <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
@@ -1043,7 +1043,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Follow-ups and notices fill the left column under the dues, so it is as long as the right one (no empty space) */}
           <FollowUpsCard onNavigate={onNavigate} />
-          <NoticesCard onNavigate={onNavigate} />
+          <div className="flex-1 flex flex-col [&>*]:flex-1">
+            <NoticesCard onNavigate={onNavigate} />
+          </div>
         </div>
 
         {/* Right 1 Col: Recent Admissions, Receipts, Upcoming Tests (the last card grows to the bottom of the left column) */}
