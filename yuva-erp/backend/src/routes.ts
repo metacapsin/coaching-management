@@ -1779,6 +1779,8 @@ route('/api/mail-settings/test', ['POST'], 'admin', async (c) => {
 /** Everybody can change the email they sign in with. The current password has to be typed (somebody who finds a
  * signed-in screen cannot take the account over). One email, one account, over all coachings. */
 route('/api/auth/change-email', ['POST'], 'any', async (c) => {
+  // a student changes only the password: the email of a student login is changed by the principal (a parent login keeps its own)
+  if (c.user.role === 'student' && !c.user.isParent) throw new HttpError(403, 'Only the principal can change the email of a student login. You can change your password.');
   const b = c.body();
   const current: string = typeof b.currentPassword === 'string' ? b.currentPassword : '';
   const next = text(b.newEmail).toLowerCase();
@@ -1805,6 +1807,8 @@ route('/api/auth/profile', ['PUT'], 'user', async (c) => {
   const s = c.store;
   const b = c.body();
   const user = c.user;
+  // a student changes only the password: the mobile number of a student is changed by the principal (a parent and a teacher keep their own)
+  if (user.role === 'student' && !user.isParent) throw new HttpError(403, 'Only the principal can change your details. You can change your password.');
   const office = user.role === 'admin' || user.role === 'super';
   if (!office && ('name' in b || 'subject' in b)) throw new HttpError(403, 'Your name and subject are changed by the principal. You can change your mobile number, your email and your password.');
   if (office && 'name' in b) {

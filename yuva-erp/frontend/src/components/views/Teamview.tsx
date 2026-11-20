@@ -737,7 +737,8 @@ export const TeamView: React.FC<{ addTeacherSignal?: number; handledSignal?: Rea
         </div>
       )}
 
-      <MyDetails onDone={(type, text) => setNotice({ type, text })} />
+      {/* a student changes only the password here: the mobile number and the email of a student are the principal's */}
+      {!(user?.role === 'student' && !user?.isParent) && <MyDetails onDone={(type, text) => setNotice({ type, text })} />}
 
       {/* Password requests (admin only) */}
       {isAdmin && members.some(u => u.resetRequestedAt) && (

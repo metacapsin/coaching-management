@@ -537,7 +537,7 @@ describe('Features: photos, notices, material, enquiries, backups, own details',
   });
 
   feature('own details', async () => {
-    // a teacher and a student change the mobile number only (the email and the password have their own routes)
+    // a teacher changes the mobile number (the email and the password have their own routes); a student changes only the password
     const [status, data] = await api.call('PUT', '/api/auth/profile', { phone: '9800000099' }, teacher);
     assert.equal(status, 200);
     assert.equal(data.user.phone, '9800000099');
@@ -547,10 +547,13 @@ describe('Features: photos, notices, material, enquiries, backups, own details',
     // the name and the subject are not theirs to change (the principal does it)
     assert.equal((await api.call('PUT', '/api/auth/profile', { name: 'Tina T' }, teacher))[0], 403);
     assert.equal((await api.call('PUT', '/api/auth/profile', { subject: 'Physics' }, teacher))[0], 403);
-    const [, d2] = await api.call('PUT', '/api/auth/profile', { phone: '9800000088' }, alice);
-    assert.deepEqual([d2.user.name, d2.user.phone], ['Alice', '9800000088']);
+    // a student changes NOTHING here (only the password): the mobile number and the email of a student are the principal's
+    const phoneBefore = (await api.call('GET', '/api/auth/me', null, alice))[1].user.phone;
+    assert.equal((await api.call('PUT', '/api/auth/profile', { phone: '9800000088' }, alice))[0], 403);
     assert.equal((await api.call('PUT', '/api/auth/profile', { name: 'Hacker', phone: '9800000077' }, alice))[0], 403);
-    assert.equal((await api.call('GET', '/api/auth/me', null, alice))[1].user.phone, '9800000088'); // nothing of the refused change
+    assert.equal((await api.call('POST', '/api/auth/change-email', { currentPassword: PASSWORD, newEmail: 'alice.new@x.com' }, alice))[0], 403);
+    assert.equal((await api.call('GET', '/api/auth/me', null, alice))[1].user.phone, phoneBefore); // nothing of the refused changes
+    assert.equal((await api.call('POST', '/api/auth/login', { email: 'alice@x.com', password: PASSWORD, portal: 'student' }))[0], 200); // the email is still the old one
     assert.equal((await api.call('PUT', '/api/auth/profile', { phone: '9800000088' }))[0], 401);
     // the principal changes the name of the own login
     const [st3, d3] = await api.call('PUT', '/api/auth/profile', { name: 'Principal P' }, admin);
