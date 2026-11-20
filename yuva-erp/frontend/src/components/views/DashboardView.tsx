@@ -445,8 +445,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             Here is what is happening at <span className="font-semibold text-slate-700">{profile.name}</span> today.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-slate-500 border border-slate-200 bg-white rounded-xl px-3 py-2.5">
+        {/* on a phone: the date on a line of its own, and the four shortcuts in a 2 x 2 grid of equal buttons; on a bigger screen: one wrapping row */}
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+          <span className="col-span-2 text-center sm:text-left text-xs font-medium text-slate-500 border border-slate-200 bg-white rounded-xl px-3 py-2.5">
             {now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </span>
           {[
@@ -458,10 +459,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               key={b.label}
               onClick={b.onClick}
-              className="px-3.5 py-2.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-colors flex items-center gap-2"
+              className="px-2.5 sm:px-3.5 py-2.5 text-[11px] min-[400px]:text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-colors flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 min-w-0"
             >
-              <b.icon className="w-4 h-4 text-blue-600" />
-              {b.label}
+              <b.icon className="w-4 h-4 text-blue-600 shrink-0" />
+              <span className="truncate">{b.label}</span>
             </button>
           ))}
         </div>
