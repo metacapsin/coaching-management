@@ -1,5 +1,6 @@
 import { cleanName } from '../utils/names';
 import { Select, DateInput } from '../ui/Pickers';
+import { PasswordInput } from '../ui/PasswordInput';
 import { toLocalISODate } from '../utils/helpers';
 import { DialCodePicker } from '../ui/DialCodePicker';
 import { RulesText } from './RulesView';
@@ -413,7 +414,6 @@ export const TeamView: React.FC<{ addTeacherSignal?: number; handledSignal?: Rea
   const [curPw, setCurPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confPw, setConfPw] = useState('');
-  const [showOwnPw, setShowOwnPw] = useState(false);
   const [ownMsg, setOwnMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [ownBusy, setOwnBusy] = useState(false);
 
@@ -1029,8 +1029,8 @@ export const TeamView: React.FC<{ addTeacherSignal?: number; handledSignal?: Rea
             ].map(f => (
               <div key={f.label}>
                 <label className="block text-xs font-medium text-slate-700 mb-1">{f.label}</label>
-                <input
-                  type={showOwnPw ? 'text' : 'password'}
+                {/* each box has its own eye button inside it: show or hide what is typed */}
+                <PasswordInput
                   autoComplete={f.auto}
                   value={f.value}
                   onChange={e => f.set(e.target.value)}
@@ -1039,15 +1039,7 @@ export const TeamView: React.FC<{ addTeacherSignal?: number; handledSignal?: Rea
               </div>
             ))}
 
-            <div className="flex items-center justify-between pt-1">
-              <button
-                type="button"
-                onClick={() => setShowOwnPw(prev => !prev)}
-                className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1"
-              >
-                {showOwnPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                {showOwnPw ? 'Hide' : 'Show'} passwords
-              </button>
+            <div className="flex items-center justify-end pt-1">
               <button
                 type="submit"
                 disabled={ownBusy}
