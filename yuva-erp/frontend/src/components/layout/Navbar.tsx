@@ -181,7 +181,8 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="sticky top-0 z-30 bg-[#ffffff]/90 dark:bg-[#0f172a]/90 backdrop-blur border-b border-slate-200 print:hidden">
-      <div className="flex items-center gap-3 px-4 sm:px-6 lg:px-8 h-16">
+      {/* (on a very narrow screen the bar makes a second row for the search, and the buttons wrap: nothing sits on top of another) */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 sm:px-6 lg:px-8 py-2 min-h-16">
         {/* Page title */}
         <div className="hidden md:block min-w-0 mr-2 shrink-0 max-w-56">
           <h2 className="text-sm font-bold text-slate-900 truncate leading-tight">{t(meta.title)}</h2>
@@ -189,7 +190,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Global student search */}
-        <div ref={searchRef} className={`relative flex-1 min-w-0 max-w-xl ${canManage ? '' : 'hidden'}`}>
+        <div ref={searchRef} className={`relative w-full min-[460px]:w-auto min-[460px]:flex-1 order-last min-[460px]:order-none min-w-0 max-w-xl ${canManage ? '' : 'hidden'}`}>
           <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
           <input
             ref={inputRef}
@@ -273,7 +274,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Right side actions */}
-        <div className="ml-auto flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="ml-auto flex flex-wrap justify-end items-center gap-2 sm:gap-3 max-w-full">
           <ThemeToggle />
 
           {/* Save status */}
