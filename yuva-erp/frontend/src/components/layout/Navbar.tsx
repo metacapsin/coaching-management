@@ -66,6 +66,16 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [searchOpen, setSearchOpen] = useState(false);
   // on a phone the search is a small icon in the row of the other icons; pressed, the search box opens in a row of its own
   const [mobileSearch, setMobileSearch] = useState(false);
+  // the free room of the bar for the search (measured, so it is right on any screen): too small for a box = only the icon
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(entries => setCompact(entries[0].contentRect.width < 150));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   useEffect(() => {
     if (mobileSearch) inputRef.current?.focus();
   }, [mobileSearch]);
@@ -191,13 +201,26 @@ export const Navbar: React.FC<NavbarProps> = ({
       {/* (on a very narrow screen the bar makes a second row for the search, and the buttons wrap: nothing sits on top of another) */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 sm:px-6 lg:px-8 py-2 min-h-16">
         {/* Page title */}
-        <div className="hidden min-[400px]:block min-w-0 mr-2 md:shrink-0 max-w-56">
+        <div className="hidden md:block min-w-0 mr-2 md:shrink-0 max-w-56">
           <h2 className="text-sm font-bold text-slate-900 truncate leading-tight">{t(meta.title)}</h2>
           <p className="hidden md:block text-[11px] text-slate-500 truncate">{t(meta.subtitle)}</p>
         </div>
 
-        {/* Global student search */}
-        <div ref={searchRef} className={`relative min-w-0 max-w-xl ${!canManage ? 'hidden' : mobileSearch ? 'order-last w-full min-[460px]:order-none min-[460px]:w-auto min-[460px]:flex-1' : 'hidden min-[460px]:block min-[460px]:flex-1'}`}>
+        {/* Global student search. It takes the free space of the bar: with enough room it is the search box (as on a computer); with too little room
+            (a small phone, the cover screen of a folding phone) it is a small icon next to the other icons, and pressed it opens the box in a row below. */}
+        <div ref={wrapRef} className={`min-w-0 flex justify-end ${!canManage ? 'hidden' : mobileSearch ? 'order-last basis-full w-full' : 'flex-1 max-w-xl'}`}>
+        {compact && !mobileSearch ? (
+          <button
+            type="button"
+            onClick={() => setMobileSearch(true)}
+            aria-label="Search a student"
+            title="Search a student"
+            className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            <Search className="w-5 h-5" />
+          </button>
+        ) : (
+        <div ref={searchRef} className="relative w-full max-w-xl">
           <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
           <input
             ref={inputRef}
@@ -210,6 +233,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               setSearchOpen(true);
             }}
             onFocus={() => setSearchOpen(true)}
+            onBlur={() => {
+              if (mobileSearch) setTimeout(() => !inputRef.current?.value && setMobileSearch(false), 200);
+            }}
             onKeyDown={handleSearchKeyDown}
             className="w-full pl-9 pr-10 py-2 text-xs bg-slate-100/80 border border-transparent rounded-lg focus:bg-white focus:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
           />
@@ -279,20 +305,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           )}
         </div>
+        )}
+        </div>
 
         {/* Right side actions */}
-        {/* the search icon (phone only): at the left of the bar, the other icons are at the right */}
-        {canManage && (
-          <button
-            type="button"
-            onClick={() => setMobileSearch(v => !v)}
-            aria-label={mobileSearch ? 'Close the search' : 'Search a student'}
-            title="Search a student"
-            className="min-[460px]:hidden p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
-          >
-            {mobileSearch ? <X className="w-5 h-5" /> : <Search className="w-5 h-5" />}
-          </button>
-        )}
         <div className="ml-auto flex items-center gap-1.5 sm:gap-3 max-w-full max-[270px]:flex-wrap max-[270px]:justify-end">
           <ThemeToggle />
 
