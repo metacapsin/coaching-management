@@ -121,6 +121,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         inputRef.current?.focus();
       }
       if (e.key === 'Escape') {
+        setMobileSearch(false);
         setProfileOpen(false);
       }
     };
@@ -156,6 +157,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     onSelectStudent(studentId);
     setQuery('');
     setSearchOpen(false);
+    setMobileSearch(false); // (on a phone the box goes back to the small icon)
     inputRef.current?.blur();
   };
 
@@ -189,9 +191,9 @@ export const Navbar: React.FC<NavbarProps> = ({
       {/* (on a very narrow screen the bar makes a second row for the search, and the buttons wrap: nothing sits on top of another) */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 sm:px-6 lg:px-8 py-2 min-h-16">
         {/* Page title */}
-        <div className="hidden md:block min-w-0 mr-2 shrink-0 max-w-56">
+        <div className="hidden min-[400px]:block min-w-0 mr-2 md:shrink-0 max-w-56">
           <h2 className="text-sm font-bold text-slate-900 truncate leading-tight">{t(meta.title)}</h2>
-          <p className="text-[11px] text-slate-500 truncate">{t(meta.subtitle)}</p>
+          <p className="hidden md:block text-[11px] text-slate-500 truncate">{t(meta.subtitle)}</p>
         </div>
 
         {/* Global student search */}
@@ -279,19 +281,19 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Right side actions */}
+        {/* the search icon (phone only): at the left of the bar, the other icons are at the right */}
+        {canManage && (
+          <button
+            type="button"
+            onClick={() => setMobileSearch(v => !v)}
+            aria-label={mobileSearch ? 'Close the search' : 'Search a student'}
+            title="Search a student"
+            className="min-[460px]:hidden p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            {mobileSearch ? <X className="w-5 h-5" /> : <Search className="w-5 h-5" />}
+          </button>
+        )}
         <div className="ml-auto flex items-center gap-1.5 sm:gap-3 max-w-full max-[270px]:flex-wrap max-[270px]:justify-end">
-          {/* the search icon (phone only) */}
-          {canManage && (
-            <button
-              type="button"
-              onClick={() => setMobileSearch(v => !v)}
-              aria-label={mobileSearch ? 'Close the search' : 'Search a student'}
-              title="Search a student"
-              className="min-[460px]:hidden p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
-            >
-              {mobileSearch ? <X className="w-5 h-5" /> : <Search className="w-5 h-5" />}
-            </button>
-          )}
           <ThemeToggle />
 
           {/* Save status */}
