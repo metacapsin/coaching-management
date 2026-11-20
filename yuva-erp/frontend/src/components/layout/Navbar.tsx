@@ -68,11 +68,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [mobileSearch, setMobileSearch] = useState(false);
   // the free room of the bar for the search (measured, so it is right on any screen): too small for a box = only the icon
   const wrapRef = useRef<HTMLDivElement>(null);
-  const [compact, setCompact] = useState(false);
+  const [roomPx, setRoomPx] = useState(1000); // (before it is measured: enough room)
+  const compact = roomPx < 88; // less than this is too small for a box (measured on real phones: 360 px = about 108 px free): the icon
+  const snug = roomPx < 200; // a small box: the short hint and the small padding
   useEffect(() => {
     const el = wrapRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
-    const ro = new ResizeObserver(entries => setCompact(entries[0].contentRect.width < 150));
+    const ro = new ResizeObserver(entries => setRoomPx(entries[0].contentRect.width));
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -226,7 +228,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             ref={inputRef}
             type="text"
             value={query}
-            placeholder="Search student, roll no, parent phone..."
+            placeholder={snug ? 'Search...' : 'Search student, roll no, parent phone...'}
             onChange={e => {
               setQuery(e.target.value);
               setActiveIndex(0);
@@ -237,7 +239,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               if (mobileSearch) setTimeout(() => !inputRef.current?.value && setMobileSearch(false), 200);
             }}
             onKeyDown={handleSearchKeyDown}
-            className="w-full pl-9 pr-10 py-2 text-xs bg-slate-100/80 border border-transparent rounded-lg focus:bg-white focus:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+            className={`w-full ${snug ? 'pl-8 pr-2' : 'pl-9 pr-10'} py-2 text-xs bg-slate-100/80 border border-transparent rounded-lg focus:bg-white focus:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
           />
 
           {query ? (
