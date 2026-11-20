@@ -232,7 +232,8 @@ export const LeavePage: React.FC = () => {
             </span>
           </label>
 
-          {/* only for a sick leave: the tick says that there is a certificate, the photo (optional) lets the principal be sure */}
+          {/* only for a sick leave. NOTHING here is compulsory: a person in a hospital (the ICU...) cannot send a certificate, and the leave is sent without it.
+              The tick says that there is a certificate, the photo (optional) lets the principal be sure. */}
           {kind === 'Sick' && (
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-xs font-medium text-slate-700">
@@ -245,8 +246,14 @@ export const LeavePage: React.FC = () => {
                   }}
                   className="rounded border-slate-300"
                 />
-                I have a medical certificate / proof and can show it to the principal
+                <span>
+                  I have a medical certificate / proof <span className="font-semibold text-slate-500">(optional)</span>
+                </span>
               </label>
+              <p className="ml-6 text-[11px] text-slate-500">
+                A certificate is <b>not compulsory</b>. If you are in a hospital, or you cannot send it now, just send the application without it: you can show
+                the proof to the principal later.
+              </p>
               {hasProof && (
                 <div className="ml-6">
                   {proof ? (
@@ -278,7 +285,7 @@ export const LeavePage: React.FC = () => {
                       }`}
                     >
                       <Upload className="w-5 h-5 text-indigo-500" />
-                      <span className="text-sm font-semibold text-slate-800">Upload the certificate (optional)</span>
+                      <span className="text-sm font-semibold text-slate-800">Upload the certificate (optional, you can skip it)</span>
                       <span className="text-[11px] text-slate-500">Click to choose a photo, or drop it here · JPG, PNG or WebP</span>
                       <input
                         type="file"

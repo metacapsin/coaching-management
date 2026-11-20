@@ -995,6 +995,11 @@ describe('Leave of a student: the student asks, the principal calls the parent a
     const list = (await call('GET', '/api/sync', null, student))[1].institute.leaveRequests;
     assert.deepEqual([list.find((l: any) => l.id === ticked.id).hasProof, list.find((l: any) => l.id === ticked.id).proofUrl], [true, undefined]);
     assert.equal(list.find((l: any) => l.id === casual.id).hasProof, false);
+    // a sick leave needs NO certificate at all (a person in a hospital cannot send one): no tick and no photo is accepted
+    const [noProofStatus, noProof] = await ask({ fromDate: day(77), toDate: day(77), kind: 'Sick' });
+    assert.equal(noProofStatus, 200);
+    const noProofRow = (await call('GET', '/api/sync', null, student))[1].institute.leaveRequests.find((l: any) => l.id === noProof.id);
+    assert.deepEqual([noProofRow.kind, noProofRow.hasProof, noProofRow.proofUrl], ['Sick', false, undefined]);
     // a good one
     const [status, data] = await ask({ fromDate: day(70), toDate: day(70), kind: 'Sick', proof: PNG });
     assert.equal(status, 200);
