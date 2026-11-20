@@ -194,7 +194,8 @@ export const BatchesTimetableView: React.FC = () => {
             </div>
           )}
 
-          {batches.map(batch => {
+          {/* newest first: a batch that was just created is at the top, the older ones go down (they are stored oldest first) */}
+          {[...batches].reverse().map(batch => {
             const batchEnrolled = students.filter(s => s.batchId === batch.id).length;
             const fillRate = batch.maxCapacity > 0 ? Math.round((batchEnrolled / batch.maxCapacity) * 100) : 0;
             const teachers = users.filter(u => u.role === 'teacher' && (u.batchIds || []).includes(batch.id));
