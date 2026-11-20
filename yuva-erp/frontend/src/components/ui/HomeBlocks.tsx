@@ -109,14 +109,15 @@ export const TodayTile: React.FC<{ label: string; value: React.ReactNode; icon: 
   return (
     <button
       onClick={onClick}
-      className="text-left relative overflow-hidden bg-white rounded-2xl border border-slate-200 px-4 py-3.5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-3"
+      className="text-left relative overflow-hidden bg-white rounded-2xl border border-slate-200 px-3 sm:px-4 py-3 sm:py-3.5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3"
     >
-      <span className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center ${alert ? c.icon : 'bg-slate-100 text-slate-500'}`}>
-        <Icon className="w-5 h-5" />
+      {/* (on a phone the tile is small: the icon on top, the whole name under it, then the number; from a tablet up: icon on the left) */}
+      <span className={`w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-lg sm:rounded-xl flex items-center justify-center ${alert ? c.icon : 'bg-slate-100 text-slate-500'}`}>
+        <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
       </span>
-      <span className="min-w-0">
-        <span className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 truncate">{label}</span>
-        <span className="block text-xl font-bold font-mono text-slate-900 leading-tight mt-0.5">{value}</span>
+      <span className="min-w-0 w-full">
+        <span className="block text-[10px] font-semibold uppercase tracking-wide sm:tracking-wider text-slate-500 leading-snug sm:truncate">{label}</span>
+        <span className="block text-lg sm:text-xl font-bold font-mono text-slate-900 leading-tight mt-0.5">{value}</span>
       </span>
     </button>
   );
