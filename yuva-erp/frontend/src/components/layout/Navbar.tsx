@@ -64,6 +64,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   // Search state
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
+  // on a phone the search is a small icon in the row of the other icons; pressed, the search box opens in a row of its own
+  const [mobileSearch, setMobileSearch] = useState(false);
+  useEffect(() => {
+    if (mobileSearch) inputRef.current?.focus();
+  }, [mobileSearch]);
   const [activeIndex, setActiveIndex] = useState(0);
 
   // Dropdown state
@@ -190,7 +195,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Global student search */}
-        <div ref={searchRef} className={`relative w-full min-[460px]:w-auto min-[460px]:flex-1 order-last min-[460px]:order-none min-w-0 max-w-xl ${canManage ? '' : 'hidden'}`}>
+        <div ref={searchRef} className={`relative min-w-0 max-w-xl ${!canManage ? 'hidden' : mobileSearch ? 'order-last w-full min-[460px]:order-none min-[460px]:w-auto min-[460px]:flex-1' : 'hidden min-[460px]:block min-[460px]:flex-1'}`}>
           <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
           <input
             ref={inputRef}
@@ -274,7 +279,19 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Right side actions */}
-        <div className="ml-auto flex flex-wrap justify-end items-center gap-2 sm:gap-3 max-w-full">
+        <div className="ml-auto flex items-center gap-1.5 sm:gap-3 max-w-full max-[270px]:flex-wrap max-[270px]:justify-end">
+          {/* the search icon (phone only) */}
+          {canManage && (
+            <button
+              type="button"
+              onClick={() => setMobileSearch(v => !v)}
+              aria-label={mobileSearch ? 'Close the search' : 'Search a student'}
+              title="Search a student"
+              className="min-[460px]:hidden p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+            >
+              {mobileSearch ? <X className="w-5 h-5" /> : <Search className="w-5 h-5" />}
+            </button>
+          )}
           <ThemeToggle />
 
           {/* Save status */}
@@ -306,7 +323,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             type="button"
             onClick={onOpenAdmission}
-            className={`px-3 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors flex items-center gap-1.5 ${
+            className={`px-2.5 sm:px-3 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors flex items-center gap-1.5 ${
               canManage ? '' : 'hidden'
             }`}
             title="New Student Admission"
