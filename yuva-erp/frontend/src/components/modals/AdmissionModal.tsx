@@ -7,7 +7,7 @@ import type { PaymentMethod, Student } from '../../types';
 import { resizeImageToDataUrl } from '../utils/Imageutils';
 import { formatDate, normalizePhone, toLocalISODate } from '../utils/helpers';
 import { nextRollNumber } from '../utils/rollNo';
-import { X, UserPlus, Check, ImagePlus, Trash2 } from 'lucide-react';
+import { X, UserPlus, Check, ImagePlus, Trash2, ChevronDown } from 'lucide-react';
 import { StudentLoginCard, generatePassword } from './StudentLoginCard';
 import { PasswordInput } from '../ui/PasswordInput';
 import { AdmissionDocuments, noDocuments, pickedDocuments, uploadAdmissionDocuments } from './AdmissionDocuments';
@@ -358,9 +358,9 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
               <p className="text-[11px] text-slate-500 mt-0.5">{formatDate(toLocalISODate())}</p>
             </div>
           </div>
-          <ol className="hidden md:block space-y-1 mt-2">
+          <ol className="hidden md:block space-y-3 mt-2">
             {sideSteps.map((st, i) => (
-              <li key={st.id}>
+              <li key={st.id} className="relative">
                 <a
                   href={`#${st.id}`}
                   onClick={e => {
@@ -374,6 +374,12 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
                   </span>
                   <span className={`text-xs font-medium ${st.done ? 'text-slate-900' : 'text-slate-500'}`}>{st.label}</span>
                 </a>
+                {i < sideSteps.length - 1 && (
+                  <span aria-hidden="true" className="pointer-events-none absolute left-[14px] top-[32px] h-[26px] w-3 flex flex-col items-center">
+                    <span className={`flex-1 w-0.5 rounded-full ${st.done ? 'bg-orange-500' : 'bg-orange-500/30'}`} />
+                    <ChevronDown className={`w-3.5 h-3.5 -mt-1 ${st.done ? 'text-orange-500' : 'text-orange-500/40'}`} strokeWidth={3} />
+                  </span>
+                )}
               </li>
             ))}
           </ol>
