@@ -259,6 +259,36 @@ describe('Coachings', () => {
     assert.ok(mail2.sent[0][2].includes('http')); // every email has a link
   });
 
+  it('02g "Send to Parent" of Parent Broadcasts emails the message to the parent of each student (only the principal)', async () => {
+    const base = { id: 'bs1', rollNo: '01', name: 'Cast Student', email: '', phone: '9811122233', parentName: 'Cast Parent', parentEmail: 'castparent@x.com', parentPhone: '9811100000', grade: 'Class 12', courseId: 'c1', batchId: 'b1', targetExam: 'JEE', dateOfAdmission: '2026-11-01', status: 'active', photoUrl: '/avatar.svg', address: '', totalFees: 50000, discount: 0, feePaid: 10000 };
+    const noMail = { ...base, id: 'bs2', name: 'No Mail Student', parentEmail: '' };
+    assert.equal((await call('PUT', '/api/institute', { changes: { students: { upsert: [base, noMail] } } }, adminA))[0], 200);
+    const mail = captureMail();
+    let result: any;
+    try {
+      const items = [
+        { studentId: 'bs1', message: 'Dear Cast Parent, your ward was absent today.\nPlease call the office.' },
+        { studentId: 'bs2', message: 'Dear Parent, hello.' },
+        { studentId: 'nobody', message: 'Ignored: no such student.' }
+      ];
+      const [status, data] = await call('POST', '/api/broadcast/email', { title: 'Absent Alert', items }, adminA);
+      assert.equal(status, 200);
+      result = data;
+    } finally {
+      mail.stop();
+    }
+    assert.deepEqual([result.sent, result.noEmail], [1, 1]);
+    assert.deepEqual(mail.sent.map((m) => m[0]), ['castparent@x.com']);
+    assert.ok(mail.sent[0][1].includes('Absent Alert'), 'the subject has the title');
+    assert.ok(mail.sent[0][2].includes('was absent today'), 'the message is in the email');
+    assert.ok(mail.sent[0][2].includes('Please call the office'), 'the second line too');
+    assert.ok(mail.sent[0][2].includes('http'), 'every email has a link');
+    // nobody but the principal may send it, and an empty send is refused
+    assert.equal((await call('POST', '/api/broadcast/email', { items: [] }, adminA))[0], 400);
+    assert.equal((await call('POST', '/api/broadcast/email', { items: [{ studentId: 'bs1', message: 'x' }] }, null))[0], 401);
+    await call('PUT', '/api/institute', { changes: { students: { remove: ['bs1', 'bs2'] } } }, adminA);
+  });
+
   it('02h the office emails the parent a fee notice, with a Pay now button when the UPI id is written', async () => {
     const base = { id: 'fs1', rollNo: '01', name: 'Fee Student', email: '', phone: '9811122233', parentName: 'Fee Parent', parentEmail: 'feeparent@x.com', parentPhone: '9811100000', grade: 'Class 12', courseId: 'c1', batchId: 'b1', targetExam: 'JEE', dateOfAdmission: '2026-11-01', status: 'active', photoUrl: '/avatar.svg', address: '', totalFees: 50000, discount: 0, feePaid: 10000 };
     assert.equal((await call('PUT', '/api/institute', { changes: { students: { upsert: [base] } } }, adminA))[0], 200);

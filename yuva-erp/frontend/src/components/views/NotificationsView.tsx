@@ -4,6 +4,7 @@ import { useInstitute } from '../../Context/InstituteContext';
 import type { Student } from '../../types';
 import { fillTemplate, openWhatsApp, toLocalISODate, formatDate } from '../utils/helpers';
 import { Pager } from '../ui/Pager';
+import { emailBroadcast } from '../utils/api';
 import { usePaged } from '../utils/usePaged';
 import { Bell, MessageSquare, Send, CheckCircle2, Edit3, Trash2 } from 'lucide-react';
 
@@ -103,8 +104,9 @@ export const NotificationsView: React.FC = () => {
     openWhatsApp(sampleStudent.parentPhone, previewMessage);
   };
 
-  const handleDispatchBroadcast = () => {
-    if (!currentTemplate) return;
+  const [dispatching, setDispatching] = useState(false);
+  const handleDispatchBroadcast = async () => {
+    if (!currentTemplate || dispatching) return;
     let targets: Student[] = [];
 
     if (audienceType === 'single') {
@@ -117,7 +119,8 @@ export const NotificationsView: React.FC = () => {
       targets = activeStudents;
     }
 
-    targets.forEach(st => {
+    const items = targets.map(st => ({ st, message: fillTemplate(messageBody, tagValues(st, false)) }));
+    items.forEach(({ st, message }) => {
       sendNotification({
         type: currentTemplate.type,
         channel: currentTemplate.channel,
@@ -125,17 +128,33 @@ export const NotificationsView: React.FC = () => {
         recipientPhone: st.parentPhone,
         studentName: st.name,
         studentId: st.id,
-        content: fillTemplate(messageBody, tagValues(st, false)),
+        content: message,
         status: 'pending'
       });
     });
 
-    setDispatchSuccessMsg(
-      targets.length === 0
+    const n = targets.length;
+    const base =
+      n === 0
         ? 'No students match this audience.'
-        : `${targets.length} message${targets.length === 1 ? '' : 's'} sent to the parent${targets.length === 1 ? '' : 's'}: it is in the bell and on the Notice Board of the parent login. To send it on WhatsApp too, open "Audit Logs" and press "Send now".`
-    );
-    setTimeout(() => setDispatchSuccessMsg(''), 5000);
+        : `${n} message${n === 1 ? '' : 's'} sent to the parent${n === 1 ? '' : 's'}: it is in the bell and on the Notice Board of the parent login. To send it on WhatsApp too, open "Audit Logs" and press "Send now".`;
+    setDispatchSuccessMsg(base);
+
+    // and the parents get it by EMAIL too (the parents with an email address)
+    if (n > 0) {
+      setDispatching(true);
+      try {
+        const r = await emailBroadcast(currentTemplate.title, items.map(({ st, message }) => ({ studentId: st.id, message })));
+        setDispatchSuccessMsg(
+          `${base} ${r.sent > 0 ? `It was also emailed to ${r.sent} parent${r.sent === 1 ? '' : 's'}` : 'No email was sent'}${r.noEmail ? ` (${r.noEmail} without an email address)` : ''}.`
+        );
+      } catch (err) {
+        setDispatchSuccessMsg(`${base} The email could not be sent${err instanceof Error ? `: ${err.message}` : '.'}`);
+      } finally {
+        setDispatching(false);
+      }
+    }
+    setTimeout(() => setDispatchSuccessMsg(''), 9000);
   };
 
   // the lines that only the bell shows (a new student or teacher) are not messages to the parents
@@ -378,12 +397,14 @@ export const NotificationsView: React.FC = () => {
               <button
                 type="button"
                 onClick={handleDispatchBroadcast}
-                className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-1.5 shadow-xs"
+                disabled={dispatching}
+                className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-lg transition-colors flex items-center gap-1.5 shadow-xs"
               >
                 <Send className="w-3.5 h-3.5" />
-                Send to Parent
+                {dispatching ? 'Sending...' : 'Send to Parent'}
               </button>
             </div>
+            <p className="text-[11px] text-slate-500">"Send to Parent" puts the message in the parent login (bell and Notice Board) and also sends it to the parent by email.</p>
           </div>
 
           {/* Right: Live Simulated Mobile Preview */}

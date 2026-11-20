@@ -383,6 +383,10 @@ export const updateOwnDetails = (details: { name?: string; phone?: string }) =>
 export const resetSuperPassword = (email: string, newPassword: string) =>
   request<{ ok: true }>('POST', '/super/forgot-password', { email, newPassword }, { auth: false });
 
+// "Send to Parent" of Parent Broadcasts: each message (the tags are already filled) goes by email to the parent of its student
+export const emailBroadcast = (title: string, items: { studentId: string; message: string }[]) =>
+  request<{ sent: number; noEmail: number }>('POST', '/broadcast/email', { title, items });
+
 // Emails the parent of a student the notice that the fee is not fully paid (with a Pay now button when the coaching has a UPI id)
 export const emailFeeNotice = (studentId: string) =>
   request<{ notified: 'sent' | 'no-email' | 'none' }>('POST', '/fees/notice-email', { studentId });

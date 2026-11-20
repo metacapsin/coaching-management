@@ -752,6 +752,52 @@ route('/api/fees/notice-email', ['POST'], 'user', async (c) => {
   return { notified: sent ? 'sent' : 'no-email' };
 });
 
+/** "Send to Parent" of the Parent Broadcasts page: the message of each student (the tags are already filled by the page) goes by email to the
+ * PARENT of that student. Only the principal. A student with no parent email is counted in noEmail (the message is in the parent login all the same). */
+route('/api/broadcast/email', ['POST'], 'user', async (c) => {
+  if (c.user.role !== 'admin') throw new HttpError(403, 'Only the principal can send a message to the parents.');
+  const s = c.store;
+  const b = c.body(1024 * 1024);
+  const items: any[] = Array.isArray(b.items) ? b.items : [];
+  if (items.length === 0) throw new HttpError(400, 'There is no message to send.');
+  if (items.length > 1000) throw new HttpError(400, 'Too many messages in one send (the most is 1000).');
+  const title = text(b.title, 100) || 'A message';
+  const coaching = await coachingName(c, s);
+  const kids = new Map<string, any>((await s.find('students')).filter((x: any) => x.status !== 'inactive').map((x: any) => [x.id, x]));
+  const parentLogins = (await s.usersAll()).filter((u: any) => (u.status || 'active') === 'active' && u.role === 'student' && u.isParent);
+  let sent = 0;
+  let noEmail = 0;
+  for (const it of items) {
+    const st = kids.get(String(it?.studentId ?? ''));
+    const message = text(it?.message, 3000);
+    if (!st || !message) continue;
+    const to = text(st.parentEmail || parentLogins.find((u: any) => u.studentId === st.id)?.email, 150).toLowerCase();
+    if (!to.includes('@')) {
+      noEmail++;
+      continue;
+    }
+    const [ok] = mail(
+      to,
+      `${title} - ${coaching}`,
+      title,
+      message.split(/[\r\n]+/).map((line) => line.trim()).filter(Boolean),
+      {
+        details: [
+          ['Student', st.name],
+          ['Coaching', coaching],
+        ],
+        from: fromPerson(c.user, coaching),
+        button: ['Sign in as Parent', c.loginLink('parent')],
+        note: 'In the parent login you see the messages, the notices, the attendance, the tests and the fees of your child.',
+        name: st.parentName,
+      },
+    );
+    if (ok) sent++;
+  }
+  await s.audit(c.user, 'broadcast-email', `${title}: ${sent} email(s)`);
+  return { sent, noEmail };
+});
+
 interface Receiver { email: string; name: string; portal: string; }
 
 /** Who gets the email of a batch (or of the whole coaching): the students (the email of the admission and of the login), the parents
