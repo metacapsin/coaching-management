@@ -275,7 +275,8 @@ export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }>
       <ProgressCharts tests={chartTests} months={chartMonths} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+        {/* (the last card, the timetable, grows to the bottom of the right column: both columns end together) */}
+        <div className="lg:col-span-2 flex flex-col gap-6">
           {/* Today's classes */}
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
             <div className="p-4 border-b border-slate-200 flex items-center gap-2 bg-slate-50/50">
@@ -367,17 +368,17 @@ export const StudentPortalView: React.FC<{ onNavigate?: (tab: string) => void }>
           </div>
 
           {/* Weekly timetable */}
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex-1 flex flex-col">
             <div className="p-4 border-b border-slate-200 bg-slate-50/50">
               <h3 className="text-sm font-semibold text-slate-900">My Weekly Timetable</h3>
             </div>
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-slate-100 flex-1 flex flex-col">
               {DAYS.map(day => {
                 const slots = timetable
                   .filter(t => t.dayOfWeek === day)
                   .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
                 return (
-                  <div key={day} className="p-3 flex gap-4 text-xs">
+                  <div key={day} className="p-3 flex-1 flex items-center gap-4 text-xs">
                     <div
                       className={`w-10 shrink-0 font-bold uppercase ${
                         day === dayName ? 'text-blue-600' : 'text-slate-500'
