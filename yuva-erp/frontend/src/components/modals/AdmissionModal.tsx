@@ -390,7 +390,7 @@ export const AdmissionModal: React.FC<AdmissionModalProps> = ({ isOpen, onClose,
         </aside>
         <div className="flex-1 min-w-0 flex flex-col">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-orange-500/25 flex items-center justify-between bg-transparent">
+        <div className="px-6 py-4 border-b border-slate-200 dark:border-orange-500/25 flex items-center justify-between bg-transparent">
           <div>
             <h2 className="text-lg font-bold text-slate-900 tracking-tight">New Student Admission</h2>
             <p className="text-xs text-slate-500 mt-0.5">

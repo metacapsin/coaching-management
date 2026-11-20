@@ -435,11 +435,8 @@ html, body { overflow-x: clip; }
 
 /* ---------- The side panel of the long forms (student, teacher): like the cards, a clean base with a soft orange light from the corner ---------- */
 .side-tint {
-  background-color: #fffaf5;
-  background-image:
-    radial-gradient(120% 70% at 0% 0%, color-mix(in oklab, #f97316 30%, white), transparent 72%),
-    linear-gradient(180deg, color-mix(in oklab, #f97316 11%, white), color-mix(in oklab, #f97316 3%, white));
-  border-right: 1px solid color-mix(in oklab, #f97316 40%, #e2e8f0);
+  background-color: #ffffff;
+  border-right: 1px solid #e2e8f0;
 }
 .dark .side-tint {
   background-color: #111a2c;
@@ -449,7 +446,7 @@ html, body { overflow-x: clip; }
   border-right-color: color-mix(in oklab, #f97316 26%, #1e293b);
 }
 @media (max-width: 767px) {
-  .side-tint { border-right: 0; border-bottom: 1px solid color-mix(in oklab, #f97316 22%, #e2e8f0); }
+  .side-tint { border-right: 0; border-bottom: 1px solid #e2e8f0; }
 }
 
 /* the sign in card of the home page: the same clean dark base with a soft orange light from the corner as the cards */
@@ -461,17 +458,9 @@ html, body { overflow-x: clip; }
   border-color: color-mix(in oklab, #f97316 28%, #1e293b);
 }
 
-/* ---------- Neon forms: every pop-up form (and the cards inside the long forms) has the glow of the cards: an orange edge, a soft light from the corner ---------- */
+/* ---------- Neon forms (DARK MODE ONLY): every pop-up form (and the cards inside the long forms) has the glow of the cards: an orange edge, a soft light from the corner. In light mode the forms are plain white. ---------- */
 @media screen {
   /* the window of a pop-up form (all of them have a rounded border, shadow-2xl and a slate border) */
-  [class*="shadow-2xl"][class*="border-slate-200"] {
-    background-color: #fffaf5;
-    background-image:
-      radial-gradient(120% 60% at 100% 0%, color-mix(in oklab, #f97316 22%, white), transparent 64%),
-      linear-gradient(180deg, color-mix(in oklab, #f97316 8%, white), #ffffff);
-    border-color: color-mix(in oklab, #f97316 58%, #e2e8f0);
-    box-shadow: 0 0 0 1px rgb(249 115 22 / 0.3), 0 0 40px -6px rgb(249 115 22 / 0.5), 0 28px 56px -18px rgb(15 23 42 / 0.35);
-  }
   .dark [class*="shadow-2xl"][class*="border-slate-200"] {
     background-color: #101828;
     background-image:
@@ -481,12 +470,6 @@ html, body { overflow-x: clip; }
     box-shadow: 0 0 0 1px rgb(249 115 22 / 0.28), 0 0 38px -6px rgb(249 115 22 / 0.42), 0 30px 60px -20px rgb(0 0 0 / 0.85);
   }
   /* the heading bar of every pop-up form lets the light of the window show through (it was a flat grey / white bar) */
-  [class*="shadow-2xl"][class*="border-slate-200"] > div[class*="bg-slate-50"],
-  [class*="shadow-2xl"][class*="border-slate-200"] > div[class*="bg-emerald-50"],
-  [class*="shadow-2xl"][class*="border-slate-200"] > div[class*="bg-blue-50"] {
-    background-color: transparent;
-    border-bottom-color: color-mix(in oklab, #f97316 28%, #e2e8f0);
-  }
   .dark [class*="shadow-2xl"][class*="border-slate-200"] > div[class*="bg-slate-50"],
   .dark [class*="shadow-2xl"][class*="border-slate-200"] > div[class*="bg-emerald-50"],
   .dark [class*="shadow-2xl"][class*="border-slate-200"] > div[class*="bg-blue-50"] {
@@ -494,14 +477,6 @@ html, body { overflow-x: clip; }
     border-bottom-color: color-mix(in oklab, #f97316 30%, #1e293b);
   }
   /* the cards (sections) inside the long forms */
-  .neon-card {
-    background-color: #ffffff;
-    background-image:
-      radial-gradient(110% 80% at 100% 0%, color-mix(in oklab, #f97316 17%, white), transparent 62%),
-      linear-gradient(180deg, color-mix(in oklab, #f97316 5%, white), #ffffff);
-    border-color: color-mix(in oklab, #f97316 45%, #e2e8f0);
-    box-shadow: 0 0 26px -10px rgb(249 115 22 / 0.5);
-  }
   .dark .neon-card {
     background-color: #131d31;
     background-image: radial-gradient(110% 80% at 100% 0%, color-mix(in oklab, #f97316 12%, transparent), transparent 60%);
