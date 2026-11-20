@@ -69,7 +69,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   // the free room of the bar for the search (measured, so it is right on any screen): too small for a box = only the icon
   const wrapRef = useRef<HTMLDivElement>(null);
   const [roomPx, setRoomPx] = useState(1000); // (before it is measured: enough room)
-  const compact = roomPx < 88; // less than this is too small for a box (measured on real phones: 360 px = about 108 px free): the icon
+  const compact = roomPx < 110; // less than this is too small to type in: the pill shows only the magnifier, and pressed it opens the box in a row below
   const snug = roomPx < 200; // a small box: the short hint and the small padding
   useEffect(() => {
     const el = wrapRef.current;
@@ -208,8 +208,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           <p className="hidden md:block text-[11px] text-slate-500 truncate">{t(meta.subtitle)}</p>
         </div>
 
-        {/* Global student search. It takes the free space of the bar: with enough room it is the search box (as on a computer); with too little room
-            (a small phone, the cover screen of a folding phone) it is a small icon next to the other icons, and pressed it opens the box in a row below. */}
+        {/* Global student search. It always fills the free space of the bar (so there is never a blank gap): with enough room it is the search box (as on a
+            computer); with too little room to type in (a small phone) it is the same pill with only the magnifier, and pressed it opens the box in a row below. */}
         <div ref={wrapRef} className={`min-w-0 flex justify-end ${!canManage ? 'hidden' : mobileSearch ? 'order-last basis-full w-full' : 'flex-1 max-w-xl'}`}>
         {compact && !mobileSearch ? (
           <button
@@ -217,9 +217,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={() => setMobileSearch(true)}
             aria-label="Search a student"
             title="Search a student"
-            className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+            className="w-full max-w-xl flex items-center justify-center py-2 text-slate-500 bg-slate-100/80 hover:bg-slate-200/80 rounded-lg transition-colors"
           >
-            <Search className="w-5 h-5" />
+            <Search className="w-4 h-4" />
           </button>
         ) : (
         <div ref={searchRef} className="relative w-full max-w-xl">

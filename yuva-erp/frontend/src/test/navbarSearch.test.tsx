@@ -39,7 +39,7 @@ const bar = (onSelect = vi.fn()) =>
 
 describe('the search in the top bar', () => {
   it('with little room it is a small icon, and pressed it opens the search box', () => {
-    free = 60; // a very small phone, or the cover screen of a folding phone
+    free = 60; // a very small room: the pill with only the magnifier, or the cover screen of a folding phone
     bar();
     expect(screen.queryByPlaceholderText(/^Search/)).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Search a student' }));
